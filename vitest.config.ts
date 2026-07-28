@@ -25,7 +25,11 @@ export default defineConfig({
   plugins: [tsExtensionResolver()],
   test: {
     environment: 'node',
-    include: ['packages/**/tests/**/*.test.ts', 'apps/server/tests/**/*.test.ts'],
+    include: [
+      'packages/**/tests/**/*.test.ts',
+      'apps/server/tests/**/*.test.ts',
+      'apps/web/tests/**/*.test.ts',
+    ],
     exclude: ['**/node_modules/**', '**/dist/**', 'e2e/**'],
     testTimeout: 30000,
     hookTimeout: 30000,
