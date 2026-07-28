@@ -1,0 +1,27 @@
+import type { GameId, GameSettings } from '@arcade/shared';
+import type { GameContext, GameRunner } from '../rooms/types.js';
+import { QuizGame } from './quiz-game.js';
+import { DartsGame } from './darts-game.js';
+import { PoolGame } from './pool-game.js';
+import { GolfGame } from './golf-game.js';
+
+export function createGameRunner(
+  game: GameId,
+  ctx: GameContext,
+  settings: GameSettings,
+): GameRunner {
+  switch (game) {
+    case 'quiz':
+      return new QuizGame(ctx, settings.quiz);
+    case 'darts':
+      return new DartsGame(ctx, settings.darts);
+    case 'pool':
+      return new PoolGame(ctx, settings.pool);
+    case 'golf':
+      return new GolfGame(ctx, settings.golf);
+    default: {
+      const never: never = game;
+      throw new Error('Juego no soportado: ' + String(never));
+    }
+  }
+}

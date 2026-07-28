@@ -1,0 +1,23 @@
+# Despliegue de un solo servicio en Render (plan gratuito).
+# El servidor Express sirve el cliente compilado y los WebSockets de Socket.IO,
+# asi que no hay CORS entre partes ni un segundo servicio que mantener.
+services:
+  - type: web
+    name: parque-arcade
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        value: file:./dev.db
+      - key: LOG_LEVEL
+        value: info
+      # CORS_ORIGINS y PUBLIC_WEB_URL no hacen falta: cliente y servidor
+      # comparten origen. Rellena PUBLIC_WEB_URL solo si sirves el cliente
+      # desde otro dominio.

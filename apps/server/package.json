@@ -1,0 +1,35 @@
+{
+  "name": "@arcade/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "db:generate": "node scripts/run-prisma.mjs generate",
+    "db:push": "node scripts/run-prisma.mjs db push",
+    "db:studio": "node scripts/run-prisma.mjs studio"
+  },
+  "dependencies": {
+    "@arcade/game-engine": "1.0.0",
+    "@arcade/shared": "1.0.0",
+    "@prisma/client": "^5.22.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "express-rate-limit": "^7.4.1",
+    "helmet": "^8.0.0",
+    "socket.io": "^4.8.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "prisma": "^5.22.0",
+    "socket.io-client": "^4.8.1",
+    "tsx": "^4.19.2"
+  }
+}

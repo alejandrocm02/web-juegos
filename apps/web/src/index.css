@@ -1,0 +1,64 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-night-900 text-slate-100 font-body antialiased;
+    background-image:
+      radial-gradient(circle at 12% -10%, rgba(34, 211, 238, 0.16), transparent 45%),
+      radial-gradient(circle at 88% 0%, rgba(244, 114, 182, 0.14), transparent 42%),
+      radial-gradient(circle at 50% 120%, rgba(74, 222, 128, 0.1), transparent 55%);
+    background-attachment: fixed;
+  }
+
+  *:focus-visible {
+    @apply outline-none ring-2 ring-neon-cyan ring-offset-2 ring-offset-night-900;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-white/10 bg-night-800/80 backdrop-blur p-5 shadow-glow;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
+      transition-all duration-150 disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn-primary {
+    @apply btn bg-neon-cyan text-night-900 hover:bg-cyan-300 active:scale-[0.98];
+  }
+
+  .btn-secondary {
+    @apply btn border border-white/15 bg-white/5 text-slate-100 hover:bg-white/10 active:scale-[0.98];
+  }
+
+  .btn-danger {
+    @apply btn border border-rose-500/40 bg-rose-500/10 text-rose-200 hover:bg-rose-500/20;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-white/10 bg-night-900/70 px-4 py-3 text-base
+      placeholder:text-slate-500 focus:border-neon-cyan;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium;
+  }
+
+  .label {
+    @apply mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400;
+  }
+}

@@ -1,0 +1,33 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// Resultado de una partida terminada. Solo se guardan datos de juego,
+/// nunca informacion personal: el nombre es el alias elegido para la sala.
+model MatchRecord {
+  id         String   @id @default(cuid())
+  roomCode   String
+  game       String
+  playedAt   DateTime @default(now())
+  players    Int
+  winners    String
+  results    PlayerResult[]
+}
+
+model PlayerResult {
+  id           String      @id @default(cuid())
+  match        MatchRecord @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  matchId      String
+  alias        String
+  score        Int
+  won          Boolean     @default(false)
+  totalStrokes Int         @default(0)
+  holesInOne   Int         @default(0)
+
+  @@index([matchId])
+}

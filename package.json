@@ -1,0 +1,51 @@
+{
+  "name": "arcade-party",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Plataforma web de minijuegos multijugador en tiempo real (billar, quiz, dardos, minigolf)",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "build:shared": "npm run build -w @arcade/shared",
+    "build:engine": "npm run build -w @arcade/game-engine",
+    "build:packages": "npm run build:shared && npm run build:engine",
+    "dev": "npm run build:packages && concurrently -n server,web -c magenta,cyan \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "npm run dev -w @arcade/server",
+    "dev:web": "npm run dev -w @arcade/web",
+    "build": "npm run build:packages && npm run build -w @arcade/server && npm run build -w @arcade/web",
+    "start": "npm run start -w @arcade/server",
+    "typecheck": "npm run build:packages && npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write \"**/*.{ts,tsx,json,md,css}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,json,md,css}\"",
+    "test": "npm run build:packages && vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "db:generate": "npm run db:generate -w @arcade/server",
+    "db:push": "npm run db:push -w @arcade/server",
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.14.0",
+    "@playwright/test": "^1.48.2",
+    "@types/node": "^22.9.0",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.14.0",
+    "vitest": "^3.2.7"
+  },
+  "overrides": {
+    "brace-expansion": "^5.0.8"
+  }
+}

@@ -1,0 +1,30 @@
+# Ejecucion opcional con Docker. Levanta el servidor de juego y sirve el cliente
+# ya compilado con Vite preview. Uso: docker compose up --build
+services:
+  server:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install --no-audit --no-fund && npm run build:packages && npm run db:push -w @arcade/server || true && npm run dev:server"
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      CORS_ORIGINS: http://localhost:5173
+      PUBLIC_WEB_URL: http://localhost:5173
+      DATABASE_URL: file:./dev.db
+    ports:
+      - '3001:3001'
+    volumes:
+      - .:/app
+
+  web:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install --no-audit --no-fund && npm run build:packages && npm run dev:web -- --host"
+    environment:
+      VITE_SERVER_URL: http://localhost:3001
+    ports:
+      - '5173:5173'
+    depends_on:
+      - server
+    volumes:
+      - .:/app
