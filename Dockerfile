@@ -6,12 +6,14 @@ WORKDIR /app
 # Prisma necesita openssl para sus motores nativos.
 RUN apk add --no-cache openssl
 
-COPY package.json package-lock.json* ./
+COPY package.json package-lock.json ./
 COPY packages/shared/package.json packages/shared/
 COPY packages/game-engine/package.json packages/game-engine/
 COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/
-RUN npm install --no-audit --no-fund
+# npm ci exige que el lockfile este sincronizado: si alguien cambia una
+# dependencia sin actualizarlo, el build falla aqui y no con un arbol raro.
+RUN npm ci --no-audit --no-fund
 
 COPY . .
 RUN npm run build && npm run db:generate
