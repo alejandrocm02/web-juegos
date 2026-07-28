@@ -3,6 +3,9 @@
   "compilerOptions": {
     "rootDir": "./src",
     "outDir": "./dist",
+    // El cache incremental vive dentro de dist: al borrar dist se borra tambien
+    // el cache, de modo que un checkout limpio siempre compila de verdad.
+    "tsBuildInfoFile": "./dist/tsconfig.tsbuildinfo",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "lib": ["ES2022"],

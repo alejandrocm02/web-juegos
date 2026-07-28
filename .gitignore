@@ -8,3 +8,4 @@ coverage/
 *.db-journal
 playwright-report/
 test-results/
+*.tsbuildinfo
