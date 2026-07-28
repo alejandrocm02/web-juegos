@@ -93,6 +93,19 @@ describe('reglas de la sala', () => {
     expect(ctx.room.summary().players[0]!.connection).toBe('connected');
   });
 
+  it('ignora la desconexion del socket antiguo tras reconectar', () => {
+    // Al recargar, el socket nuevo entra antes de que el servidor procese el
+    // cierre del viejo: ese aviso tardio no debe tumbar al jugador.
+    const player = ctx.room.addPlayer('Ana', 'socket-viejo');
+    ctx.room.attachSocket(player.id, 'socket-nuevo');
+    ctx.room.markDisconnected(player.id, 'socket-viejo');
+    expect(ctx.room.summary().players[0]!.connection).toBe('connected');
+
+    // El socket actual si puede marcarlo como desconectado.
+    ctx.room.markDisconnected(player.id, 'socket-nuevo');
+    expect(ctx.room.summary().players[0]!.connection).toBe('disconnected');
+  });
+
   it('cancela la partida si quedan menos de dos jugadores', () => {
     const host = ctx.room.addPlayer('Ana', 's1');
     const guest = ctx.room.addPlayer('Bea', 's2');

@@ -249,7 +249,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
       limiter.forget(socket.id);
       sessions.delete(socket.id);
       if (!context) return;
-      context.room.markDisconnected(context.player.id);
+      context.room.markDisconnected(context.player.id, socket.id);
       logger.debug('Socket desconectado', socket.id);
     });
   });

@@ -168,9 +168,20 @@ export class Room {
     this.runner?.onPlayerRejoined(playerId);
   }
 
-  markDisconnected(playerId: string): void {
+  /**
+   * Marca a un jugador como desconectado.
+   *
+   * Al recargar la pagina el navegador abre el socket nuevo antes de que el
+   * servidor procese el cierre del antiguo, asi que el evento de desconexion
+   * puede llegar despues de la reconexion. Si el jugador ya tiene otro socket
+   * asignado, este aviso pertenece a la conexion vieja y se ignora: de lo
+   * contrario la sala mostraria al jugador como caido y el limpiador acabaria
+   * expulsandolo pese a estar jugando.
+   */
+  markDisconnected(playerId: string, socketId?: string): void {
     const player = this.players.get(playerId);
     if (!player) return;
+    if (socketId && player.socketId !== socketId) return;
     player.connection = 'disconnected';
     player.socketId = null;
     player.disconnectedAt = Date.now();
