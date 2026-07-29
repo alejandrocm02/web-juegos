@@ -13,5 +13,8 @@
     "composite": true
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../../packages/shared" }, { "path": "../../packages/game-engine" }]
+  "references": [
+    { "path": "../../packages/shared/tsconfig.json" },
+    { "path": "../../packages/game-engine/tsconfig.json" }
+  ]
 }

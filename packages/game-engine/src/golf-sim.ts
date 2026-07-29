@@ -112,6 +112,10 @@ export class GolfWorld {
     return this.balls.find((b) => b.playerId === playerId);
   }
 
+  lastSequence(playerId: string): number {
+    return this.ballMap.get(playerId)?.lastSeq ?? -1;
+  }
+
   addPlayer(playerId: string): void {
     if (!this.ballMap.has(playerId)) this.ballMap.set(playerId, this.createBall(playerId));
   }

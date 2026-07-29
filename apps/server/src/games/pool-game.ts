@@ -26,6 +26,7 @@ export class PoolGame implements GameRunner {
   private turnTimer: NodeJS.Timeout | null = null;
   private simElapsed = 0;
   private snapshotAccumulator = 0;
+  private shotPlayerId: string | null = null;
 
   constructor(
     private readonly ctx: GameContext,
@@ -66,6 +67,7 @@ export class PoolGame implements GameRunner {
     if (!this.world.shoot(action.angle, action.power)) return;
 
     if (this.turnTimer) clearTimeout(this.turnTimer);
+    this.shotPlayerId = playerId;
     this.phase = 'simulating';
     this.simElapsed = 0;
     this.snapshotAccumulator = 0;
@@ -97,7 +99,8 @@ export class PoolGame implements GameRunner {
   private finishShot(): void {
     this.stopLoop();
     const outcome = this.world.consumeOutcome();
-    const shooter = this.activePlayerId;
+    const shooter = this.shotPlayerId;
+    this.shotPlayerId = null;
     let delta = outcome.pocketedColors.length;
     const parts: string[] = [];
     if (outcome.pocketedColors.length > 0) {
@@ -108,7 +111,9 @@ export class PoolGame implements GameRunner {
       parts.push('-1 por embocar la blanca');
       this.world.respotCueBall();
     }
-    this.scores.set(shooter, (this.scores.get(shooter) ?? 0) + delta);
+    if (shooter && this.scores.has(shooter)) {
+      this.scores.set(shooter, (this.scores.get(shooter) ?? 0) + delta);
+    }
     this.lastShotSummary = parts.length > 0 ? parts.join(' | ') : 'Sin bolas embocadas';
     this.ctx.broadcastSnapshot(this.world.snapshot());
 
@@ -116,7 +121,11 @@ export class PoolGame implements GameRunner {
       this.finish();
       return;
     }
-    this.nextTurn();
+    if (this.order.length === 0) return;
+    const shooterIndex = shooter ? this.order.indexOf(shooter) : -1;
+    if (shooterIndex >= 0) this.activeIndex = (shooterIndex + 1) % this.order.length;
+    else this.activeIndex %= this.order.length;
+    this.beginTurn();
   }
 
   private nextTurn(): void {
@@ -128,10 +137,13 @@ export class PoolGame implements GameRunner {
   onPlayerLeft(playerId: string): void {
     const wasActive = this.activePlayerId === playerId;
     const index = this.order.indexOf(playerId);
-    if (index >= 0) this.order.splice(index, 1);
+    if (index >= 0) {
+      this.order.splice(index, 1);
+      if (index < this.activeIndex) this.activeIndex -= 1;
+    }
     this.scores.delete(playerId);
     if (this.order.length === 0) return;
-    if (this.activeIndex >= this.order.length) this.activeIndex = 0;
+    this.activeIndex %= this.order.length;
     if (wasActive && this.phase === 'aiming') this.beginTurn();
     else this.push();
   }

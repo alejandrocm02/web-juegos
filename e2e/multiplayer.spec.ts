@@ -30,6 +30,8 @@ test('dos navegadores comparten sala, juegan al quiz y reconectan', async ({ bro
   await expect(guest.getByRole('button', { name: /Iniciar/ })).toHaveCount(0);
 
   await host.getByRole('button', { name: 'Quiz' }).first().click();
+  await host.getByRole('button', { name: 'Estoy listo' }).click();
+  await guest.getByRole('button', { name: 'Estoy listo' }).click();
   await host.getByRole('button', { name: /Iniciar Quiz/ }).click();
 
   await expect(host.getByText(/Pregunta 1 \//)).toBeVisible({ timeout: 20_000 });
@@ -60,6 +62,8 @@ test('el minigolf arranca con 10 niveles y muestra el HUD', async ({ browser }) 
   await expect(host.getByText('Golf2')).toBeVisible();
 
   await host.getByRole('button', { name: 'Minigolf' }).first().click();
+  await host.getByRole('button', { name: 'Estoy listo' }).click();
+  await guest.getByRole('button', { name: 'Estoy listo' }).click();
   await host.getByRole('button', { name: /Iniciar Minigolf/ }).click();
 
   await expect(host.getByText(/Hoyo 1\/10/)).toBeVisible({ timeout: 20_000 });

@@ -69,6 +69,8 @@ export interface GolfPublicState {
   totalLevels: number;
   level: GolfLevel;
   balls: GolfBallState[];
+  /** Ultima secuencia de golpe aceptada por jugador para restaurar el cliente al reconectar. */
+  lastSequences: Record<string, number>;
   holeResults: GolfHoleResult[];
   /** Totales acumulados de golpes por jugador. */
   totals: Record<string, number>;

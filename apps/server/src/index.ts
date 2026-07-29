@@ -15,6 +15,9 @@ import { getStats, initStats } from './stats.js';
 
 export async function createApp() {
   const app = express();
+  // Render termina TLS en un proxy. Confiar solo en el primer salto permite
+  // que express-rate-limit use la IP real sin aceptar cabeceras arbitrarias.
+  if (env.isProduction) app.set('trust proxy', 1);
   app.use(helmet({ contentSecurityPolicy: false }));
   app.use(
     cors({

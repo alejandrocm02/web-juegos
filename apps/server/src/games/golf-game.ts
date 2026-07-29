@@ -185,9 +185,13 @@ export class GolfGame implements GameRunner {
     const totals: Record<string, number> = {};
     const times: Record<string, number> = {};
     const aces: Record<string, number> = {};
+    const lastSequences: Record<string, number> = {};
     for (const [id, value] of this.totals) totals[id] = value;
     for (const [id, value] of this.totalTime) times[id] = value;
     for (const [id, value] of this.aces) aces[id] = value;
+    for (const player of this.ctx.players()) {
+      lastSequences[player.id] = this.world.lastSequence(player.id);
+    }
 
     return {
       game: 'golf',
@@ -197,6 +201,7 @@ export class GolfGame implements GameRunner {
       totalLevels: GOLF_LEVELS.length,
       level: GOLF_LEVELS[this.levelIndex]!,
       balls: snapshot.balls,
+      lastSequences,
       holeResults: this.holeResults,
       totals,
       totalTimeMs: times,

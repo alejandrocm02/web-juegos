@@ -207,14 +207,15 @@ export class Room {
   }
 
   private promoteNextHost(): void {
-    const next = [...this.players.values()].sort((a, b) => a.joinedAt - b.joinedAt)[0];
+    const ordered = [...this.players.values()].sort((a, b) => a.joinedAt - b.joinedAt);
+    const next = ordered.find((player) => player.connection === 'connected') ?? ordered[0];
     if (next) next.isHost = true;
   }
 
   transferHost(fromId: string, toId: string): boolean {
     const from = this.players.get(fromId);
     const to = this.players.get(toId);
-    if (!from?.isHost || !to) return false;
+    if (!from?.isHost || !to || to.connection !== 'connected') return false;
     from.isHost = false;
     to.isHost = true;
     this.broadcastRoom();
@@ -262,8 +263,17 @@ export class Room {
 
   canStart(): { ok: boolean; reason?: string } {
     if (this.phase !== 'lobby') return { ok: false, reason: 'La partida ya ha comenzado' };
-    if (this.players.size < MIN_PLAYERS) {
-      return { ok: false, reason: 'Se necesitan al menos ' + MIN_PLAYERS + ' jugadores' };
+    const connected = [...this.players.values()].filter(
+      (player) => player.connection === 'connected',
+    );
+    if (connected.length < MIN_PLAYERS) {
+      return {
+        ok: false,
+        reason: 'Se necesitan al menos ' + MIN_PLAYERS + ' jugadores conectados',
+      };
+    }
+    if (connected.some((player) => !player.ready)) {
+      return { ok: false, reason: 'Todos los jugadores conectados deben estar listos' };
     }
     return { ok: true };
   }

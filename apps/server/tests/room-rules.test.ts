@@ -37,16 +37,21 @@ describe('reglas de la sala', () => {
   });
 
   it('no permite iniciar con menos de dos jugadores', () => {
-    ctx.room.addPlayer('Ana', 's1');
+    const ana = ctx.room.addPlayer('Ana', 's1');
     expect(ctx.room.canStart().ok).toBe(false);
-    ctx.room.addPlayer('Bea', 's2');
+    const bea = ctx.room.addPlayer('Bea', 's2');
+    expect(ctx.room.canStart().ok).toBe(false);
+    ctx.room.setReady(ana.id, true);
+    ctx.room.setReady(bea.id, true);
     expect(ctx.room.canStart().ok).toBe(true);
   });
 
   it('bloquea la configuracion despues de empezar', () => {
-    ctx.room.addPlayer('Ana', 's1');
-    ctx.room.addPlayer('Bea', 's2');
+    const ana = ctx.room.addPlayer('Ana', 's1');
+    const bea = ctx.room.addPlayer('Bea', 's2');
     ctx.room.selectGame('golf');
+    ctx.room.setReady(ana.id, true);
+    ctx.room.setReady(bea.id, true);
     ctx.room.updateSettings('golf', {
       ballCollisions: false,
       holeTimeLimitSeconds: 60,
@@ -75,9 +80,21 @@ describe('reglas de la sala', () => {
     expect(ctx.room.hostId).toBe(guest.id);
   });
 
+  it('prefiere un anfitrion conectado y no transfiere el rol a un desconectado', () => {
+    const host = ctx.room.addPlayer('Ana', 's1');
+    const disconnected = ctx.room.addPlayer('Bea', 's2');
+    const connected = ctx.room.addPlayer('Caro', 's3');
+    ctx.room.markDisconnected(disconnected.id, 's2');
+    expect(ctx.room.transferHost(host.id, disconnected.id)).toBe(false);
+    ctx.room.removePlayer(host.id);
+    expect(ctx.room.hostId).toBe(connected.id);
+  });
+
   it('transfiere el rol de anfitrion solo desde el anfitrion actual', () => {
     const host = ctx.room.addPlayer('Ana', 's1');
     const guest = ctx.room.addPlayer('Bea', 's2');
+    ctx.room.setReady(host.id, true);
+    ctx.room.setReady(guest.id, true);
     expect(ctx.room.transferHost(guest.id, host.id)).toBe(false);
     expect(ctx.room.transferHost(host.id, guest.id)).toBe(true);
     expect(ctx.room.hostId).toBe(guest.id);
@@ -110,6 +127,8 @@ describe('reglas de la sala', () => {
     const host = ctx.room.addPlayer('Ana', 's1');
     const guest = ctx.room.addPlayer('Bea', 's2');
     ctx.room.selectGame('quiz');
+    ctx.room.setReady(host.id, true);
+    ctx.room.setReady(guest.id, true);
     ctx.room.startGame();
     expect(ctx.room.currentPhase).toBe('playing');
     ctx.room.removePlayer(guest.id);

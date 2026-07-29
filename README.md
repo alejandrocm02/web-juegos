@@ -81,7 +81,7 @@ Dos avisos sobre el plan gratuito de Render:
 | `npm test`                                | Tests unitarios y de integración (Vitest)                     |
 | `npm run test:e2e`                        | Tests de extremo a extremo con dos navegadores (Playwright)   |
 | `npm run db:push` / `npm run db:generate` | Prisma sobre SQLite (usan el `.env` de la raíz)               |
-| `npm run check`                           | lint + typecheck + tests + build                              |
+| `npm run check`                           | lint + tipos + tests + build + E2E                            |
 
 Para Playwright, la primera vez: `npx playwright install chromium`.
 
@@ -154,7 +154,7 @@ Todos los payloads de cliente a servidor se validan con Zod (`packages/shared/sr
 | `room:select-game`     | `{ game }`           | Solo anfitrión, solo en lobby                                                       |
 | `room:update-settings` | `{ game, settings }` | Solo anfitrión, solo en lobby                                                       |
 | `room:ready`           | `{ ready }`          | Cualquier jugador                                                                   |
-| `room:start`           | —                    | Solo anfitrión y con 2–5 jugadores                                                  |
+| `room:start`           | —                    | Solo anfitrión, con 2–5 conectados y todos preparados                               |
 | `room:kick`            | `{ playerId }`       | Solo anfitrión, no a sí mismo                                                       |
 | `room:transfer-host`   | `{ playerId }`       | Solo el anfitrión actual                                                            |
 | `room:back-to-lobby`   | —                    | Solo anfitrión                                                                      |
@@ -246,9 +246,12 @@ Los cinco niveles marcados tienen una **ruta real de hoyo en uno basada en habil
 ## 6. Pruebas
 
 ```bash
-npm test          # Vitest: 59 tests
+npm test          # Vitest: 71 tests
 npm run test:e2e  # Playwright: dos navegadores compartiendo sala
 ```
+
+Actualmente hay **71 tests Vitest** y 2 flujos E2E. GitHub Actions ejecuta el control completo
+en cada pull request y cada actualización de `main`, y conserva las trazas de Playwright si falla.
 
 Cobertura de los tests exigidos del minigolf:
 
@@ -282,6 +285,8 @@ Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, config
 - **Nombres** saneados (sin caracteres de control), longitud máxima y detección de duplicados ignorando acentos y mayúsculas.
 - **Identificadores internos** (`randomUUID`) independientes del nombre; el token de reconexión son 24 bytes aleatorios.
 - **Protección de turnos**: cada acción comprueba sala, fase, jugador y turno. En el golf, además, número de secuencia contra duplicados, potencia acotada, bola detenida obligatoria y límite de golpes.
+- **Sesión única por jugador**: crear o entrar en otra sala abandona la anterior; al reconectar se revoca el socket sustituido y una expulsión retira al cliente del canal.
+- **Límites temporales autoritativos**: una respuesta de quiz recibida después del plazo se rechaza aunque el temporizador del proceso se ejecute con retraso.
 - **Manejo centralizado de errores** en Express y en cada handler de socket, con logs legibles y niveles configurables.
 - Sin secretos en el cliente: todas las variables sensibles viven en el servidor.
 

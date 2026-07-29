@@ -8,7 +8,7 @@ import {
 } from '@arcade/shared';
 import { useState } from 'react';
 import { useApp } from '../store.js';
-import { ErrorBanner, PlayerIconGlyph, Panel } from '../components/ui.js';
+import { ErrorBanner, GameIcon, PlayerIconGlyph, Panel } from '../components/ui.js';
 
 export default function LobbyView() {
   const {
@@ -39,81 +39,133 @@ export default function LobbyView() {
     }
   };
 
-  const canStart = room.players.length >= MIN_PLAYERS;
+  const connectedPlayers = room.players.filter((player) => player.connection === 'connected');
+  const allReady = connectedPlayers.every((player) => player.ready);
+  const canStart = connectedPlayers.length >= MIN_PLAYERS && allReady;
   const inviteUrl =
     typeof window !== 'undefined' ? window.location.origin + '/?code=' + room.code : room.inviteUrl;
 
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-8">
+    <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <ErrorBanner error={error} onDismiss={dismissError} />
 
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <p className="text-xs uppercase tracking-widest text-slate-500">Sala privada</p>
-          <h1 className="font-display text-3xl font-black tracking-[0.3em]">{room.code}</h1>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button className="btn-secondary" onClick={() => copy(room.code, 'codigo')}>
-            {copied === 'codigo' ? 'Codigo copiado' : 'Copiar codigo'}
-          </button>
-          <button className="btn-secondary" onClick={() => copy(inviteUrl, 'enlace')}>
-            {copied === 'enlace' ? 'Enlace copiado' : 'Copiar invitacion'}
-          </button>
-          <button className="btn-danger" onClick={leaveRoom}>
-            Salir
-          </button>
+      <header className="relative mb-6 overflow-hidden rounded-[1.6rem] border border-white/[0.08] bg-white/[0.025] px-5 py-5 sm:px-7">
+        <div
+          className="pointer-events-none absolute -right-20 -top-28 h-64 w-64 rounded-full opacity-20 blur-3xl"
+          style={{ background: GAME_META[room.selectedGame].accent }}
+        />
+        <div className="relative flex flex-wrap items-center justify-between gap-5">
+          <div className="flex items-center gap-4">
+            <span
+              className="game-icon-shell hidden sm:flex"
+              style={
+                {
+                  '--game-accent': GAME_META[room.selectedGame].accent,
+                } as React.CSSProperties
+              }
+            >
+              <GameIcon game={room.selectedGame} />
+            </span>
+            <div>
+              <p className="eyebrow">Sala privada · {GAME_META[room.selectedGame].name}</p>
+              <h1 className="mt-1 font-display text-3xl font-black tracking-[0.24em] sm:text-4xl">
+                {room.code}
+              </h1>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button className="btn-secondary" onClick={() => copy(room.code, 'codigo')}>
+              {copied === 'codigo' ? '✓ Código copiado' : 'Copiar código'}
+            </button>
+            <button className="btn-secondary" onClick={() => copy(inviteUrl, 'enlace')}>
+              {copied === 'enlace' ? '✓ Enlace copiado' : 'Invitar amigos'}
+            </button>
+            <button className="btn-danger" onClick={leaveRoom}>
+              Salir
+            </button>
+          </div>
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-        <Panel title="Jugadores" subtitle={room.players.length + ' / ' + room.maxPlayers}>
-          <ul className="space-y-2">
+      <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+        <Panel
+          title="Tu equipo"
+          subtitle={
+            connectedPlayers.length + ' conectados · ' + room.players.length + '/' + room.maxPlayers
+          }
+          className="h-fit lg:sticky lg:top-6"
+        >
+          <ul className="space-y-2.5">
             {room.players.map((player) => (
               <li
                 key={player.id}
-                className="flex items-center justify-between gap-2 rounded-xl border border-white/5 bg-white/5 px-3 py-2"
+                className={
+                  'rounded-2xl border px-3.5 py-3 transition ' +
+                  (player.id === me.id
+                    ? 'border-neon-cyan/20 bg-neon-cyan/[0.06]'
+                    : 'border-white/[0.06] bg-white/[0.035]')
+                }
               >
-                <span className="flex min-w-0 items-center gap-2">
-                  <PlayerIconGlyph icon={player.icon} color={player.color} />
-                  <span className="truncate font-medium">{player.name}</span>
-                  {player.isHost && <span className="chip px-2 py-0.5 text-[10px]">Anfitrion</span>}
-                </span>
-                <span className="flex shrink-0 items-center gap-2">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="flex min-w-0 items-center gap-2.5">
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border bg-black/20"
+                      style={{ borderColor: player.color + '35' }}
+                    >
+                      <PlayerIconGlyph icon={player.icon} color={player.color} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="flex items-center gap-1.5">
+                        <span className="truncate text-sm font-semibold">{player.name}</span>
+                        {player.id === me.id && (
+                          <span className="text-[10px] text-slate-500">Tú</span>
+                        )}
+                      </span>
+                      <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-500">
+                        <span
+                          className={
+                            'h-1.5 w-1.5 rounded-full ' +
+                            (player.connection === 'connected' ? 'bg-neon-lime' : 'bg-amber-400')
+                          }
+                        />
+                        {player.isHost ? 'Anfitrión' : player.ready ? 'Preparado' : 'En espera'}
+                      </span>
+                    </span>
+                  </span>
                   <span
                     className={
-                      'h-2 w-2 rounded-full ' +
-                      (player.connection === 'connected' ? 'bg-neon-lime' : 'bg-amber-400')
+                      'rounded-full px-2 py-1 text-[10px] font-bold uppercase tracking-wider ' +
+                      (player.ready
+                        ? 'bg-neon-lime/10 text-neon-lime'
+                        : 'bg-white/5 text-slate-600')
                     }
-                    title={player.connection === 'connected' ? 'Conectado' : 'Desconectado'}
-                  />
-                  <span
-                    className={'text-xs ' + (player.ready ? 'text-neon-lime' : 'text-slate-500')}
                   >
-                    {player.ready ? 'Listo' : 'Esperando'}
+                    {player.ready ? 'Listo' : 'Espera'}
                   </span>
-                  {isHost && player.id !== me.id && (
-                    <>
-                      <button
-                        className="btn-secondary px-2 py-1 text-[10px]"
-                        onClick={() => transferHost(player.id)}
-                        title="Transferir anfitrion"
-                      >
-                        Host
-                      </button>
-                      <button
-                        className="btn-danger px-2 py-1 text-[10px]"
-                        onClick={() => kickPlayer(player.id)}
-                      >
-                        Expulsar
-                      </button>
-                    </>
-                  )}
-                </span>
+                </div>
+                {isHost && player.id !== me.id && (
+                  <div className="mt-2.5 flex gap-2 border-t border-white/[0.05] pt-2.5">
+                    <button
+                      className="btn-secondary min-h-8 flex-1 px-2 py-1 text-[10px]"
+                      onClick={() => transferHost(player.id)}
+                      disabled={player.connection !== 'connected'}
+                      title="Transferir anfitrión"
+                    >
+                      Hacer host
+                    </button>
+                    <button
+                      className="btn-danger min-h-8 px-2 py-1 text-[10px]"
+                      onClick={() => kickPlayer(player.id)}
+                    >
+                      Expulsar
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
 
-          <div className="mt-4 space-y-2">
+          <div className="mt-5 space-y-2 border-t border-white/[0.07] pt-5">
             <button
               className={me.ready ? 'btn-secondary w-full' : 'btn-primary w-full'}
               onClick={() => setReady(!me.ready)}
@@ -125,11 +177,15 @@ export default function LobbyView() {
                 Iniciar {GAME_META[room.selectedGame].name}
               </button>
             )}
-            {!canStart && (
-              <p className="text-center text-xs text-amber-300">
-                Se necesitan al menos {MIN_PLAYERS} jugadores.
+            {connectedPlayers.length < MIN_PLAYERS ? (
+              <p className="text-center text-xs leading-5 text-amber-300">
+                Faltan {MIN_PLAYERS - connectedPlayers.length} jugador(es) conectado(s).
               </p>
-            )}
+            ) : !allReady ? (
+              <p className="text-center text-xs leading-5 text-slate-500">
+                Todos deben marcar “Estoy listo” para comenzar.
+              </p>
+            ) : null}
           </div>
         </Panel>
 
@@ -147,21 +203,33 @@ export default function LobbyView() {
                     onClick={() => isHost && selectGame(id)}
                     disabled={!isHost}
                     className={
-                      'rounded-xl border p-4 text-left transition ' +
+                      'group rounded-2xl border p-4 text-left transition duration-200 ' +
                       (active
-                        ? 'border-transparent bg-white/10 shadow-glow'
-                        : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.07]') +
+                        ? 'bg-white/[0.08] shadow-glow'
+                        : 'border-white/[0.08] bg-white/[0.025] hover:-translate-y-0.5 hover:bg-white/[0.055]') +
                       (isHost ? '' : ' cursor-not-allowed opacity-70')
                     }
                     style={active ? { borderColor: GAME_META[id].accent } : undefined}
                   >
-                    <span
-                      className="font-display text-base font-bold"
-                      style={{ color: GAME_META[id].accent }}
-                    >
-                      {GAME_META[id].name}
+                    <span className="flex items-center gap-3">
+                      <span
+                        className="flex h-10 w-10 items-center justify-center rounded-xl bg-black/20"
+                        style={{ color: GAME_META[id].accent }}
+                      >
+                        <GameIcon game={id} size={22} />
+                      </span>
+                      <span>
+                        <span
+                          className="block font-display text-base font-bold"
+                          style={{ color: active ? GAME_META[id].accent : undefined }}
+                        >
+                          {GAME_META[id].name}
+                        </span>
+                        <span className="mt-0.5 block text-xs text-slate-500">
+                          {GAME_META[id].tagline}
+                        </span>
+                      </span>
                     </span>
-                    <p className="mt-1 text-xs text-slate-400">{GAME_META[id].tagline}</p>
                   </button>
                 );
               })}

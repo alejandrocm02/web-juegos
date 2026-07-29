@@ -19,7 +19,7 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
   const isMyTurn = state.activePlayerId === session?.playerId && state.phase === 'aiming';
   const activePlayer = room?.players.find((p) => p.id === state.activePlayerId);
 
-  const toNormalized = (event: React.MouseEvent) => {
+  const toNormalized = (event: React.PointerEvent) => {
     const rect = boardRef.current?.getBoundingClientRect();
     if (!rect) return null;
     const x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -27,7 +27,7 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
     return { x, y };
   };
 
-  const throwDart = (event: React.MouseEvent) => {
+  const throwDart = (event: React.PointerEvent) => {
     if (!isMyTurn) return;
     const point = toNormalized(event);
     if (!point) return;
@@ -38,57 +38,68 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
   const seconds = Math.max(0, Math.ceil((state.deadline - now) / 1000));
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="mx-auto grid min-h-screen w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:px-8">
       <Panel
         title={'Turno de ' + (activePlayer?.name ?? '...')}
         subtitle={isMyTurn ? 'Haz clic en la diana para lanzar' : 'Espera tu turno'}
-        actions={<span className="chip tabular-nums">{seconds}s</span>}
+        actions={
+          <span className={'chip tabular-nums ' + (seconds <= 5 ? 'text-rose-300' : '')}>
+            {seconds}s
+          </span>
+        }
+        className="overflow-hidden"
       >
+        <div className="pointer-events-none absolute -left-28 top-1/3 h-64 w-64 rounded-full bg-neon-amber/[0.07] blur-3xl" />
         <div className="flex flex-col items-center gap-4">
-          <div
-            ref={boardRef}
-            onClick={throwDart}
-            onMouseMove={(event) => setHover(toNormalized(event))}
-            onMouseLeave={() => setHover(null)}
-            role="button"
-            tabIndex={0}
-            aria-label="Diana de dardos"
-            onKeyDown={(event) => {
-              if (event.key === 'Enter' && isMyTurn) {
-                sendAction({ type: 'darts:throw', x: 0, y: 0 });
+          <div className="relative w-full max-w-[500px] py-3">
+            <div className="pointer-events-none absolute inset-[12%] rounded-full bg-neon-amber/10 blur-3xl" />
+            <div
+              ref={boardRef}
+              onPointerUp={throwDart}
+              onPointerMove={(event) => setHover(toNormalized(event))}
+              onPointerLeave={() => setHover(null)}
+              role="button"
+              tabIndex={0}
+              aria-label="Diana de dardos"
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && isMyTurn) {
+                  sendAction({ type: 'darts:throw', x: 0, y: 0 });
+                }
+              }}
+              className={
+                'relative mx-auto touch-none select-none rounded-full border-[10px] border-[#171b27] bg-[#090b10] p-2 shadow-[0_32px_70px_-35px_rgba(0,0,0,1),0_0_0_1px_rgba(255,255,255,.08)] ' +
+                (isMyTurn ? 'cursor-crosshair' : 'cursor-default opacity-80')
               }
-            }}
-            className={
-              'relative select-none rounded-full ' +
-              (isMyTurn ? 'cursor-crosshair' : 'cursor-default opacity-80')
-            }
-            style={{ width: SIZE, height: SIZE, maxWidth: '100%' }}
-          >
-            <Dartboard />
-            {state.currentThrows.map((dart, index) => (
-              <span
-                key={index}
-                className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.9)]"
-                style={{
-                  left: ((dart.x + 1) / 2) * 100 + '%',
-                  top: ((dart.y + 1) / 2) * 100 + '%',
-                }}
-                title={dart.ring + ' ' + dart.points}
-              />
-            ))}
-            {hover && isMyTurn && (
-              <span
-                className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-neon-cyan"
-                style={{
-                  left: ((hover.x + 1) / 2) * 100 + '%',
-                  top: ((hover.y + 1) / 2) * 100 + '%',
-                }}
-              />
-            )}
+              style={{ width: SIZE, maxWidth: '100%', aspectRatio: '1' }}
+            >
+              <Dartboard />
+              {state.currentThrows.map((dart, index) => (
+                <span
+                  key={index}
+                  className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-night-900 bg-white shadow-[0_0_14px_rgba(255,255,255,1)]"
+                  style={{
+                    left: ((dart.x + 1) / 2) * 100 + '%',
+                    top: ((dart.y + 1) / 2) * 100 + '%',
+                  }}
+                  title={dart.ring + ' ' + dart.points}
+                />
+              ))}
+              {hover && isMyTurn && (
+                <span
+                  className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-neon-cyan shadow-[0_0_12px_rgba(34,211,238,.8)]"
+                  style={{
+                    left: ((hover.x + 1) / 2) * 100 + '%',
+                    top: ((hover.y + 1) / 2) * 100 + '%',
+                  }}
+                />
+              )}
+            </div>
           </div>
 
-          <div className="flex items-center gap-4 text-sm">
-            <span className="chip">Lanzamientos restantes: {state.throwsLeft}</span>
+          <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
+            <span className="chip">
+              <span className="text-neon-amber">●●●</span> {state.throwsLeft} lanzamientos
+            </span>
             <span className="chip">
               Turno desde {state.turnStartScore}
               {state.lastBust && <span className="text-rose-300"> | BUST</span>}

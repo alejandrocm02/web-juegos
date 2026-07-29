@@ -171,6 +171,7 @@ export const CLIENT_EVENTS = {
 
 export const SERVER_EVENTS = {
   session: 'session',
+  sessionReplaced: 'session:replaced',
   roomState: 'room:state',
   error: 'app:error',
   gameStarted: 'game:started',

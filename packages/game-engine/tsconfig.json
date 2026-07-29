@@ -9,5 +9,5 @@
     "composite": true
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../shared" }]
+  "references": [{ "path": "../shared/tsconfig.json" }]
 }

@@ -140,10 +140,13 @@ export class DartsGame implements GameRunner {
   onPlayerLeft(playerId: string): void {
     const wasActive = this.activePlayerId === playerId;
     const index = this.order.indexOf(playerId);
-    if (index >= 0) this.order.splice(index, 1);
+    if (index >= 0) {
+      this.order.splice(index, 1);
+      if (index < this.activeIndex) this.activeIndex -= 1;
+    }
     this.scores.delete(playerId);
     if (this.order.length === 0) return;
-    if (this.activeIndex >= this.order.length) this.activeIndex = 0;
+    this.activeIndex %= this.order.length;
     if (wasActive) this.beginTurn();
     else this.push();
   }
