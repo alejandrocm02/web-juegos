@@ -126,6 +126,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setGameState(null);
       setError({ code: 'NOT_IN_ROOM', message: 'El anfitrion te ha expulsado de la sala.' });
     };
+    const onSessionReplaced = () => {
+      clearSession();
+      setSession(null);
+      setRoom(null);
+      setGameState(null);
+      setResult(null);
+      setError({
+        code: 'SESSION_EXPIRED',
+        message: 'La partida se ha abierto en otra pestaña. Esta sesión se ha cerrado.',
+      });
+    };
     const onToast = (payload: { message: string }) => pushToast(payload.message);
 
     socket.on('connect', onConnect);
@@ -139,6 +150,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     socket.on(SERVER_EVENTS.gameEvent, onGameEvent);
     socket.on(SERVER_EVENTS.gameOver, onOver);
     socket.on(SERVER_EVENTS.kicked, onKicked);
+    socket.on(SERVER_EVENTS.sessionReplaced, onSessionReplaced);
     socket.on(SERVER_EVENTS.toast, onToast);
     if (socket.connected) onConnect();
 
@@ -154,6 +166,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       socket.off(SERVER_EVENTS.gameEvent, onGameEvent);
       socket.off(SERVER_EVENTS.gameOver, onOver);
       socket.off(SERVER_EVENTS.kicked, onKicked);
+      socket.off(SERVER_EVENTS.sessionReplaced, onSessionReplaced);
       socket.off(SERVER_EVENTS.toast, onToast);
     };
   }, [pushToast]);

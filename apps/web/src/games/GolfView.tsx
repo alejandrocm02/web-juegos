@@ -26,6 +26,11 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
   const myPlayer = room?.players.find((p) => p.id === session?.playerId) ?? null;
 
   useEffect(() => {
+    if (!session?.playerId) return;
+    seqRef.current = Math.max(seqRef.current, state.lastSequences[session.playerId] ?? -1);
+  }, [session?.playerId, state.lastSequences]);
+
+  useEffect(() => {
     renderBalls.current = new Map();
     cameraRef.current = { x: state.level.start.x, y: state.level.start.y, zoom: 1 };
   }, [state.levelIndex, state.level.start.x, state.level.start.y]);
@@ -206,10 +211,10 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
   const level = state.level;
 
   return (
-    <div className="mx-auto grid w-full max-w-[1400px] gap-4 px-4 py-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="mx-auto grid min-h-screen w-full max-w-[1500px] gap-5 px-4 py-5 sm:px-6 xl:grid-cols-[minmax(0,1fr)_330px] lg:px-8">
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="chip font-display">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-2.5 text-sm">
+          <span className="chip border-neon-lime/20 font-display text-neon-lime">
             Hoyo {level.id}/{state.totalLevels}: {level.name}
           </span>
           <span className="chip">{level.difficulty}</span>
@@ -224,14 +229,13 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
           <span className="chip">Limite: {state.settings.maxStrokes} golpes</span>
         </div>
 
-        <div className="relative">
+        <div className="canvas-frame relative">
           <canvas
             ref={canvasRef}
             width={VIEW_W}
             height={VIEW_H}
             className={
-              'w-full touch-none rounded-2xl border border-white/10 ' +
-              (canShoot ? 'cursor-crosshair' : '')
+              'block w-full touch-none rounded-[1.05rem] ' + (canShoot ? 'cursor-crosshair' : '')
             }
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
@@ -241,7 +245,7 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
           />
 
           {state.phase === 'scoreboard' && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-night-900/85 p-6 backdrop-blur">
+            <div className="absolute inset-1.5 flex items-center justify-center rounded-[1.05rem] bg-night-900/85 p-6 backdrop-blur">
               <div className="w-full max-w-md">
                 <h3 className="mb-3 text-center font-display text-xl font-bold">
                   Hoyo {level.id} completado
@@ -309,7 +313,9 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
               />
             </div>
           </div>
-          <span className="text-xs text-slate-500">{level.hint}</span>
+          <span className="basis-full rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2 text-xs text-slate-500 sm:basis-auto">
+            Consejo: {level.hint}
+          </span>
         </div>
       </div>
 

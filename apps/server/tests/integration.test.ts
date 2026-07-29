@@ -13,6 +13,7 @@ import { createApp } from '../src/index.js';
 
 let httpServer: Awaited<ReturnType<typeof createApp>>['httpServer'];
 let ioServer: Awaited<ReturnType<typeof createApp>>['io'];
+let manager: Awaited<ReturnType<typeof createApp>>['manager'];
 let url = '';
 const clients: Socket[] = [];
 
@@ -42,6 +43,7 @@ beforeAll(async () => {
   const app = await createApp();
   httpServer = app.httpServer;
   ioServer = app.io;
+  manager = app.manager;
   await new Promise<void>((resolve) => httpServer.listen(0, resolve));
   const address = httpServer.address() as AddressInfo;
   url = 'http://127.0.0.1:' + address.port;
@@ -107,6 +109,11 @@ describe('flujo multijugador por sockets', () => {
       (value) => value.settings.quiz.questionCount === 5,
     );
 
+    host.emit(CLIENT_EVENTS.setReady, { ready: true });
+    guest.emit(CLIENT_EVENTS.setReady, { ready: true });
+    await once<RoomSummary>(host, SERVER_EVENTS.roomState, (value) =>
+      value.players.every((player) => player.ready),
+    );
     host.emit(CLIENT_EVENTS.startGame);
     const started = await once<{ game: string }>(guest, SERVER_EVENTS.gameStarted);
     expect(started.game).toBe('quiz');
@@ -179,6 +186,37 @@ describe('flujo multijugador por sockets', () => {
     expect(expired.code).toBe('SESSION_EXPIRED');
   }, 25000);
 
+  it('abandona la sala anterior al reutilizar un socket y revoca la conexion reemplazada', async () => {
+    const original = connect();
+    await once(original, 'connect');
+    original.emit(CLIENT_EVENTS.createRoom, { name: 'Primero' });
+    const first = await once<{ code: string; token: string; playerId: string }>(
+      original,
+      SERVER_EVENTS.session,
+    );
+
+    original.emit(CLIENT_EVENTS.createRoom, { name: 'Segundo' });
+    const second = await once<{ code: string; token: string }>(original, SERVER_EVENTS.session);
+    expect(second.code).not.toBe(first.code);
+    expect(manager.get(first.code)?.playerCount).toBe(0);
+
+    const replacement = connect();
+    await once(replacement, 'connect');
+    const replaced = once(original, SERVER_EVENTS.sessionReplaced);
+    const restored = once<{ playerId: string }>(replacement, SERVER_EVENTS.session);
+    replacement.emit(CLIENT_EVENTS.rejoin, { code: second.code, token: second.token });
+    await restored;
+    await replaced;
+
+    original.emit(CLIENT_EVENTS.gameAction, {
+      type: 'quiz:answer',
+      questionIndex: 0,
+      answerIndex: 0,
+    });
+    const unauthorized = await once<{ code: string }>(original, SERVER_EVENTS.error);
+    expect(unauthorized.code).toBe('NOT_IN_ROOM');
+  }, 25000);
+
   it('sincroniza el minigolf entre dos navegadores y valida los golpes', async () => {
     const host = connect();
     const guest = connect();
@@ -191,6 +229,11 @@ describe('flujo multijugador por sockets', () => {
     await once<RoomSummary>(host, SERVER_EVENTS.roomState, (v) => v.players.length === 2);
 
     host.emit(CLIENT_EVENTS.selectGame, { game: 'golf' });
+    host.emit(CLIENT_EVENTS.setReady, { ready: true });
+    guest.emit(CLIENT_EVENTS.setReady, { ready: true });
+    await once<RoomSummary>(host, SERVER_EVENTS.roomState, (value) =>
+      value.players.every((player) => player.ready),
+    );
     host.emit(CLIENT_EVENTS.startGame);
     const started = await once<{ game: string; state: GolfPublicState }>(
       guest,

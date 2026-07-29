@@ -18,13 +18,15 @@ export default defineConfig({
   },
   webServer: [
     {
-      command: 'npm run dev:server',
+      // Se prueba el servidor compilado: evita diferencias del watcher de tsx
+      // y se acerca mas al proceso que se ejecuta en produccion.
+      command: 'npm run start -w @arcade/server',
       url: 'http://localhost:3001/api/health',
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
     },
     {
-      command: 'npm run dev:web',
+      command: 'npm exec --workspace=@arcade/web -- vite --host 127.0.0.1',
       url: 'http://localhost:5173',
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,

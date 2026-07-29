@@ -102,6 +102,10 @@ export class QuizGame implements GameRunner {
   handleAction(playerId: string, action: GameAction): void {
     if (action.type !== 'quiz:answer') return;
     if (this.phase !== 'question') return;
+    if (Date.now() > this.deadline) {
+      this.reveal();
+      return;
+    }
     if (action.questionIndex !== this.index) return;
     if (this.answers.has(playerId)) return;
     if (!this.ctx.players().some((p) => p.id === playerId)) return;

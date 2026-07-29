@@ -17,6 +17,9 @@ RUN npm ci --no-audit --no-fund
 
 COPY . .
 RUN npm run build && npm run db:generate
+# La imagen final solo necesita dependencias de produccion. Prisma permanece
+# porque la sincronizacion de SQLite se realiza al arrancar.
+RUN npm prune --omit=dev
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
@@ -25,7 +28,11 @@ ENV NODE_ENV=production
 
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/packages ./packages
+COPY --from=build /app/package-lock.json ./package-lock.json
+COPY --from=build /app/packages/shared/package.json ./packages/shared/package.json
+COPY --from=build /app/packages/shared/dist ./packages/shared/dist
+COPY --from=build /app/packages/game-engine/package.json ./packages/game-engine/package.json
+COPY --from=build /app/packages/game-engine/dist ./packages/game-engine/dist
 COPY --from=build /app/apps/server/package.json ./apps/server/package.json
 COPY --from=build /app/apps/server/dist ./apps/server/dist
 COPY --from=build /app/apps/server/prisma ./apps/server/prisma

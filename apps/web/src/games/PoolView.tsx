@@ -95,7 +95,7 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
     drag && cue ? Math.min(1, Math.hypot(cue.x - drag.x, cue.y - drag.y) / MAX_DRAG) : 0;
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+    <div className="mx-auto grid min-h-screen w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:px-8">
       <Panel
         title={'Turno de ' + (activePlayer?.name ?? '...')}
         subtitle={
@@ -106,25 +106,31 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
               : 'Espera tu turno'
         }
         actions={
-          <span className="chip tabular-nums">
+          <span className={'chip tabular-nums ' + (seconds <= 5 ? 'text-rose-300' : '')}>
             {state.phase === 'aiming' ? seconds + 's' : '...'}
           </span>
         }
+        className="overflow-hidden"
       >
-        <canvas
-          ref={canvasRef}
-          width={1016}
-          height={508}
-          className={'w-full touch-none rounded-xl ' + (isMyTurn ? 'cursor-crosshair' : '')}
-          onPointerDown={onPointerDown}
-          onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
-          onPointerCancel={onPointerUp}
-          aria-label="Mesa de billar"
-        />
-        <div className="mt-3 flex items-center justify-between text-sm text-slate-400">
+        <div className="pointer-events-none absolute -right-20 top-1/4 h-64 w-64 rounded-full bg-neon-cyan/[0.07] blur-3xl" />
+        <div className="canvas-frame relative">
+          <canvas
+            ref={canvasRef}
+            width={1016}
+            height={508}
+            className={'w-full touch-none rounded-[1.1rem] ' + (isMyTurn ? 'cursor-crosshair' : '')}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            aria-label="Mesa de billar"
+          />
+        </div>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-400">
           <span>Bolas de color restantes: {state.ballsLeft}</span>
-          <span>{state.lastShotSummary ?? 'Sin golpes todavia'}</span>
+          <span className="text-right text-xs">
+            {state.lastShotSummary ?? 'Sin golpes todavía'}
+          </span>
         </div>
         {isMyTurn && (
           <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
@@ -182,11 +188,30 @@ function draw(
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.scale(scale, scale);
 
-  ctx.fillStyle = '#0f5132';
+  const cloth = ctx.createRadialGradient(
+    POOL_TABLE.width * 0.45,
+    POOL_TABLE.height * 0.35,
+    20,
+    POOL_TABLE.width / 2,
+    POOL_TABLE.height / 2,
+    POOL_TABLE.width * 0.7,
+  );
+  cloth.addColorStop(0, '#167a55');
+  cloth.addColorStop(0.65, '#0e6042');
+  cloth.addColorStop(1, '#08442f');
+  ctx.fillStyle = cloth;
   ctx.fillRect(0, 0, POOL_TABLE.width, POOL_TABLE.height);
-  ctx.strokeStyle = '#4b2e14';
-  ctx.lineWidth = 4;
-  ctx.strokeRect(0, 0, POOL_TABLE.width, POOL_TABLE.height);
+  ctx.strokeStyle = '#6f4220';
+  ctx.lineWidth = 9;
+  ctx.strokeRect(1, 1, POOL_TABLE.width - 2, POOL_TABLE.height - 2);
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 0.6;
+  ctx.strokeRect(6, 6, POOL_TABLE.width - 12, POOL_TABLE.height - 12);
+
+  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  ctx.beginPath();
+  ctx.arc(POOL_TABLE.width * 0.25, POOL_TABLE.height / 2, 1.2, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.fillStyle = '#0b0f1a';
   for (const pocket of poolPockets()) {
@@ -218,10 +243,27 @@ function draw(
 
   for (const ball of balls) {
     if (ball.pocketed) continue;
+    ctx.save();
+    ctx.shadowColor = 'rgba(0,0,0,0.55)';
+    ctx.shadowBlur = 3;
+    ctx.shadowOffsetX = 1.2;
+    ctx.shadowOffsetY = 1.7;
     ctx.beginPath();
     ctx.arc(ball.x, ball.y, POOL_TABLE.ballRadius, 0, Math.PI * 2);
-    ctx.fillStyle = ball.color;
+    const ballGradient = ctx.createRadialGradient(
+      ball.x - POOL_TABLE.ballRadius * 0.35,
+      ball.y - POOL_TABLE.ballRadius * 0.4,
+      POOL_TABLE.ballRadius * 0.1,
+      ball.x,
+      ball.y,
+      POOL_TABLE.ballRadius,
+    );
+    ballGradient.addColorStop(0, '#ffffff');
+    ballGradient.addColorStop(0.18, ball.color);
+    ballGradient.addColorStop(1, ball.id === 0 ? '#aeb7c2' : '#10131a');
+    ctx.fillStyle = ballGradient;
     ctx.fill();
+    ctx.restore();
     ctx.lineWidth = 0.4;
     ctx.strokeStyle = 'rgba(0,0,0,0.45)';
     ctx.stroke();

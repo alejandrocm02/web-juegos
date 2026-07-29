@@ -86,11 +86,30 @@ export function registerSocketHandlers(io: Server): RoomManager {
     void socket.join(roomChannel(code));
   }
 
+  function leaveCurrentSession(socket: Socket, keepPlayerId?: string): void {
+    const current = sessions.get(socket.id);
+    if (!current) return;
+    if (keepPlayerId && current.playerId === keepPlayerId) return;
+    sessions.delete(socket.id);
+    void socket.leave(roomChannel(current.roomCode));
+    manager.get(current.roomCode)?.removePlayer(current.playerId);
+  }
+
+  function revokePreviousSocket(roomCode: string, socketId: string | null): void {
+    if (!socketId) return;
+    sessions.delete(socketId);
+    const previous = io.sockets.sockets.get(socketId);
+    if (!previous) return;
+    void previous.leave(roomChannel(roomCode));
+    previous.emit(SERVER_EVENTS.sessionReplaced, {});
+  }
+
   io.on('connection', (socket) => {
     logger.debug('Socket conectado', socket.id);
 
     socket.on(CLIENT_EVENTS.createRoom, (payload) => {
       guard(socket, createRoomSchema, payload, ({ name }) => {
+        leaveCurrentSession(socket);
         const room = manager.create();
         const player = room.addPlayer(name, socket.id);
         joinChannel(socket, room.code, player.id);
@@ -114,6 +133,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
         if (room.hasName(name)) {
           return fail(socket, 'NAME_TAKEN', 'Ya hay alguien con ese nombre en la sala.');
         }
+        leaveCurrentSession(socket);
         const player = room.addPlayer(name, socket.id);
         joinChannel(socket, room.code, player.id);
         socket.emit(SERVER_EVENTS.session, {
@@ -131,6 +151,10 @@ export function registerSocketHandlers(io: Server): RoomManager {
         if (!room) return fail(socket, 'ROOM_NOT_FOUND', 'La sala ya no existe.');
         const player = room.findByToken(token);
         if (!player) return fail(socket, 'SESSION_EXPIRED', 'Tu sesion ha caducado.');
+        leaveCurrentSession(socket, player.id);
+        if (player.socketId !== socket.id) {
+          revokePreviousSocket(room.code, player.socketId);
+        }
         room.attachSocket(player.id, socket.id);
         joinChannel(socket, room.code, player.id);
         socket.emit(SERVER_EVENTS.session, {
@@ -196,8 +220,15 @@ export function registerSocketHandlers(io: Server): RoomManager {
       }
       const result = context.room.startGame();
       if (!result.ok) {
+        const connectedPlayers = context.room
+          .publicPlayers()
+          .filter((player) => player.connection === 'connected').length;
         const code: ErrorCode =
-          context.room.playerCount < MIN_PLAYERS ? 'NOT_ENOUGH_PLAYERS' : 'ALREADY_STARTED';
+          context.room.currentPhase !== 'lobby'
+            ? 'ALREADY_STARTED'
+            : connectedPlayers < MIN_PLAYERS
+              ? 'NOT_ENOUGH_PLAYERS'
+              : 'ACTION_REJECTED';
         fail(socket, code, result.reason ?? 'No se puede iniciar la partida.');
       }
     });
@@ -212,7 +243,14 @@ export function registerSocketHandlers(io: Server): RoomManager {
         if (playerId === context.player.id) return;
         const target = context.room.getPlayer(playerId);
         if (!target) return;
-        if (target.socketId) io.to(target.socketId).emit(SERVER_EVENTS.kicked, {});
+        if (target.socketId) {
+          const targetSocket = io.sockets.sockets.get(target.socketId);
+          sessions.delete(target.socketId);
+          if (targetSocket) {
+            void targetSocket.leave(roomChannel(context.room.code));
+            targetSocket.emit(SERVER_EVENTS.kicked, {});
+          }
+        }
         context.room.removePlayer(playerId);
       });
     });

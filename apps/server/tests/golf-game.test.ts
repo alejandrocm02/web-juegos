@@ -90,6 +90,7 @@ describe('partida completa de minigolf', () => {
     game.start();
 
     game.handleAction('a', { type: 'golf:shoot', angle: 0, power: 0.6, seq: 1 });
+    expect(game.publicState().lastSequences.a).toBe(1);
     vi.advanceTimersByTime(100);
     game.handleAction('a', { type: 'golf:shoot', angle: 0, power: 0.6, seq: 2 });
     expect(messages.some((m) => m.includes('mientras la bola se mueve'))).toBe(true);
