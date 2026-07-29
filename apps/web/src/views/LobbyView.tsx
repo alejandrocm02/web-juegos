@@ -202,6 +202,11 @@ export default function LobbyView() {
                     key={id}
                     onClick={() => isHost && selectGame(id)}
                     disabled={!isHost}
+                    // El nombre accesible seria "Quiz 10 preguntas a contrarreloj" y
+                    // chocaria con el boton "Iniciar Quiz". Con aria-label la tarjeta
+                    // se anuncia por su juego y queda identificable sin ambiguedad.
+                    aria-label={GAME_META[id].name}
+                    aria-pressed={active}
                     className={
                       'group rounded-2xl border p-4 text-left transition duration-200 ' +
                       (active
