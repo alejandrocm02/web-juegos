@@ -10,13 +10,13 @@ import GolfView from './games/GolfView.js';
 import BowlingView from './games/BowlingView.js';
 import KartsView from './games/KartsView.js';
 import ArenaView from './games/ArenaView.js';
-import { Toasts } from './components/ui.js';
+import { ErrorBanner, Toasts } from './components/ui.js';
 import { GameExitBar } from './components/GameExitBar.js';
 import { GameStage } from './components/GameStage.js';
 import { DisconnectedOverlay, EmptyState } from './views/StatusViews.js';
 
 export default function App() {
-  const { room, gameState, result, connected, toasts, session } = useApp();
+  const { room, gameState, result, connected, toasts, session, me, error, dismissError } = useApp();
 
   useEffect(() => {
     document.title = room ? 'Sala ' + room.code + ' | Parque Arcade' : 'Parque Arcade';
@@ -27,6 +27,13 @@ export default function App() {
 
   if (!session || !room) {
     content = <HomeView />;
+  } else if (!me) {
+    content = (
+      <EmptyState
+        title="Recuperando tu sesión…"
+        description="Estamos volviendo a enlazar tu jugador con la sala. Si tienes la partida abierta en otra pestaña, conserva solo una."
+      />
+    );
   } else if (room.phase === 'results') {
     content = result ? (
       <ResultsView />
@@ -77,6 +84,11 @@ export default function App() {
   return (
     <>
       <DisconnectedOverlay visible={!connected} />
+      {inGame && error && (
+        <div className="fixed left-1/2 top-20 z-[60] w-[min(92vw,42rem)] -translate-x-1/2">
+          <ErrorBanner error={error} onDismiss={dismissError} />
+        </div>
+      )}
       {inGame && <GameExitBar />}
       {inGame && gameState ? <GameStage state={gameState}>{content}</GameStage> : content}
       <Toasts toasts={toasts} />

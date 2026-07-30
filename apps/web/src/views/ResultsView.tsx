@@ -1,10 +1,18 @@
 import { GAME_META } from '@arcade/shared';
 import { useApp } from '../store.js';
 import { GameIcon, Panel, Scoreboard } from '../components/ui.js';
+import { EmptyState } from './StatusViews.js';
 
 export default function ResultsView() {
   const { result, isHost, backToLobby, room } = useApp();
-  if (!result || !room) return null;
+  if (!result || !room) {
+    return (
+      <EmptyState
+        title="Preparando los resultados…"
+        description="Estamos sincronizando la clasificación final de todos los jugadores."
+      />
+    );
+  }
 
   const winners = result.rows.filter((row) => row.rank === 1);
   const unit = result.game === 'golf' ? 'golpes' : result.game === 'darts' ? 'restantes' : 'pts';

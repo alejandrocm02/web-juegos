@@ -230,7 +230,7 @@ export default function ArenaView({ state }: { state: ArenaPublicState }) {
         </div>
 
         <p className="text-xs text-slate-400">
-          Muevete con WASD o las flechas, apunta con el raton y ataca con espacio o pulsando la
+          Muévete con WASD o las flechas, apunta con el ratón y ataca con espacio o pulsando la
           arena. La zona se cierra: fuera de ella pierdes vida.
         </p>
 

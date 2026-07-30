@@ -25,16 +25,16 @@ const GAME_CONTROLS: Record<GameId, string[]> = {
   ],
   darts: [
     'Mueve el cursor sobre la diana y haz clic para lanzar.',
-    'El servidor aplica una pequena desviacion: apunta con margen.',
+    'El servidor aplica una pequeña desviación: apunta con margen.',
     'Tres dardos por turno.',
   ],
   golf: [
-    'Manten pulsado sobre tu bola y arrastra en sentido contrario.',
-    'La linea marca la direccion y la barra la potencia.',
+    'Mantén pulsado sobre tu bola y arrastra en sentido contrario.',
+    'La línea marca la dirección y la barra la potencia.',
     'Solo puedes golpear con la bola prácticamente detenida.',
   ],
   bowling: [
-    'Ajusta direccion, potencia y efecto antes de lanzar.',
+    'Ajusta dirección, potencia y efecto antes de lanzar.',
     'Dos tiradas por frame salvo strike.',
     'El décimo frame puede dar tiradas extra.',
   ],
@@ -44,9 +44,9 @@ const GAME_CONTROLS: Record<GameId, string[]> = {
     'Pasa por todos los checkpoints antes de cruzar la meta.',
   ],
   arena: [
-    'Muevete con WASD o las flechas.',
-    'Apunta con el raton y ataca con clic o espacio.',
-    'Manten la zona segura a la vista: fuera pierdes vida.',
+    'Muévete con WASD o las flechas.',
+    'Apunta con el ratón y ataca con clic o espacio.',
+    'Mantén la zona segura a la vista: fuera pierdes vida.',
   ],
 };
 
