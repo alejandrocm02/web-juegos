@@ -1,9 +1,9 @@
 /**
- * Catalogo de modos de juego.
+ * Catálogo de modos de juego.
  *
  * Vive en el paquete compartido para que cliente y servidor manejen exactamente
- * la misma lista: el lobby dibuja las opciones desde aqui y el servidor valida
- * contra la misma fuente, sin duplicar literales en ningun lado.
+ * la misma lista: el lobby dibuja las opciones desde aquí y el servidor valida
+ * contra la misma fuente, sin duplicar literales en ningún lado.
  */
 import type { GameId } from '../constants.js';
 
@@ -28,7 +28,7 @@ export interface GameModeInfo {
   name: string;
   /** Frase corta que se muestra bajo el nombre en el selector del lobby. */
   summary: string;
-  /** Regla concreta que cambia respecto al modo clasico. */
+  /** Regla concreta que cambia respecto al modo clásico. */
   rule: string;
   /** true si el modo reparte a los jugadores en dos equipos. */
   teams?: boolean;
@@ -38,27 +38,27 @@ export const GAME_MODE_CATALOG: Record<GameId, GameModeInfo[]> = {
   quiz: [
     {
       id: 'clasico',
-      name: 'Clasico',
+      name: 'Clásico',
       summary: 'Todas las preguntas, puntos por acierto',
-      rule: 'Gana quien mas puntos acumule al terminar las preguntas.',
+      rule: 'Gana quien más puntos acumule al terminar las preguntas.',
     },
     {
       id: 'rapido',
-      name: 'Rapido',
-      summary: 'La mitad de tiempo y el doble de bonus',
-      rule: 'El tiempo por pregunta se reduce a la mitad y la bonificacion por rapidez se duplica.',
+      name: 'Rápido',
+      summary: 'La mitad de tiempo y el doble de bonificación',
+      rule: 'El tiempo por pregunta se reduce a la mitad y la bonificación por rapidez se duplica.',
     },
     {
       id: 'eliminacion',
-      name: 'Eliminacion',
+      name: 'Eliminación',
       summary: 'Fallar te deja fuera',
-      rule: 'Quien falla o no contesta queda eliminado. Gana el ultimo en pie.',
+      rule: 'Quien falla o no contesta queda eliminado. Gana el último en pie.',
     },
     {
       id: 'equipos',
       name: 'Equipos',
       summary: 'Rojo contra azul',
-      rule: 'Los puntos se suman por equipo. Gana el equipo con mas puntos.',
+      rule: 'Los puntos se suman por equipo. Gana el equipo con más puntos.',
       teams: true,
     },
   ],
@@ -67,7 +67,7 @@ export const GAME_MODE_CATALOG: Record<GameId, GameModeInfo[]> = {
       id: '301',
       name: '301',
       summary: 'Bajar de 301 a cero exacto',
-      rule: 'Pasarse es bust y se recupera la puntuacion del inicio del turno.',
+      rule: 'Pasarse es bust y se recupera la puntuación del inicio del turno.',
     },
     {
       id: '501',
@@ -77,21 +77,21 @@ export const GAME_MODE_CATALOG: Record<GameId, GameModeInfo[]> = {
     },
     {
       id: 'libre',
-      name: 'Puntuacion libre',
+      name: 'Puntuación libre',
       summary: 'Ocho turnos sumando puntos',
-      rule: 'Sin objetivo que cerrar: gana quien mas puntos sume en ocho turnos.',
+      rule: 'Sin objetivo que cerrar: gana quien más puntos sume en ocho turnos.',
     },
     {
       id: 'cricket',
       name: 'Cricket',
       summary: 'Cierra del 15 al 20 y el bull',
-      rule: 'Tres impactos cierran un numero. Con el numero abierto y algun rival sin cerrarlo se suman puntos. Gana quien cierre todo con ventaja.',
+      rule: 'Tres impactos cierran un número. Con el número abierto y algún rival sin cerrarlo se suman puntos. Gana quien cierre todo con ventaja.',
     },
   ],
   pool: [
     {
       id: 'clasico',
-      name: 'Clasico',
+      name: 'Clásico',
       summary: 'Hasta vaciar la mesa',
       rule: 'Cada bola de color suma uno, la blanca resta uno. Termina al no quedar bolas.',
     },
@@ -99,11 +99,11 @@ export const GAME_MODE_CATALOG: Record<GameId, GameModeInfo[]> = {
       id: 'bola8',
       name: 'Bola 8',
       summary: 'Limpia tu grupo y cierra con la negra',
-      rule: 'La mesa esta abierta hasta la primera entrada limpia. Despues cada jugador tiene su grupo (lisas o rayadas) y debe limpiarlo antes de embocar la negra. Meter la negra antes de tiempo pierde la partida.',
+      rule: 'La mesa está abierta hasta la primera entrada limpia. Después, cada jugador tiene su grupo (lisas o rayadas) y debe limpiarlo antes de embocar la negra. Meter la negra antes de tiempo pierde la partida.',
     },
     {
       id: 'rapido',
-      name: 'Rapido',
+      name: 'Rápido',
       summary: 'El primero en llegar a tres',
       rule: 'La partida termina en cuanto alguien alcanza tres puntos.',
     },
@@ -118,7 +118,7 @@ export const GAME_MODE_CATALOG: Record<GameId, GameModeInfo[]> = {
   golf: [
     {
       id: 'clasico',
-      name: 'Clasico',
+      name: 'Clásico',
       summary: 'Los diez hoyos completos',
       rule: 'Gana quien acumule menos golpes en el recorrido.',
     },
@@ -140,54 +140,54 @@ export const GAME_MODE_CATALOG: Record<GameId, GameModeInfo[]> = {
       id: 'individual',
       name: 'Individual',
       summary: 'Diez frames por jugador',
-      rule: 'Partida completa con strikes, spares y el decimo frame ampliado.',
+      rule: 'Partida completa con strikes, spares y el décimo frame ampliado.',
     },
     {
       id: 'corta',
       name: 'Corta',
       summary: 'Cinco frames',
-      rule: 'Misma puntuacion pero la partida termina en el quinto frame.',
+      rule: 'Misma puntuación, pero la partida termina en el quinto frame.',
     },
     {
       id: 'equipos',
       name: 'Equipos',
       summary: 'Rojo contra azul',
-      rule: 'Se suman los frames de cada equipo. Gana el equipo con mas bolos derribados.',
+      rule: 'Se suman los frames de cada equipo. Gana el equipo con más bolos derribados.',
       teams: true,
     },
   ],
   karts: [
     {
       id: 'rapida',
-      name: 'Carrera rapida',
+      name: 'Carrera rápida',
       summary: 'Tres vueltas, gana quien cruce primero',
-      rule: 'Clasificacion por orden de llegada. Quien no termina se ordena por progreso.',
+      rule: 'Clasificación por orden de llegada. Quien no termina se ordena por progreso.',
     },
     {
       id: 'contrarreloj',
       name: 'Contrarreloj',
-      summary: 'Gana la mejor vuelta, no la posicion',
-      rule: 'Se corren tres vueltas y gana quien registre la vuelta mas rapida.',
+      summary: 'Gana la mejor vuelta, no la posición',
+      rule: 'Se corren tres vueltas y gana quien registre la vuelta más rápida.',
     },
     {
       id: 'eliminatoria',
       name: 'Eliminatoria',
-      summary: 'Cada 25 s cae el ultimo',
-      rule: 'Cada 25 segundos queda eliminado quien va ultimo. Gana el ultimo kart en pista.',
+      summary: 'Cada 25 s cae el último',
+      rule: 'Cada 25 segundos queda eliminado quien va último. Gana el último kart en pista.',
     },
   ],
   arena: [
     {
       id: 'individual',
       name: 'Individual',
-      summary: 'Todos contra todos, gana el ultimo en pie',
-      rule: 'La zona segura se cierra y hace dano fuera. Gana quien sobreviva; el orden lo marca quien cae antes.',
+      summary: 'Todos contra todos, gana el último en pie',
+      rule: 'La zona segura se cierra y hace daño fuera. Gana quien sobreviva; el orden lo marca quien cae antes.',
     },
     {
       id: 'equipos',
       name: 'Equipos',
       summary: 'Rojo contra azul, sin fuego amigo',
-      rule: 'Los companeros no pueden danarse. Gana el equipo que conserve algun jugador vivo.',
+      rule: 'Los compañeros no pueden dañarse. Gana el equipo que conserve algún jugador vivo.',
       teams: true,
     },
   ],

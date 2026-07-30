@@ -202,7 +202,10 @@ export class GolfGame implements GameRunner {
         playerId: p.id,
         score: this.totals.get(p.id) ?? 0,
         tiebreak: this.totalTime.get(p.id) ?? 0,
-        detail: (this.aces.get(p.id) ?? 0) + ' hoyo(s) en uno',
+        detail: (() => {
+          const aces = this.aces.get(p.id) ?? 0;
+          return aces + (aces === 1 ? ' hoyo en uno' : ' hoyos en uno');
+        })(),
       })),
       { lowerIsBetter: true },
     );
@@ -286,9 +289,9 @@ function describeRejection(reason?: string): string {
     case 'BALL_MOVING':
       return 'No puedes golpear mientras la bola se mueve';
     case 'MAX_STROKES':
-      return 'Has alcanzado el limite de golpes de este hoyo';
+      return 'Has alcanzado el límite de golpes de este hoyo';
     case 'OUT_OF_BOUNDS':
-      return 'Tu bola esta fuera: pulsa reiniciar para volver al recorrido';
+      return 'Tu bola está fuera: pulsa reiniciar para volver al recorrido';
     case 'INVALID_POWER':
       return 'Potencia invalida';
     case 'BALL_HOLED':

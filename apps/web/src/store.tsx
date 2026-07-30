@@ -100,7 +100,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     const onRoom = (payload: RoomSummary) => {
       setRoom(payload);
-      if (payload.phase === 'lobby') snapshotRef.current = null;
+      if (payload.phase === 'results' && payload.result) {
+        // El resultado viaja también dentro del estado de la sala. Así la
+        // pantalla final no depende de haber recibido un único evento efímero.
+        setResult(payload.result);
+      }
+      if (payload.phase === 'lobby') {
+        snapshotRef.current = null;
+        setGameState(null);
+        setResult(null);
+      }
     };
     const onError = (payload: AppError) => {
       setError(payload);
@@ -131,7 +140,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setSession(null);
       setRoom(null);
       setGameState(null);
-      setError({ code: 'NOT_IN_ROOM', message: 'El anfitrion te ha expulsado de la sala.' });
+      setError({ code: 'NOT_IN_ROOM', message: 'El anfitrión te ha expulsado de la sala.' });
     };
     const onSessionReplaced = () => {
       clearSession();

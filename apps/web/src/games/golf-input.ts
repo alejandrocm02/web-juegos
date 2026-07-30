@@ -34,3 +34,25 @@ export function pickLiveBall(
   if (fromSnapshot) return fromSnapshot;
   return stateBalls.find((ball) => ball.playerId === playerId) ?? null;
 }
+
+/**
+ * Convierte el gesto iniciado sobre una bola válida en un golpe.
+ *
+ * La posición de la bola es la capturada al pulsar, no otro snapshot recibido
+ * mientras se arrastra. De esta forma una actualización de red intermedia no
+ * puede cancelar o desviar silenciosamente un gesto que ya había comenzado.
+ */
+export function shotFromGesture(
+  ballAtPointerDown: Pick<GolfBallState, 'x' | 'y'>,
+  pointerAtRelease: { x: number; y: number },
+  maxDrag: number,
+): { angle: number; power: number } | null {
+  const dx = ballAtPointerDown.x - pointerAtRelease.x;
+  const dy = ballAtPointerDown.y - pointerAtRelease.y;
+  const distance = Math.hypot(dx, dy);
+  if (distance < 6 || maxDrag <= 0) return null;
+  return {
+    angle: Math.atan2(dy, dx),
+    power: Math.max(0.03, Math.min(1, distance / maxDrag)),
+  };
+}

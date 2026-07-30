@@ -20,10 +20,10 @@ export function GameExitBar() {
           title: 'Terminar la partida',
           description:
             others > 0
-              ? 'Eres el anfitrion: la partida terminara para los ' +
+              ? 'Eres el anfitrión: la partida terminará para los ' +
                 others +
                 ' jugadores restantes y todos volvereis al lobby.'
-              : 'La partida terminara y volveras al lobby.',
+              : 'La partida terminará y volverás al lobby.',
           confirmLabel: 'Terminar y volver',
         },
         run: backToLobby,
@@ -33,7 +33,7 @@ export function GameExitBar() {
         confirm: {
           title: 'Abandonar la partida',
           description:
-            'Saldras de la sala y tu puesto se liberara. Los demas seguiran jugando sin ti.',
+            'Saldrás de la sala y tu puesto se liberará. Los demás seguirán jugando sin ti.',
           confirmLabel: 'Abandonar',
         },
         run: leaveRoom,

@@ -1,8 +1,8 @@
 import type { GolfLevel } from './golf.js';
 
 /**
- * Campana original "Parque Fantasia": 10 hoyos con dificultad progresiva.
- * Los niveles 1, 2, 4, 6 y 10 estan disenados con una ruta valida de hoyo en uno.
+ * Campaña original «Parque Fantasía»: 10 hoyos con dificultad progresiva.
+ * Los niveles 1, 2, 4, 6 y 10 están diseñados con una ruta válida de hoyo en uno.
  * Todos los trazados, nombres y elementos son originales.
  */
 export const GOLF_LEVELS: GolfLevel[] = [
@@ -10,7 +10,7 @@ export const GOLF_LEVELS: GolfLevel[] = [
     id: 1,
     name: 'Primer golpe',
     theme: 'Entrada del parque',
-    difficulty: 'Facil',
+    difficulty: 'Fácil',
     par: 2,
     aceRoute: true,
     hint: 'Trayectoria recta con una pendiente muy suave. Ajusta la potencia.',
@@ -31,10 +31,10 @@ export const GOLF_LEVELS: GolfLevel[] = [
     id: 2,
     name: 'Rebote amistoso',
     theme: 'Paseo de las farolas',
-    difficulty: 'Facil',
+    difficulty: 'Fácil',
     par: 2,
     aceRoute: true,
-    hint: 'La banda diagonal del fondo desvia la bola hacia el pasillo del hoyo.',
+    hint: 'La banda diagonal del fondo desvía la bola hacia el pasillo del hoyo.',
     size: { w: 940, h: 640 },
     start: { x: 130, y: 500 },
     hole: { x: 556, y: 205 },
@@ -51,9 +51,9 @@ export const GOLF_LEVELS: GolfLevel[] = [
   },
   {
     id: 3,
-    name: 'Curva del jardin',
-    theme: 'Jardin de setos',
-    difficulty: 'Facil-media',
+    name: 'Curva del jardín',
+    theme: 'Jardín de setos',
+    difficulty: 'Fácil-media',
     par: 3,
     aceRoute: false,
     hint: 'La arena frena mucho la bola. Encadena golpes cortos y controlados.',
@@ -80,7 +80,7 @@ export const GOLF_LEVELS: GolfLevel[] = [
     difficulty: 'Media',
     par: 2,
     aceRoute: true,
-    hint: 'Cruza cuando las aspas esten tumbadas. El pasillo inferior rodea el molino.',
+    hint: 'Cruza cuando las aspas estén tumbadas. El pasillo inferior rodea el molino.',
     size: { w: 940, h: 480 },
     start: { x: 140, y: 165 },
     hole: { x: 800, y: 165 },
@@ -109,7 +109,7 @@ export const GOLF_LEVELS: GolfLevel[] = [
   {
     id: 5,
     name: 'Caminos divididos',
-    theme: 'Bifurcacion del bosque',
+    theme: 'Bifurcación del bosque',
     difficulty: 'Media',
     par: 3,
     aceRoute: false,
@@ -142,7 +142,7 @@ export const GOLF_LEVELS: GolfLevel[] = [
     difficulty: 'Media',
     par: 2,
     aceRoute: true,
-    hint: 'La rampa necesita velocidad. Si te quedas corto caeras a la red inferior.',
+    hint: 'La rampa necesita velocidad. Si te quedas corto, caerás a la red inferior.',
     size: { w: 940, h: 480 },
     start: { x: 130, y: 210 },
     hole: { x: 720, y: 190 },
@@ -177,7 +177,7 @@ export const GOLF_LEVELS: GolfLevel[] = [
     difficulty: 'Media-alta',
     par: 4,
     aceRoute: false,
-    hint: 'Las plataformas se mueven y la barrera se abre. Todo es cuestion de momento.',
+    hint: 'Las plataformas se mueven y la barrera se abre. Todo es cuestión de sincronización.',
     size: { w: 940, h: 640 },
     start: { x: 130, y: 330 },
     hole: { x: 790, y: 330 },
@@ -218,10 +218,10 @@ export const GOLF_LEVELS: GolfLevel[] = [
     id: 8,
     name: 'Caverna helada',
     theme: 'Gruta de cristal',
-    difficulty: 'Dificil',
+    difficulty: 'Difícil',
     par: 4,
     aceRoute: false,
-    hint: 'Hielo puro: casi no hay friccion y las bandas devuelven mucha energia.',
+    hint: 'Hielo puro: casi no hay fricción y las bandas devuelven mucha energía.',
     size: { w: 940, h: 640 },
     wallRestitution: 0.88,
     start: { x: 110, y: 510 },
@@ -247,10 +247,10 @@ export const GOLF_LEVELS: GolfLevel[] = [
     id: 9,
     name: 'Torre espiral',
     theme: 'Torre del reloj',
-    difficulty: 'Muy dificil',
+    difficulty: 'Muy difícil',
     par: 5,
     aceRoute: false,
-    hint: 'Sube en espiral. El punto de control del tramo alto evita repetir todo.',
+    hint: 'Sube en espiral. El punto de control del tramo alto evita repetirlo todo.',
     size: { w: 940, h: 700 },
     start: { x: 110, y: 610 },
     hole: { x: 600, y: 470 },
@@ -301,7 +301,7 @@ export const GOLF_LEVELS: GolfLevel[] = [
     difficulty: 'Experto',
     par: 4,
     aceRoute: true,
-    hint: 'Rebote, hielo y trampolin. Con la potencia exacta el vuelo termina en el hoyo.',
+    hint: 'Rebote, hielo y trampolín. Con la potencia exacta, el vuelo termina en el hoyo.',
     size: { w: 1000, h: 700 },
     start: { x: 110, y: 530 },
     hole: { x: 520, y: 250 },

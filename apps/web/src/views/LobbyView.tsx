@@ -15,6 +15,7 @@ import { useState } from 'react';
 import { useApp } from '../store.js';
 import { ErrorBanner, GameIcon, PlayerIconGlyph, Panel } from '../components/ui.js';
 import { BackButton } from '../components/navigation.js';
+import { quizCategoryLabel } from '../lib/format.js';
 
 export default function LobbyView() {
   const {
@@ -101,8 +102,8 @@ export default function LobbyView() {
                   title: 'Salir de la sala',
                   description:
                     room.players.length > 1
-                      ? 'Los demas jugadores seguiran en la sala. Si eres el anfitrion, el rol pasara a otro jugador.'
-                      : 'La sala quedara vacia y se eliminara en unos minutos.',
+                      ? 'Los demás jugadores seguirán en la sala. Si eres el anfitrión, el rol pasará a otro jugador.'
+                      : 'La sala quedará vacía y se eliminará en unos minutos.',
                   confirmLabel: 'Salir',
                 },
                 run: leaveRoom,
@@ -204,7 +205,11 @@ export default function LobbyView() {
             )}
             {connectedPlayers.length < MIN_PLAYERS ? (
               <p className="text-center text-xs leading-5 text-amber-300">
-                Faltan {MIN_PLAYERS - connectedPlayers.length} jugador(es) conectado(s).
+                Faltan {MIN_PLAYERS - connectedPlayers.length}{' '}
+                {MIN_PLAYERS - connectedPlayers.length === 1
+                  ? 'jugador conectado'
+                  : 'jugadores conectados'}
+                .
               </p>
             ) : !allReady ? (
               <p className="text-center text-xs leading-5 text-slate-500">
@@ -217,7 +222,7 @@ export default function LobbyView() {
         <div className="space-y-6">
           <Panel
             title="Elige el juego"
-            subtitle={isHost ? 'Solo el anfitrion decide' : 'El anfitrion decide'}
+            subtitle={isHost ? 'Solo el anfitrión decide' : 'El anfitrión decide'}
           >
             <div className="grid gap-3 sm:grid-cols-2">
               {GAME_IDS.map((id) => {
@@ -267,7 +272,7 @@ export default function LobbyView() {
           </Panel>
 
           <Panel
-            title={'Modo y configuracion de ' + GAME_META[room.selectedGame].name}
+            title={'Modo y configuración de ' + GAME_META[room.selectedGame].name}
             subtitle="Se bloquea al empezar la partida"
           >
             <ModeSelector
@@ -404,7 +409,7 @@ function GameSettingsForm({
     const quiz = settings.quiz;
     return (
       <div className="space-y-4">
-        <Field label="Numero de preguntas">
+        <Field label="Número de preguntas">
           <Segmented
             disabled={disabled}
             value={quiz.questionCount}
@@ -420,7 +425,7 @@ function GameSettingsForm({
             onChange={(secondsPerQuestion) => onChange('quiz', { ...quiz, secondsPerQuestion })}
           />
         </Field>
-        <Field label="Categorias (vacio = todas)">
+        <Field label="Categorías (vacío = todas)">
           <div className="flex flex-wrap gap-2">
             {QUIZ_CATEGORIES.map((category) => {
               const active = quiz.categories.includes(category);
@@ -444,7 +449,7 @@ function GameSettingsForm({
                       : 'border-white/10 bg-white/5 text-slate-300')
                   }
                 >
-                  {category}
+                  {quizCategoryLabel(category)}
                 </button>
               );
             })}
@@ -457,14 +462,14 @@ function GameSettingsForm({
   if (game === 'darts') {
     const darts = settings.darts;
     return (
-      <Field label="Precision (desviacion aplicada por el servidor)">
+      <Field label="Precisión (desviación aplicada por el servidor)">
         <Segmented
           disabled={disabled}
           value={darts.aimAssist}
           options={[
-            { label: 'Facil', value: 'facil' as const },
+            { label: 'Fácil', value: 'facil' as const },
             { label: 'Normal', value: 'normal' as const },
-            { label: 'Dificil', value: 'dificil' as const },
+            { label: 'Difícil', value: 'dificil' as const },
           ]}
           onChange={(aimAssist) => onChange('darts', { ...darts, aimAssist })}
         />
@@ -480,7 +485,7 @@ function GameSettingsForm({
           <Field label="Bolas">
             <p className="text-sm text-slate-400">
               La bola 8 usa siempre las quince bolas numeradas: lisas de la 1 a la 7, rayadas de la
-              9 a la 15 y la negra en el centro del triangulo.
+              9 a la 15 y la negra en el centro del triángulo.
             </p>
           </Field>
         ) : (
@@ -493,14 +498,14 @@ function GameSettingsForm({
             />
           </Field>
         )}
-        <Field label="Velocidad del pano">
+        <Field label="Velocidad del paño">
           <Segmented
             disabled={disabled}
             value={pool.tableFriction}
             options={[
               { label: 'Lenta', value: 'lenta' as const },
               { label: 'Normal', value: 'normal' as const },
-              { label: 'Rapida', value: 'rapida' as const },
+              { label: 'Rápida', value: 'rapida' as const },
             ]}
             onChange={(tableFriction) => onChange('pool', { ...pool, tableFriction })}
           />
@@ -520,7 +525,7 @@ function GameSettingsForm({
             options={[
               { label: 'Lenta', value: 'lenta' as const },
               { label: 'Normal', value: 'normal' as const },
-              { label: 'Rapida', value: 'rapida' as const },
+              { label: 'Rápida', value: 'rapida' as const },
             ]}
             onChange={(zonePace) => onChange('arena', { ...arena, zonePace })}
           />
@@ -569,14 +574,14 @@ function GameSettingsForm({
   if (game === 'bowling') {
     const bowling: BowlingSettings = settings.bowling;
     return (
-      <Field label="Precision (desviacion que aplica el servidor)">
+      <Field label="Precisión (desviación que aplica el servidor)">
         <Segmented
           disabled={disabled}
           value={bowling.precision}
           options={[
-            { label: 'Facil', value: 'facil' as const },
+            { label: 'Fácil', value: 'facil' as const },
             { label: 'Normal', value: 'normal' as const },
-            { label: 'Dificil', value: 'dificil' as const },
+            { label: 'Difícil', value: 'dificil' as const },
           ]}
           onChange={(precision) => onChange('bowling', { ...bowling, precision })}
         />
@@ -587,7 +592,7 @@ function GameSettingsForm({
   const golf: GolfSettings = settings.golf;
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <Field label="Colision entre bolas">
+      <Field label="Colisión entre bolas">
         <Segmented
           disabled={disabled}
           value={golf.ballCollisions}
@@ -606,7 +611,7 @@ function GameSettingsForm({
           onChange={(holeTimeLimitSeconds) => onChange('golf', { ...golf, holeTimeLimitSeconds })}
         />
       </Field>
-      <Field label="Limite de golpes">
+      <Field label="Límite de golpes">
         <Segmented
           disabled={disabled}
           value={golf.maxStrokes}
@@ -614,18 +619,18 @@ function GameSettingsForm({
           onChange={(maxStrokes) => onChange('golf', { ...golf, maxStrokes })}
         />
       </Field>
-      <Field label="Reinicio automatico fuera del recorrido">
+      <Field label="Reinicio automático fuera del recorrido">
         <Segmented
           disabled={disabled}
           value={golf.autoResetOutOfBounds}
           options={[
-            { label: 'Si', value: true },
+            { label: 'Sí', value: true },
             { label: 'No', value: false },
           ]}
           onChange={(autoResetOutOfBounds) => onChange('golf', { ...golf, autoResetOutOfBounds })}
         />
       </Field>
-      <Field label="Penalizacion al salir">
+      <Field label="Penalización al salir">
         <Segmented
           disabled={disabled}
           value={golf.outOfBoundsPenalty}

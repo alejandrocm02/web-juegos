@@ -226,7 +226,7 @@ export default function BowlingView({ state }: { state: BowlingPublicState }) {
         </div>
 
         <p className="mt-4 text-xs text-slate-400">
-          Un strike suma diez mas los dos lanzamientos siguientes; un spare, diez mas el siguiente.
+          Un strike suma diez más los dos lanzamientos siguientes; un spare, diez más el siguiente.
         </p>
       </Panel>
     </div>

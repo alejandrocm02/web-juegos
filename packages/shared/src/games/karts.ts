@@ -115,11 +115,11 @@ function ovalGates(
   return gates;
 }
 
-/** Circuito 1: ovalo rapido, ideal para aprender los controles. */
+/** Circuito 1: óvalo rápido, ideal para aprender los controles. */
 const OVALO: KartTrack = {
   id: 'ovalo',
-  name: 'Ovalo Neon',
-  description: 'Trazado rapido y ancho. Dos curvas largas y dos rectas para adelantar.',
+  name: 'Óvalo Neón',
+  description: 'Trazado rápido y ancho. Dos curvas largas y dos rectas para adelantar.',
   gates: ovalGates(500, 320, 330, 200, 120, 16),
   size: { w: 1000, h: 640 },
   laps: 3,
@@ -133,8 +133,8 @@ const OVALO: KartTrack = {
  */
 const TECNICO: KartTrack = {
   id: 'tecnico',
-  name: 'Circuito Vertigo',
-  description: 'Curvas de radio variable y pista mas estrecha. Premia frenar antes de girar.',
+  name: 'Circuito Vértigo',
+  description: 'Curvas de radio variable y pista más estrecha. Premia frenar antes de girar.',
   gates: (() => {
     const gates: KartGate[] = [];
     const count = 22;

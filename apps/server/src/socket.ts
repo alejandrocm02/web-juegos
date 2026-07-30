@@ -50,7 +50,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
     handler: (value: T) => void,
   ): void {
     if (!limiter.allow(socket.id)) {
-      fail(socket, 'RATE_LIMITED', 'Estas enviando demasiadas acciones. Espera un momento.');
+      fail(socket, 'RATE_LIMITED', 'Estás enviando demasiadas acciones. Espera un momento.');
       return;
     }
     if (payloadTooLarge(payload)) {
@@ -126,7 +126,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
       guard(socket, joinRoomSchema, payload, ({ code, name }) => {
         const room = manager.get(code);
         if (!room) return fail(socket, 'ROOM_NOT_FOUND', 'No existe ninguna sala con ese codigo.');
-        if (room.isFull) return fail(socket, 'ROOM_FULL', 'La sala esta completa.');
+        if (room.isFull) return fail(socket, 'ROOM_FULL', 'La sala está completa.');
         if (room.currentPhase !== 'lobby') {
           return fail(socket, 'ROOM_IN_PROGRESS', 'La partida ya ha empezado en esa sala.');
         }
@@ -150,7 +150,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
         const room = manager.get(code);
         if (!room) return fail(socket, 'ROOM_NOT_FOUND', 'La sala ya no existe.');
         const player = room.findByToken(token);
-        if (!player) return fail(socket, 'SESSION_EXPIRED', 'Tu sesion ha caducado.');
+        if (!player) return fail(socket, 'SESSION_EXPIRED', 'Tu sesión ha caducado.');
         leaveCurrentSession(socket, player.id);
         if (player.socketId !== socket.id) {
           revokePreviousSocket(room.code, player.socketId);
@@ -184,7 +184,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
         const context = sessionOf(socket);
         if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estas en ninguna sala.');
         if (!context.player.isHost) {
-          return fail(socket, 'NOT_HOST', 'Solo el anfitrion puede cambiar de juego.');
+          return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede cambiar de juego.');
         }
         context.room.selectGame(game);
       });
@@ -195,10 +195,10 @@ export function registerSocketHandlers(io: Server): RoomManager {
         const context = sessionOf(socket);
         if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estas en ninguna sala.');
         if (!context.player.isHost) {
-          return fail(socket, 'NOT_HOST', 'Solo el anfitrion puede cambiar la configuracion.');
+          return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede cambiar la configuración.');
         }
         if (context.room.currentPhase !== 'lobby') {
-          return fail(socket, 'ALREADY_STARTED', 'La configuracion esta bloqueada.');
+          return fail(socket, 'ALREADY_STARTED', 'La configuración está bloqueada.');
         }
         context.room.updateSettings(patch.game, patch.settings);
       });
@@ -216,7 +216,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
       const context = sessionOf(socket);
       if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estas en ninguna sala.');
       if (!context.player.isHost) {
-        return fail(socket, 'NOT_HOST', 'Solo el anfitrion puede iniciar la partida.');
+        return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede iniciar la partida.');
       }
       const result = context.room.startGame();
       if (!result.ok) {
@@ -238,7 +238,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
         const context = sessionOf(socket);
         if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estas en ninguna sala.');
         if (!context.player.isHost) {
-          return fail(socket, 'NOT_HOST', 'Solo el anfitrion puede expulsar jugadores.');
+          return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede expulsar jugadores.');
         }
         if (playerId === context.player.id) return;
         const target = context.room.getPlayer(playerId);
@@ -260,7 +260,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
         const context = sessionOf(socket);
         if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estas en ninguna sala.');
         if (!context.room.transferHost(context.player.id, playerId)) {
-          fail(socket, 'NOT_HOST', 'No puedes transferir el rol de anfitrion.');
+          fail(socket, 'NOT_HOST', 'No puedes transferir el rol de anfitrión.');
         }
       });
     });
@@ -269,7 +269,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
       const context = sessionOf(socket);
       if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estas en ninguna sala.');
       if (!context.player.isHost) {
-        return fail(socket, 'NOT_HOST', 'Solo el anfitrion puede volver al lobby.');
+        return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede volver al lobby.');
       }
       context.room.backToLobby();
     });

@@ -2,6 +2,7 @@ import type { QuizPublicState } from '@arcade/shared';
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph, ProgressBar, Scoreboard } from '../components/ui.js';
+import { quizCategoryLabel } from '../lib/format.js';
 
 export default function QuizView({ state }: { state: QuizPublicState }) {
   const { sendAction, session, room } = useApp();
@@ -45,7 +46,7 @@ export default function QuizView({ state }: { state: QuizPublicState }) {
             {state.question && (
               <span className="hud-stat">
                 <span className="hud-stat-label">Categoría</span>
-                <span className="hud-stat-value capitalize">{state.question.category}</span>
+                <span className="hud-stat-value">{quizCategoryLabel(state.question.category)}</span>
               </span>
             )}
             <span className="ml-auto hud-stat quiz-clock">
@@ -147,7 +148,7 @@ export default function QuizView({ state }: { state: QuizPublicState }) {
         </Panel>
       </div>
 
-      <Panel title="Clasificacion">
+      <Panel title="Clasificación">
         <Scoreboard rows={state.scoreboard} />
       </Panel>
     </div>

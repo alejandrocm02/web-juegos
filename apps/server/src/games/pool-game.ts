@@ -142,7 +142,12 @@ export class PoolGame implements GameRunner {
     let delta = outcome.pocketedColors.length;
     const parts: string[] = [];
     if (outcome.pocketedColors.length > 0) {
-      parts.push('+' + outcome.pocketedColors.length + ' bola(s) de color');
+      parts.push(
+        '+' +
+          outcome.pocketedColors.length +
+          (outcome.pocketedColors.length === 1 ? ' bola' : ' bolas') +
+          ' de color',
+      );
     }
     if (outcome.cuePocketed) {
       delta -= 1;

@@ -27,8 +27,15 @@ export default function App() {
 
   if (!session || !room) {
     content = <HomeView />;
-  } else if (room.phase === 'results' && result) {
-    content = <ResultsView />;
+  } else if (room.phase === 'results') {
+    content = result ? (
+      <ResultsView />
+    ) : (
+      <EmptyState
+        title="Preparando los resultados…"
+        description="Estamos sincronizando la clasificación final de todos los jugadores."
+      />
+    );
   } else if (room.phase === 'playing' && gameState) {
     inGame = true;
     switch (gameState.game) {

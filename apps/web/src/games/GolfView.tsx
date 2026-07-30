@@ -4,8 +4,14 @@ import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph, Scoreboard } from '../components/ui.js';
 import { playAceSound, playHoledSound, playOutSound } from '../lib/sound.js';
 import { relativeToPar } from '../lib/format.js';
-import { canShootBall, pickLiveBall } from './golf-input.js';
-import { MAX_DRAG, drawGolfFrame, type PlayerLook, type RenderBall } from './golf-render.js';
+import { canShootBall, pickLiveBall, shotFromGesture } from './golf-input.js';
+import {
+  MAX_DRAG,
+  drawGolfFrame,
+  type Camera,
+  type PlayerLook,
+  type RenderBall,
+} from './golf-render.js';
 
 const VIEW_W = 960;
 const VIEW_H = 560;
@@ -16,6 +22,8 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
   const renderBalls = useRef<Map<string, RenderBall>>(new Map());
   const cameraRef = useRef({ x: state.level.start.x, y: state.level.start.y, zoom: 1 });
   const dragRef = useRef<{ x: number; y: number } | null>(null);
+  const gestureBallRef = useRef<GolfBallState | null>(null);
+  const gestureCameraRef = useRef<Camera | null>(null);
   const seqRef = useRef(0);
   const clockRef = useRef({ levelClockMs: 0, receivedAt: performance.now() });
   const [overview, setOverview] = useState(false);
@@ -164,11 +172,11 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
     session?.playerId,
   ]);
 
-  const pointerToWorld = (event: React.PointerEvent) => {
+  const pointerToWorld = (event: React.PointerEvent, frozenCamera?: Camera | null) => {
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
-    const camera = cameraRef.current;
+    const camera = frozenCamera ?? cameraRef.current;
     const px = ((event.clientX - rect.left) / rect.width) * VIEW_W;
     const py = ((event.clientY - rect.top) / rect.height) * VIEW_H;
     return {
@@ -180,9 +188,15 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
   const canShoot = state.phase === 'playing' && canShootBall(myBall);
 
   const onPointerDown = (event: React.PointerEvent) => {
-    if (!canShootBall(liveBallRef.current) || state.phase !== 'playing') return;
-    const point = pointerToWorld(event);
+    if (event.button !== 0 || !canShootBall(liveBallRef.current) || state.phase !== 'playing')
+      return;
+    const ball = liveBallRef.current;
+    if (!ball) return;
+    const camera = { ...cameraRef.current };
+    const point = pointerToWorld(event, camera);
     if (!point) return;
+    gestureBallRef.current = { ...ball };
+    gestureCameraRef.current = camera;
     dragRef.current = point;
     setDrag(point);
     (event.target as HTMLElement).setPointerCapture(event.pointerId);
@@ -190,7 +204,7 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
 
   const onPointerMove = (event: React.PointerEvent) => {
     if (!dragRef.current) return;
-    const point = pointerToWorld(event);
+    const point = pointerToWorld(event, gestureCameraRef.current);
     if (!point) return;
     dragRef.current = point;
     setDrag(point);
@@ -198,27 +212,39 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
 
   const onPointerUp = () => {
     const point = dragRef.current;
+    const ball = gestureBallRef.current;
     dragRef.current = null;
+    gestureBallRef.current = null;
+    gestureCameraRef.current = null;
     setDrag(null);
-    const ball = liveBallRef.current;
-    if (!point || !ball || !canShootBall(ball) || state.phase !== 'playing') return;
-    const dx = ball.x - point.x;
-    const dy = ball.y - point.y;
-    const distance = Math.hypot(dx, dy);
-    if (distance < 6) {
-      // Antes se ignoraba en silencio y parecia que el juego no respondia.
-      setHint('Arrastra un poco mas para dar potencia al golpe');
+    if (!point || !ball || state.phase !== 'playing') return;
+    const shot = shotFromGesture(ball, point, MAX_DRAG);
+    if (!shot) {
+      setHint('Arrastra un poco más para dar potencia al golpe.');
       return;
     }
-    setHint(null);
+    setHint('Golpe enviado…');
     seqRef.current += 1;
     sendAction({
       type: 'golf:shoot',
-      angle: Math.atan2(dy, dx),
-      power: Math.max(0.03, Math.min(1, distance / MAX_DRAG)),
+      angle: shot.angle,
+      power: shot.power,
       seq: seqRef.current,
     });
   };
+
+  const onPointerCancel = () => {
+    dragRef.current = null;
+    gestureBallRef.current = null;
+    gestureCameraRef.current = null;
+    setDrag(null);
+    setHint('El gesto se canceló. Vuelve a arrastrar para lanzar.');
+  };
+
+  useEffect(() => {
+    if (!session?.playerId || hint !== 'Golpe enviado…') return;
+    if ((state.lastSequences[session.playerId] ?? -1) >= seqRef.current) setHint(null);
+  }, [hint, session?.playerId, state.lastSequences]);
 
   const power =
     drag && myBall ? Math.min(1, Math.hypot(myBall.x - drag.x, myBall.y - drag.y) / MAX_DRAG) : 0;
@@ -258,6 +284,10 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
         </div>
 
         <div className="game-board-frame relative">
+          <div className="golf-course-badge" aria-hidden="true">
+            <span>Hoyo {level.id}</span>
+            <strong>{level.theme}</strong>
+          </div>
           <canvas
             ref={canvasRef}
             width={VIEW_W}
@@ -266,7 +296,7 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
+            onPointerCancel={onPointerCancel}
             aria-label={'Nivel de minigolf: ' + level.name}
           />
 
@@ -352,7 +382,7 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
       </div>
 
       <div className="space-y-4">
-        <Panel title="Clasificacion provisional">
+        <Panel title="Clasificación provisional">
           <Scoreboard rows={state.scoreboard} unit="golpes" />
         </Panel>
 
@@ -377,7 +407,7 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
                     {ball.holed
                       ? 'Embocada (' + ball.strokes + ')'
                       : ball.finished
-                        ? 'Limite alcanzado'
+                        ? 'Límite alcanzado'
                         : ball.strokes + ' golpes'}
                   </span>
                 </li>
@@ -420,11 +450,11 @@ function describeEvent(kind: string): string {
     case 'out':
       return 'se ha salido del recorrido.';
     case 'penalty':
-      return 'recibe una penalizacion.';
+      return 'recibe una penalización.';
     case 'reset':
       return 'ha reiniciado su bola.';
     case 'maxStrokes':
-      return 'ha alcanzado el limite de golpes.';
+      return 'ha alcanzado el límite de golpes.';
     case 'timeUp':
       return 'se ha quedado sin tiempo.';
     default:

@@ -20,7 +20,7 @@ const GAME_CONTROLS: Record<GameId, string[]> = {
   ],
   quiz: [
     'Pulsa una de las cuatro respuestas antes de que acabe el tiempo.',
-    'Responder rapido da bonificacion.',
+    'Responder rápido da bonificación.',
     'Las respuestas se revelan cuando contestan todos o se agota el tiempo.',
   ],
   darts: [
@@ -31,12 +31,12 @@ const GAME_CONTROLS: Record<GameId, string[]> = {
   golf: [
     'Manten pulsado sobre tu bola y arrastra en sentido contrario.',
     'La linea marca la direccion y la barra la potencia.',
-    'Solo puedes golpear con la bola practicamente detenida.',
+    'Solo puedes golpear con la bola prácticamente detenida.',
   ],
   bowling: [
     'Ajusta direccion, potencia y efecto antes de lanzar.',
     'Dos tiradas por frame salvo strike.',
-    'El decimo frame puede dar tiradas extra.',
+    'El décimo frame puede dar tiradas extra.',
   ],
   karts: [
     'Acelera con W o flecha arriba y gira con A y D.',
@@ -87,7 +87,7 @@ export function GameStage({
     ? isMyTurn
       ? 'Es tu turno'
       : 'Turno de ' + (activePlayer?.name ?? 'otro jugador')
-    : 'Partida simultanea: todos juegan a la vez';
+    : 'Partida simultánea: todos juegan a la vez';
 
   // El lobby puede ser largo: cada partida debe abrir con su cabecera visible,
   // aunque el jugador hubiese dejado la pagina desplazada hacia abajo.
@@ -144,7 +144,7 @@ export function GameStage({
           aria-expanded={helpOpen}
           onClick={() => setHelpOpen((open) => !open)}
         >
-          {helpOpen ? 'Ocultar ayuda' : 'Como se juega'}
+          {helpOpen ? 'Ocultar ayuda' : 'Cómo se juega'}
         </button>
       </header>
 

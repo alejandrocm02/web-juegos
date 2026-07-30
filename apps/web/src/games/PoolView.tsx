@@ -182,7 +182,9 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
                     ? blackOnTable
                       ? 'Mesa limpia · juega la bola 8'
                       : 'Bola 8 embocada'
-                    : `${myGroupLeft ?? '—'} bola(s) de tu grupo en mesa`}
+                    : `${myGroupLeft ?? '—'} ${
+                        myGroupLeft === 1 ? 'bola' : 'bolas'
+                      } de tu grupo en mesa`}
                 </span>
               )}
             </div>
@@ -202,7 +204,7 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
         )}
       </Panel>
 
-      <Panel title={eightBall ? 'Grupos' : 'Puntuacion'}>
+      <Panel title={eightBall ? 'Grupos' : 'Puntuación'}>
         <ul className="space-y-2">
           {state.order.map((playerId) => {
             const player = room?.players.find((p) => p.id === playerId);
@@ -254,7 +256,7 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
         </ul>
         <p className="mt-4 text-xs text-slate-500">
           {eightBall
-            ? 'La mesa esta abierta hasta la primera entrada limpia. Limpia tu grupo y cierra con la negra: meterla antes pierde la partida.'
+            ? 'La mesa está abierta hasta la primera entrada limpia. Limpia tu grupo y cierra con la negra: meterla antes pierde la partida.'
             : 'Cada bola de color embocada suma 1 punto. Embocar la blanca resta 1 y termina el turno.'}
         </p>
       </Panel>

@@ -227,7 +227,7 @@ export default function KartsView({ state }: { state: KartsPublicState }) {
         </div>
       </div>
 
-      <Panel title="Clasificacion">
+      <Panel title="Clasificación">
         <ol className="space-y-2">
           {state.karts.map((kart) => {
             const player = room?.players.find((entry) => entry.id === kart.playerId);

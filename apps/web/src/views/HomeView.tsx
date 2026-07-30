@@ -201,7 +201,7 @@ export default function HomeView() {
                   {id === 'golf'
                     ? '10 hoyos originales'
                     : id === 'quiz'
-                      ? 'Bonus por rapidez'
+                      ? 'Bonificación por rapidez'
                       : id === 'darts'
                         ? '301 · triples · bust'
                         : 'Física autoritativa'}

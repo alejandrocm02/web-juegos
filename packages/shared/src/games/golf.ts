@@ -101,7 +101,7 @@ export interface GolfRespawnZone {
 }
 
 export type GolfDifficulty =
-  'Facil' | 'Facil-media' | 'Media' | 'Media-alta' | 'Dificil' | 'Muy dificil' | 'Experto';
+  'Fácil' | 'Fácil-media' | 'Media' | 'Media-alta' | 'Difícil' | 'Muy difícil' | 'Experto';
 
 export interface GolfLevel {
   id: number;

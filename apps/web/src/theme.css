@@ -1144,6 +1144,53 @@
   text-align: right;
 }
 
+/* Minigolf */
+.golf-course-badge {
+  position: absolute;
+  z-index: 3;
+  top: 1rem;
+  left: 1rem;
+  display: grid;
+  gap: 0.08rem;
+  min-width: 9rem;
+  padding: 0.62rem 0.78rem;
+  border: 1px solid rgba(134, 239, 172, 0.26);
+  border-radius: 0.8rem;
+  background: rgba(4, 10, 16, 0.78);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  backdrop-filter: blur(12px);
+}
+
+.golf-course-badge span {
+  color: #86efac;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.golf-course-badge strong {
+  color: #f8fafc;
+  font-size: 0.72rem;
+}
+
+@media (max-width: 640px) {
+  .golf-course-badge {
+    top: 0.65rem;
+    left: 0.65rem;
+    min-width: 0;
+    padding: 0.45rem 0.58rem;
+  }
+
+  .golf-course-badge strong {
+    max-width: 9rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 @media (max-width: 640px) {
   .pool-console {
     align-items: flex-start;

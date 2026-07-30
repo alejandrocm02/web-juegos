@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GOLF, type GolfBallState, type GolfSnapshot } from '@arcade/shared';
-import { canShootBall, pickLiveBall } from '../src/games/golf-input.js';
+import { canShootBall, pickLiveBall, shotFromGesture } from '../src/games/golf-input.js';
 
 function ball(patch: Partial<GolfBallState> = {}): GolfBallState {
   return {
@@ -71,5 +71,21 @@ describe('eleccion de la bola mas reciente', () => {
     const mine = ball({ playerId: 'a', x: 10 });
     const other = ball({ playerId: 'b', x: 900 });
     expect(pickLiveBall(snapshot([other, mine]), [], 'a')?.x).toBe(10);
+  });
+});
+
+describe('gesto de golpe', () => {
+  it('conserva la posicion capturada al pulsar aunque llegue otro snapshot', () => {
+    const start = ball({ x: 200, y: 180 });
+    const newerButMoving = ball({ x: 260, y: 180, vx: 40 });
+    const shot = shotFromGesture(start, { x: 100, y: 180 }, 170);
+
+    expect(canShootBall(newerButMoving)).toBe(false);
+    expect(shot).toEqual({ angle: 0, power: 100 / 170 });
+  });
+
+  it('ignora solo los arrastres demasiado cortos y limita la potencia', () => {
+    expect(shotFromGesture(ball(), { x: 96, y: 100 }, 170)).toBeNull();
+    expect(shotFromGesture(ball(), { x: -500, y: 100 }, 170)?.power).toBe(1);
   });
 });

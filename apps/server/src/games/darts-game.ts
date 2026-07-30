@@ -191,7 +191,7 @@ export class DartsGame implements GameRunner {
     this.history = this.history.slice(0, 20);
     this.phase = 'resolving';
     if (bust) {
-      this.ctx.toast('Bust: se recupera la puntuacion inicial del turno', playerId);
+      this.ctx.toast('Bust: se recupera la puntuación inicial del turno', playerId);
       // Todos ven el bust: es informacion de partida, no solo del que tira.
       this.ctx.broadcastEvent({ kind: 'bust', playerId, atMs: Date.now() });
     }

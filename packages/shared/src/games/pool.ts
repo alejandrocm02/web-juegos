@@ -165,7 +165,7 @@ export function resolveEightBallShot(options: {
     foul: false,
     message:
       ownPotted > 0
-        ? 'Sigues tirando: ' + ownPotted + ' bola(s) de tu grupo'
+        ? 'Sigues tirando: ' + ownPotted + (ownPotted === 1 ? ' bola' : ' bolas') + ' de tu grupo'
         : colored.length > 0
           ? 'Bola del grupo contrario: cambio de turno'
           : 'Sin bolas embocadas: cambio de turno',

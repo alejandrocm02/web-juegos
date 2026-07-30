@@ -101,7 +101,7 @@ export class KartsGame implements GameRunner {
     const lastPlace = active[active.length - 1]!;
     this.world.eliminate(lastPlace.playerId);
     this.lastEliminationMs = this.world.raceMs;
-    this.ctx.toast('Eliminado por ir ultimo', lastPlace.playerId);
+    this.ctx.toast('Eliminado por ir último', lastPlace.playerId);
     this.push();
   }
 

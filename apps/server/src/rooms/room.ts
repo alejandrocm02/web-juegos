@@ -105,6 +105,7 @@ export class Room {
     return {
       code: this.code,
       phase: this.phase,
+      result: this.phase === 'results' ? this.lastResult : null,
       selectedGame: this.selectedGame,
       players: this.publicPlayers(),
       hostId: this.hostId,
@@ -337,6 +338,7 @@ export class Room {
     this.runner?.dispose();
     this.runner = null;
     this.phase = 'lobby';
+    this.lastResult = null;
     this.resetReady();
     this.broadcastRoom();
   }

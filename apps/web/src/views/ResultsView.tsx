@@ -63,7 +63,7 @@ export default function ResultsView() {
               </button>
             ) : (
               <p className="text-sm text-slate-400">
-                Esperando a que el anfitrion vuelva al lobby...
+                Esperando a que el anfitrión vuelva al lobby...
               </p>
             )}
           </div>

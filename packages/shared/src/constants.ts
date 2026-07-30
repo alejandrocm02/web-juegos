@@ -35,7 +35,7 @@ export const GAME_META: Record<GameId, { name: string; tagline: string; accent: 
   karts: { name: 'Karts', tagline: 'Carreras por vueltas y checkpoints', accent: '#60a5fa' },
   arena: {
     name: 'Battle Royale',
-    tagline: 'Ultimo en pie con zona que se cierra',
+    tagline: 'Último en pie con zona que se cierra',
     accent: '#e11d2e',
   },
 };

@@ -160,6 +160,64 @@ describe('reglas de la sala', () => {
     expect(ctx.room.summary().players.every((player) => !player.ready)).toBe(true);
   });
 
+  it('incluye el resultado en el estado de sala para todos los clientes', () => {
+    vi.useFakeTimers();
+    try {
+      const host = ctx.room.addPlayer('Ana', 's1');
+      const guest = ctx.room.addPlayer('Bea', 's2');
+      ctx.room.selectGame('quiz');
+      ctx.room.updateSettings('quiz', {
+        mode: 'clasico',
+        questionCount: 5,
+        secondsPerQuestion: 10,
+        categories: [],
+      });
+      ctx.room.setReady(host.id, true);
+      ctx.room.setReady(guest.id, true);
+      expect(ctx.room.startGame().ok).toBe(true);
+      expect(ctx.room.summary().result).toBeNull();
+
+      vi.advanceTimersByTime(3000);
+      for (let questionIndex = 0; questionIndex < 5; questionIndex += 1) {
+        ctx.room.handleAction(host.id, {
+          type: 'quiz:answer',
+          questionIndex,
+          answerIndex: 0,
+        });
+        ctx.room.handleAction(guest.id, {
+          type: 'quiz:answer',
+          questionIndex,
+          answerIndex: 1,
+        });
+        vi.advanceTimersByTime(300);
+        vi.advanceTimersByTime(4500);
+      }
+
+      const summary = ctx.room.summary();
+      expect(summary.phase).toBe('results');
+      expect(summary.result?.game).toBe('quiz');
+      expect(summary.result?.rows).toHaveLength(2);
+      expect(summary.result?.rows.map((row) => row.playerId)).toEqual(
+        expect.arrayContaining([host.id, guest.id]),
+      );
+
+      // Aunque se perdiera `game:over`, el último `room:state` contiene todo
+      // lo necesario para dibujar la clasificación final.
+      const resultStates = ctx.broadcast.mock.calls
+        .filter(([event]) => event === 'room:state')
+        .map(([, payload]) => payload as ReturnType<typeof ctx.room.summary>)
+        .filter((payload) => payload.phase === 'results');
+      const resultState = resultStates[resultStates.length - 1];
+      expect(resultState?.result).toEqual(summary.result);
+
+      ctx.room.backToLobby();
+      expect(ctx.room.summary().result).toBeNull();
+    } finally {
+      ctx.room.dispose();
+      vi.useRealTimers();
+    }
+  });
+
   it('cancela la partida si quedan menos de dos jugadores', () => {
     const host = ctx.room.addPlayer('Ana', 's1');
     const guest = ctx.room.addPlayer('Bea', 's2');

@@ -110,6 +110,13 @@ export const DEFAULT_SETTINGS: GameSettings = {
 export interface RoomSummary {
   code: string;
   phase: RoomPhase;
+  /**
+   * Resultado incluido en el mismo estado de sala.
+   *
+   * Evita que un cliente quede bloqueado si se reconecta o pierde el evento
+   * puntual `game:over` justo al terminar la partida.
+   */
+  result: MatchResult | null;
   selectedGame: GameId;
   players: PublicPlayer[];
   hostId: string;

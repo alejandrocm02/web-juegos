@@ -168,7 +168,7 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <caption className="sr-only">
-                  Marcas por numero y puntos de cada jugador en el modo cricket
+                  Marcas por número y puntos de cada jugador en el modo cricket
                 </caption>
                 <thead>
                   <tr>
@@ -227,7 +227,7 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
               </table>
             </div>
             <p className="mt-2 text-xs text-slate-400">
-              Tres marcas cierran un numero. Con el numero cerrado y algun rival sin cerrarlo, los
+              Tres marcas cierran un número. Con el número cerrado y algún rival sin cerrarlo, los
               impactos suman puntos.
             </p>
           </Panel>
@@ -235,7 +235,7 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
 
         <Panel title="Historial">
           <ul className="space-y-2 text-xs">
-            {state.history.length === 0 && <li className="text-slate-500">Todavia sin turnos.</li>}
+            {state.history.length === 0 && <li className="text-slate-500">Todavía sin turnos.</li>}
             {state.history.map((entry, index) => {
               const player = room?.players.find((p) => p.id === entry.playerId);
               return (
