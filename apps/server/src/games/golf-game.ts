@@ -1,5 +1,7 @@
 import {
   GOLF_LEVELS,
+  assignTeams,
+  isTeamMode,
   PHYSICS_DT,
   PHYSICS_HZ,
   SNAPSHOT_HZ,
@@ -8,6 +10,7 @@ import {
   type GolfHoleResult,
   type GolfPublicState,
   type GolfSettings,
+  type TeamId,
 } from '@arcade/shared';
 import { GolfWorld } from '@arcade/game-engine';
 import type { GameContext, GameRunner } from '../rooms/types.js';
@@ -30,7 +33,29 @@ export class GolfGame implements GameRunner {
   private totalTime = new Map<string, number>();
   private aces = new Map<string, number>();
   private holeResults: GolfHoleResult[] = [];
+  private teams: Record<string, TeamId> = {};
   private feed: GolfFeedEvent[] = [];
+
+  /**
+   * Ajustes efectivos del modo elegido.
+   * - menos-golpes: recorrido corto con la mitad de golpes permitidos.
+   * - contrarreloj: menos tiempo por hoyo.
+   */
+  private get effective(): GolfSettings {
+    if (this.settings.mode === 'menos-golpes') {
+      const halved = Math.max(4, Math.round(this.settings.maxStrokes / 2));
+      return { ...this.settings, maxStrokes: halved as GolfSettings['maxStrokes'] };
+    }
+    if (this.settings.mode === 'contrarreloj') {
+      return { ...this.settings, holeTimeLimitSeconds: 60 };
+    }
+    return this.settings;
+  }
+
+  /** Numero de hoyos del recorrido segun el modo. */
+  private get levelCount(): number {
+    return this.settings.mode === 'menos-golpes' ? 5 : GOLF_LEVELS.length;
+  }
 
   constructor(
     private readonly ctx: GameContext,
@@ -44,6 +69,9 @@ export class GolfGame implements GameRunner {
   }
 
   start(): void {
+    if (isTeamMode('golf', this.settings.mode)) {
+      this.teams = assignTeams(this.ctx.players().map((player) => player.id));
+    }
     for (const player of this.ctx.players()) {
       this.totals.set(player.id, 0);
       this.totalTime.set(player.id, 0);
@@ -59,10 +87,10 @@ export class GolfGame implements GameRunner {
     this.feed = [];
     this.world = new GolfWorld(
       GOLF_LEVELS[index]!,
-      this.settings,
+      this.effective,
       this.ctx.players().map((p) => p.id),
     );
-    this.deadline = Date.now() + this.settings.holeTimeLimitSeconds * 1000;
+    this.deadline = Date.now() + this.effective.holeTimeLimitSeconds * 1000;
     this.push();
     this.startLoop();
   }
@@ -127,7 +155,7 @@ export class GolfGame implements GameRunner {
 
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => {
-      if (this.levelIndex + 1 >= GOLF_LEVELS.length) this.finish();
+      if (this.levelIndex + 1 >= this.levelCount) this.finish();
       else this.beginLevel(this.levelIndex + 1);
     }, SCOREBOARD_MS);
   }
@@ -196,9 +224,11 @@ export class GolfGame implements GameRunner {
     return {
       game: 'golf',
       phase: this.phase,
-      settings: this.settings,
+      settings: this.effective,
+      mode: this.settings.mode,
+      teams: this.teams,
       levelIndex: this.levelIndex,
-      totalLevels: GOLF_LEVELS.length,
+      totalLevels: this.levelCount,
       level: GOLF_LEVELS[this.levelIndex]!,
       balls: snapshot.balls,
       lastSequences,

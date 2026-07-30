@@ -74,3 +74,49 @@ test('el minigolf arranca con 10 niveles y muestra el HUD', async ({ browser }) 
   await hostContext.close();
   await guestContext.close();
 });
+
+test('navegacion principal: seleccionar modo, entrar en partida y volver al lobby', async ({
+  browser,
+}) => {
+  const hostContext = await browser.newContext();
+  const guestContext = await browser.newContext();
+  const host = await hostContext.newPage();
+  const guest = await guestContext.newPage();
+
+  await enterName(host, 'Anfitrion');
+  await host.getByRole('button', { name: 'Crear sala privada' }).click();
+  const code = (await host.locator('h1.font-display').first().textContent())!.trim();
+
+  await enterName(guest, 'Invitada');
+  await guest.getByRole('button', { name: 'Unirse' }).click();
+  await guest.getByLabel('Codigo de sala').fill(code);
+  await guest.getByRole('button', { name: 'Entrar en la sala' }).click();
+  await expect(host.getByText('Invitada')).toBeVisible();
+
+  // El selector de modo esta disponible para el anfitrion.
+  await host.getByRole('button', { name: 'Bolos', exact: true }).click();
+  await expect(host.getByRole('button', { name: 'Corta', exact: true })).toBeVisible();
+  await host.getByRole('button', { name: 'Corta', exact: true }).click();
+
+  await host.getByRole('button', { name: 'Estoy listo' }).click();
+  await guest.getByRole('button', { name: 'Estoy listo' }).click();
+  await host.getByRole('button', { name: /Iniciar Bolos/ }).click();
+
+  // Dentro de la partida aparece la barra con la salida.
+  await expect(host.getByRole('button', { name: 'Volver al lobby' })).toBeVisible({
+    timeout: 20_000,
+  });
+  await expect(guest.getByRole('button', { name: 'Abandonar' })).toBeVisible();
+
+  // Volver pide confirmacion porque afecta a los demas jugadores.
+  await host.getByRole('button', { name: 'Volver al lobby' }).click();
+  await expect(host.getByRole('alertdialog')).toBeVisible();
+  await host.getByRole('button', { name: 'Terminar y volver' }).click();
+
+  // Y se regresa al lobby real de la sala, no al historial del navegador.
+  await expect(host.getByText('Elige el juego')).toBeVisible({ timeout: 15_000 });
+  await expect(guest.getByText('Elige el juego')).toBeVisible({ timeout: 15_000 });
+
+  await hostContext.close();
+  await guestContext.close();
+});

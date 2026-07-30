@@ -7,7 +7,9 @@ import QuizView from './games/QuizView.js';
 import DartsView from './games/DartsView.js';
 import PoolView from './games/PoolView.js';
 import GolfView from './games/GolfView.js';
+import BowlingView from './games/BowlingView.js';
 import { Toasts } from './components/ui.js';
+import { GameExitBar } from './components/GameExitBar.js';
 import { DisconnectedOverlay, EmptyState } from './views/StatusViews.js';
 
 export default function App() {
@@ -18,12 +20,14 @@ export default function App() {
   }, [room]);
 
   let content: JSX.Element;
+  let inGame = false;
 
   if (!session || !room) {
     content = <HomeView />;
   } else if (room.phase === 'results' && result) {
     content = <ResultsView />;
   } else if (room.phase === 'playing' && gameState) {
+    inGame = true;
     switch (gameState.game) {
       case 'quiz':
         content = <QuizView state={gameState} />;
@@ -36,6 +40,9 @@ export default function App() {
         break;
       case 'golf':
         content = <GolfView state={gameState} />;
+        break;
+      case 'bowling':
+        content = <BowlingView state={gameState} />;
         break;
       default:
         content = <EmptyState title="Juego desconocido" description="Vuelve al lobby." />;
@@ -54,6 +61,7 @@ export default function App() {
   return (
     <>
       <DisconnectedOverlay visible={!connected} />
+      {inGame && <GameExitBar />}
       {content}
       <Toasts toasts={toasts} />
     </>

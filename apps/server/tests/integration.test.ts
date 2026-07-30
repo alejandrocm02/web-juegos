@@ -101,7 +101,7 @@ describe('flujo multijugador por sockets', () => {
     host.emit(CLIENT_EVENTS.selectGame, { game: 'quiz' });
     host.emit(CLIENT_EVENTS.updateSettings, {
       game: 'quiz',
-      settings: { questionCount: 5, secondsPerQuestion: 5, categories: [] },
+      settings: { mode: 'clasico', questionCount: 5, secondsPerQuestion: 5, categories: [] },
     });
     await once<RoomSummary>(
       guest,

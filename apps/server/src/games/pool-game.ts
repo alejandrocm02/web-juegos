@@ -2,15 +2,20 @@ import {
   PHYSICS_DT,
   PHYSICS_HZ,
   SNAPSHOT_HZ,
+  assignTeams,
+  isTeamMode,
   type GameAction,
   type PoolPublicState,
   type PoolSettings,
+  type TeamId,
 } from '@arcade/shared';
 import { PoolWorld } from '@arcade/game-engine';
 import type { GameContext, GameRunner } from '../rooms/types.js';
 import { rankPlayers, winnersFrom } from './scoring.js';
 
 const SHOT_TIMEOUT_MS = 45000;
+/** Puntos que cierran la partida en el modo rapido. */
+const QUICK_TARGET = 3;
 const MAX_SIM_MS = 25000;
 
 export class PoolGame implements GameRunner {
@@ -27,10 +32,11 @@ export class PoolGame implements GameRunner {
   private simElapsed = 0;
   private snapshotAccumulator = 0;
   private shotPlayerId: string | null = null;
+  private teams: Record<string, TeamId> = {};
 
   constructor(
     private readonly ctx: GameContext,
-    settings: PoolSettings,
+    private readonly settings: PoolSettings,
   ) {
     this.world = new PoolWorld(settings.colorBalls, settings.tableFriction);
   }
@@ -38,6 +44,7 @@ export class PoolGame implements GameRunner {
   start(): void {
     this.order = this.ctx.players().map((p) => p.id);
     for (const id of this.order) this.scores.set(id, 0);
+    if (isTeamMode('pool', this.settings.mode)) this.teams = assignTeams(this.order);
     this.beginTurn();
   }
 
@@ -121,6 +128,14 @@ export class PoolGame implements GameRunner {
       this.finish();
       return;
     }
+    // Modo rapido: la partida termina en cuanto alguien alcanza el objetivo.
+    if (this.settings.mode === 'rapido') {
+      const best = Math.max(0, ...[...this.scores.values()]);
+      if (best >= QUICK_TARGET) {
+        this.finish();
+        return;
+      }
+    }
     if (this.order.length === 0) return;
     const shooterIndex = shooter ? this.order.indexOf(shooter) : -1;
     if (shooterIndex >= 0) this.activeIndex = (shooterIndex + 1) % this.order.length;
@@ -142,6 +157,7 @@ export class PoolGame implements GameRunner {
       if (index < this.activeIndex) this.activeIndex -= 1;
     }
     this.scores.delete(playerId);
+    delete this.teams[playerId];
     if (this.order.length === 0) return;
     this.activeIndex %= this.order.length;
     if (wasActive && this.phase === 'aiming') this.beginTurn();
@@ -159,6 +175,8 @@ export class PoolGame implements GameRunner {
     return {
       game: 'pool',
       phase: this.phase,
+      mode: this.settings.mode,
+      teams: this.teams,
       order: this.order,
       activePlayerId: this.activePlayerId,
       scores,
@@ -177,13 +195,18 @@ export class PoolGame implements GameRunner {
     this.phase = 'finished';
     this.stopLoop();
     if (this.turnTimer) clearTimeout(this.turnTimer);
+    const teamMode = isTeamMode('pool', this.settings.mode);
     const rows = rankPlayers(
       this.ctx.players(),
-      this.ctx.players().map((p) => ({
-        playerId: p.id,
-        score: this.scores.get(p.id) ?? 0,
-        detail: (this.scores.get(p.id) ?? 0) + ' puntos',
-      })),
+      this.ctx.players().map((player) => {
+        const own = this.scores.get(player.id) ?? 0;
+        const team = this.teams[player.id];
+        return {
+          playerId: player.id,
+          score: teamMode && team ? this.teamTotal(team) : own,
+          detail: teamMode && team ? 'Equipo ' + team : own + ' puntos',
+        };
+      }),
     );
     this.push();
     this.ctx.finish({
@@ -192,6 +215,12 @@ export class PoolGame implements GameRunner {
       winnerIds: winnersFrom(rows),
       finishedAt: Date.now(),
     });
+  }
+
+  private teamTotal(team: TeamId): number {
+    return this.order
+      .filter((id) => this.teams[id] === team)
+      .reduce((sum, id) => sum + (this.scores.get(id) ?? 0), 0);
   }
 
   dispose(): void {

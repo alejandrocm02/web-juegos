@@ -1,18 +1,22 @@
 import {
   DARTS_PER_TURN,
   DART_SPREAD,
+  assignTeams,
   clamp,
+  isTeamMode,
   resolveDartHit,
   type DartThrow,
   type DartsPublicState,
   type DartsSettings,
   type DartsTurnHistoryEntry,
   type GameAction,
+  type TeamId,
 } from '@arcade/shared';
 import type { GameContext, GameRunner } from '../rooms/types.js';
 import { rankPlayers, winnersFrom } from './scoring.js';
 
 const THROW_TIMEOUT_MS = 30000;
+const FREE_SCORING_TURNS = 8;
 const RESOLVE_MS = 1400;
 
 export class DartsGame implements GameRunner {
@@ -29,15 +33,33 @@ export class DartsGame implements GameRunner {
   private lastBust = false;
   private timer: NodeJS.Timeout | null = null;
   private winnerId: string | null = null;
+  private teams: Record<string, TeamId> = {};
+  /** Turnos jugados por cada jugador, para cerrar el modo de puntuacion libre. */
+  private turnsPlayed = new Map<string, number>();
 
   constructor(
     private readonly ctx: GameContext,
     private readonly settings: DartsSettings,
   ) {}
 
+  /** Puntuacion inicial segun el modo. En libre se acumulan puntos desde cero. */
+  private get startScore(): number {
+    if (this.settings.mode === '501') return 501;
+    if (this.settings.mode === 'libre') return 0;
+    return 301;
+  }
+
+  private get isFreeScoring(): boolean {
+    return this.settings.mode === 'libre';
+  }
+
   start(): void {
     this.order = this.ctx.players().map((p) => p.id);
-    for (const id of this.order) this.scores.set(id, this.settings.startScore);
+    for (const id of this.order) {
+      this.scores.set(id, this.startScore);
+      this.turnsPlayed.set(id, 0);
+    }
+    if (isTeamMode('darts', this.settings.mode)) this.teams = assignTeams(this.order);
     this.activeIndex = 0;
     this.beginTurn();
   }
@@ -50,7 +72,7 @@ export class DartsGame implements GameRunner {
     this.throwsLeft = DARTS_PER_TURN;
     this.currentThrows = [];
     this.lastBust = false;
-    this.turnStartScore = this.scores.get(this.activePlayerId) ?? this.settings.startScore;
+    this.turnStartScore = this.scores.get(this.activePlayerId) ?? this.startScore;
     this.phase = 'aiming';
     this.armTimeout();
     this.push();
@@ -90,9 +112,21 @@ export class DartsGame implements GameRunner {
     this.currentThrows.push(hit);
     this.throwsLeft -= 1;
 
-    const before = this.scores.get(playerId) ?? this.settings.startScore;
-    const after = before - hit.points;
+    const before = this.scores.get(playerId) ?? this.startScore;
 
+    if (this.isFreeScoring) {
+      // Puntuacion libre: se suma sin objetivo que cerrar ni bust.
+      this.scores.set(playerId, before + hit.points);
+      if (this.throwsLeft <= 0) {
+        this.endTurn(playerId, false);
+        return;
+      }
+      this.armTimeout();
+      this.push();
+      return;
+    }
+
+    const after = before - hit.points;
     if (after < 0) {
       this.endTurn(playerId, true);
       return;
@@ -124,12 +158,22 @@ export class DartsGame implements GameRunner {
     this.history = this.history.slice(0, 20);
     this.phase = 'resolving';
     if (bust) this.ctx.toast('Bust: se recupera la puntuacion inicial del turno', playerId);
+    this.turnsPlayed.set(playerId, (this.turnsPlayed.get(playerId) ?? 0) + 1);
     this.push();
     if (this.timer) clearTimeout(this.timer);
     this.timer = setTimeout(() => {
+      if (this.isFreeScoring && this.freeScoringOver()) {
+        this.finish();
+        return;
+      }
       this.advancePlayer();
       this.beginTurn();
     }, RESOLVE_MS);
+  }
+
+  /** El modo libre dura ocho turnos por jugador. */
+  private freeScoringOver(): boolean {
+    return this.order.every((id) => (this.turnsPlayed.get(id) ?? 0) >= FREE_SCORING_TURNS);
   }
 
   private advancePlayer(): void {
@@ -161,6 +205,8 @@ export class DartsGame implements GameRunner {
     return {
       game: 'darts',
       phase: this.phase,
+      mode: this.settings.mode,
+      teams: this.teams,
       order: this.order,
       activePlayerId: this.activePlayerId,
       scores,
@@ -180,14 +226,20 @@ export class DartsGame implements GameRunner {
   private finish(): void {
     this.phase = 'finished';
     if (this.timer) clearTimeout(this.timer);
+    const teamMode = isTeamMode('darts', this.settings.mode);
     const rows = rankPlayers(
       this.ctx.players(),
-      this.ctx.players().map((p) => ({
-        playerId: p.id,
-        score: this.scores.get(p.id) ?? this.settings.startScore,
-        detail: p.id === this.winnerId ? 'Cierre exacto' : undefined,
-      })),
-      { lowerIsBetter: true },
+      this.ctx.players().map((player) => {
+        const own = this.scores.get(player.id) ?? this.startScore;
+        const team = this.teams[player.id];
+        const score = teamMode && team ? this.teamTotal(team) : own;
+        return {
+          playerId: player.id,
+          score,
+          detail: player.id === this.winnerId ? 'Cierre exacto' : undefined,
+        };
+      }),
+      { lowerIsBetter: !this.isFreeScoring },
     );
     this.push();
     this.ctx.finish({
@@ -196,6 +248,12 @@ export class DartsGame implements GameRunner {
       winnerIds: this.winnerId ? [this.winnerId] : winnersFrom(rows),
       finishedAt: Date.now(),
     });
+  }
+
+  private teamTotal(team: TeamId): number {
+    return this.order
+      .filter((id) => this.teams[id] === team)
+      .reduce((sum, id) => sum + (this.scores.get(id) ?? 0), 0);
   }
 
   dispose(): void {

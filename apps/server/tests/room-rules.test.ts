@@ -123,6 +123,43 @@ describe('reglas de la sala', () => {
     expect(ctx.room.summary().players[0]!.connection).toBe('disconnected');
   });
 
+  it('abandonar durante una partida libera la plaza sin dejar jugadores fantasma', () => {
+    const host = ctx.room.addPlayer('Ana', 's1');
+    const guest = ctx.room.addPlayer('Bea', 's2');
+    const third = ctx.room.addPlayer('Caro', 's3');
+    for (const player of [host, guest, third]) ctx.room.setReady(player.id, true);
+    ctx.room.selectGame('bowling');
+    for (const player of [host, guest, third]) ctx.room.setReady(player.id, true);
+    ctx.room.startGame();
+    expect(ctx.room.currentPhase).toBe('playing');
+
+    // El invitado usa el boton de retroceso: sale de la sala en plena partida.
+    ctx.room.removePlayer(guest.id);
+    expect(ctx.room.playerCount).toBe(2);
+    expect(ctx.room.getPlayer(guest.id)).toBeUndefined();
+    expect(ctx.room.summary().players.map((player) => player.id)).toEqual([host.id, third.id]);
+    // La partida continua porque siguen quedando jugadores suficientes.
+    expect(ctx.room.currentPhase).toBe('playing');
+    ctx.room.dispose();
+  });
+
+  it('el anfitrion puede volver al lobby y la partida se cierra para todos', () => {
+    const host = ctx.room.addPlayer('Ana', 's1');
+    const guest = ctx.room.addPlayer('Bea', 's2');
+    ctx.room.selectGame('quiz');
+    // Seleccionar juego reinicia el estado de preparacion: hay que marcarlo despues.
+    ctx.room.setReady(host.id, true);
+    ctx.room.setReady(guest.id, true);
+    ctx.room.startGame();
+    expect(ctx.room.currentPhase).toBe('playing');
+
+    ctx.room.backToLobby();
+    expect(ctx.room.currentPhase).toBe('lobby');
+    expect(ctx.room.currentGameState()).toBeNull();
+    // Al volver al lobby nadie queda marcado como listo.
+    expect(ctx.room.summary().players.every((player) => !player.ready)).toBe(true);
+  });
+
   it('cancela la partida si quedan menos de dos jugadores', () => {
     const host = ctx.room.addPlayer('Ana', 's1');
     const guest = ctx.room.addPlayer('Bea', 's2');
