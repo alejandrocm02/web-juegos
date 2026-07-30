@@ -49,9 +49,20 @@ function makeContext(players: RoomPlayer[] = roster) {
 const last = <T extends GamePublicState>(states: GamePublicState[]) => states.at(-1) as T;
 
 describe('catalogo de modos', () => {
-  it('cada juego declara al menos tres modos con identificadores unicos', () => {
+  it('cada juego declara sus modos con identificadores unicos', () => {
+    // Minimos por juego segun lo pedido: la arena solo tiene individual y
+    // equipos, el resto llegan a tres o mas.
+    const minimums: Record<string, number> = {
+      quiz: 4,
+      darts: 3,
+      pool: 3,
+      golf: 3,
+      bowling: 3,
+      karts: 3,
+      arena: 2,
+    };
     for (const [game, modes] of Object.entries(GAME_MODE_CATALOG)) {
-      expect(modes.length, game).toBeGreaterThanOrEqual(3);
+      expect(modes.length, game).toBeGreaterThanOrEqual(minimums[game] ?? 2);
       expect(new Set(modes.map((mode) => mode.id)).size, game).toBe(modes.length);
       for (const mode of modes) {
         expect(mode.name.length, game + '/' + mode.id).toBeGreaterThan(2);

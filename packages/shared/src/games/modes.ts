@@ -13,6 +13,7 @@ export const POOL_MODES = ['clasico', 'rapido', 'equipos'] as const;
 export const GOLF_MODES = ['clasico', 'menos-golpes', 'contrarreloj'] as const;
 export const BOWLING_MODES = ['individual', 'corta', 'equipos'] as const;
 export const KARTS_MODES = ['rapida', 'contrarreloj', 'eliminatoria'] as const;
+export const ARENA_MODES = ['individual', 'equipos'] as const;
 
 export type QuizMode = (typeof QUIZ_MODES)[number];
 export type DartsMode = (typeof DARTS_MODES)[number];
@@ -20,6 +21,7 @@ export type PoolMode = (typeof POOL_MODES)[number];
 export type GolfMode = (typeof GOLF_MODES)[number];
 export type BowlingMode = (typeof BOWLING_MODES)[number];
 export type KartsMode = (typeof KARTS_MODES)[number];
+export type ArenaMode = (typeof ARENA_MODES)[number];
 
 export interface GameModeInfo {
   id: string;
@@ -166,6 +168,21 @@ export const GAME_MODE_CATALOG: Record<GameId, GameModeInfo[]> = {
       name: 'Eliminatoria',
       summary: 'Cada 25 s cae el ultimo',
       rule: 'Cada 25 segundos queda eliminado quien va ultimo. Gana el ultimo kart en pista.',
+    },
+  ],
+  arena: [
+    {
+      id: 'individual',
+      name: 'Individual',
+      summary: 'Todos contra todos, gana el ultimo en pie',
+      rule: 'La zona segura se cierra y hace dano fuera. Gana quien sobreviva; el orden lo marca quien cae antes.',
+    },
+    {
+      id: 'equipos',
+      name: 'Equipos',
+      summary: 'Rojo contra azul, sin fuego amigo',
+      rule: 'Los companeros no pueden danarse. Gana el equipo que conserve algun jugador vivo.',
+      teams: true,
     },
   ],
 };

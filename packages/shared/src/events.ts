@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { GAME_IDS, MAX_PLAYERS, NAME_MAX_LENGTH, NAME_MIN_LENGTH } from './constants.js';
 import { QUIZ_CATEGORIES } from './games/quiz.js';
 import {
+  ARENA_MODES,
   BOWLING_MODES,
   DARTS_MODES,
   GOLF_MODES,
@@ -78,6 +79,12 @@ export const kartsSettingsSchema = z.object({
   laps: z.union([z.literal(2), z.literal(3), z.literal(5)]),
 });
 
+export const arenaSettingsSchema = z.object({
+  mode: z.enum(ARENA_MODES),
+  zonePace: z.enum(['lenta', 'normal', 'rapida']),
+  pickups: z.boolean(),
+});
+
 export const settingsPatchSchema = z.discriminatedUnion('game', [
   z.object({ game: z.literal('quiz'), settings: quizSettingsSchema }),
   z.object({ game: z.literal('darts'), settings: dartsSettingsSchema }),
@@ -85,6 +92,7 @@ export const settingsPatchSchema = z.discriminatedUnion('game', [
   z.object({ game: z.literal('golf'), settings: golfSettingsSchema }),
   z.object({ game: z.literal('bowling'), settings: bowlingSettingsSchema }),
   z.object({ game: z.literal('karts'), settings: kartsSettingsSchema }),
+  z.object({ game: z.literal('arena'), settings: arenaSettingsSchema }),
 ]);
 
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
@@ -152,6 +160,22 @@ export const kartsInputSchema = z.object({
   braking: z.boolean(),
 });
 
+/**
+ * Intencion de movimiento y ataque en la arena.
+ * Como en karts, el cliente solo la envia cuando cambia. El servidor decide si
+ * la posicion resultante es valida y cuanto dano se aplica.
+ */
+export const arenaInputSchema = z.object({
+  type: z.literal('arena:input'),
+  moveX: z.number().min(-1).max(1),
+  moveY: z.number().min(-1).max(1),
+  facing: z
+    .number()
+    .min(-Math.PI * 2)
+    .max(Math.PI * 2),
+  attack: z.boolean(),
+});
+
 export const golfResetSchema = z.object({ type: z.literal('golf:reset') });
 export const golfSyncSchema = z.object({ type: z.literal('golf:sync') });
 
@@ -159,6 +183,7 @@ export const gameActionSchema = z.discriminatedUnion('type', [
   quizAnswerSchema,
   bowlingRollSchema,
   kartsInputSchema,
+  arenaInputSchema,
   dartsThrowSchema,
   poolShootSchema,
   golfShootSchema,
