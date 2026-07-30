@@ -1,7 +1,14 @@
 import { z } from 'zod';
 import { GAME_IDS, MAX_PLAYERS, NAME_MAX_LENGTH, NAME_MIN_LENGTH } from './constants.js';
 import { QUIZ_CATEGORIES } from './games/quiz.js';
-import { BOWLING_MODES, DARTS_MODES, GOLF_MODES, POOL_MODES, QUIZ_MODES } from './games/modes.js';
+import {
+  BOWLING_MODES,
+  DARTS_MODES,
+  GOLF_MODES,
+  KARTS_MODES,
+  POOL_MODES,
+  QUIZ_MODES,
+} from './games/modes.js';
 import { sanitizeName } from './util.js';
 
 /* -------------------------------------------------------------------------- */
@@ -65,12 +72,19 @@ export const bowlingSettingsSchema = z.object({
   precision: z.enum(['facil', 'normal', 'dificil']),
 });
 
+export const kartsSettingsSchema = z.object({
+  mode: z.enum(KARTS_MODES),
+  track: z.string().min(2).max(24),
+  laps: z.union([z.literal(2), z.literal(3), z.literal(5)]),
+});
+
 export const settingsPatchSchema = z.discriminatedUnion('game', [
   z.object({ game: z.literal('quiz'), settings: quizSettingsSchema }),
   z.object({ game: z.literal('darts'), settings: dartsSettingsSchema }),
   z.object({ game: z.literal('pool'), settings: poolSettingsSchema }),
   z.object({ game: z.literal('golf'), settings: golfSettingsSchema }),
   z.object({ game: z.literal('bowling'), settings: bowlingSettingsSchema }),
+  z.object({ game: z.literal('karts'), settings: kartsSettingsSchema }),
 ]);
 
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
@@ -126,12 +140,25 @@ export const bowlingRollSchema = z.object({
   spin: z.number().min(-1).max(1),
 });
 
+/**
+ * Entrada de conduccion.
+ * El cliente solo la envia cuando cambia (tecla pulsada o soltada), no en cada
+ * fotograma: asi la carrera cabe de sobra en el limite de mensajes por socket.
+ */
+export const kartsInputSchema = z.object({
+  type: z.literal('karts:input'),
+  throttle: z.number().min(-1).max(1),
+  steer: z.number().min(-1).max(1),
+  braking: z.boolean(),
+});
+
 export const golfResetSchema = z.object({ type: z.literal('golf:reset') });
 export const golfSyncSchema = z.object({ type: z.literal('golf:sync') });
 
 export const gameActionSchema = z.discriminatedUnion('type', [
   quizAnswerSchema,
   bowlingRollSchema,
+  kartsInputSchema,
   dartsThrowSchema,
   poolShootSchema,
   golfShootSchema,

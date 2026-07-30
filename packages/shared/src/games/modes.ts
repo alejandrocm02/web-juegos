@@ -12,12 +12,14 @@ export const DARTS_MODES = ['301', '501', 'libre', 'cricket'] as const;
 export const POOL_MODES = ['clasico', 'rapido', 'equipos'] as const;
 export const GOLF_MODES = ['clasico', 'menos-golpes', 'contrarreloj'] as const;
 export const BOWLING_MODES = ['individual', 'corta', 'equipos'] as const;
+export const KARTS_MODES = ['rapida', 'contrarreloj', 'eliminatoria'] as const;
 
 export type QuizMode = (typeof QUIZ_MODES)[number];
 export type DartsMode = (typeof DARTS_MODES)[number];
 export type PoolMode = (typeof POOL_MODES)[number];
 export type GolfMode = (typeof GOLF_MODES)[number];
 export type BowlingMode = (typeof BOWLING_MODES)[number];
+export type KartsMode = (typeof KARTS_MODES)[number];
 
 export interface GameModeInfo {
   id: string;
@@ -144,6 +146,26 @@ export const GAME_MODE_CATALOG: Record<GameId, GameModeInfo[]> = {
       summary: 'Rojo contra azul',
       rule: 'Se suman los frames de cada equipo. Gana el equipo con mas bolos derribados.',
       teams: true,
+    },
+  ],
+  karts: [
+    {
+      id: 'rapida',
+      name: 'Carrera rapida',
+      summary: 'Tres vueltas, gana quien cruce primero',
+      rule: 'Clasificacion por orden de llegada. Quien no termina se ordena por progreso.',
+    },
+    {
+      id: 'contrarreloj',
+      name: 'Contrarreloj',
+      summary: 'Gana la mejor vuelta, no la posicion',
+      rule: 'Se corren tres vueltas y gana quien registre la vuelta mas rapida.',
+    },
+    {
+      id: 'eliminatoria',
+      name: 'Eliminatoria',
+      summary: 'Cada 25 s cae el ultimo',
+      rule: 'Cada 25 segundos queda eliminado quien va ultimo. Gana el ultimo kart en pista.',
     },
   ],
 };

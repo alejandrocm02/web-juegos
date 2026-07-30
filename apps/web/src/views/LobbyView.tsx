@@ -5,7 +5,9 @@ import {
   MIN_PLAYERS,
   QUIZ_CATEGORIES,
   type GameId,
+  KART_TRACKS,
   type BowlingSettings,
+  type KartsSettings,
   type GolfSettings,
 } from '@arcade/shared';
 import { useState } from 'react';
@@ -491,6 +493,32 @@ function GameSettingsForm({
               { label: 'Rapida', value: 'rapida' as const },
             ]}
             onChange={(tableFriction) => onChange('pool', { ...pool, tableFriction })}
+          />
+        </Field>
+      </div>
+    );
+  }
+
+  if (game === 'karts') {
+    const karts: KartsSettings = settings.karts;
+    const track = KART_TRACKS.find((entry) => entry.id === karts.track);
+    return (
+      <div className="space-y-4">
+        <Field label="Circuito">
+          <Segmented
+            disabled={disabled}
+            value={karts.track}
+            options={KART_TRACKS.map((entry) => ({ label: entry.name, value: entry.id }))}
+            onChange={(value) => onChange('karts', { ...karts, track: value })}
+          />
+          {track && <p className="mt-2 text-xs text-slate-400">{track.description}</p>}
+        </Field>
+        <Field label="Vueltas">
+          <Segmented
+            disabled={disabled}
+            value={karts.laps}
+            options={[2, 3, 5].map((n) => ({ label: String(n), value: n as 2 | 3 | 5 }))}
+            onChange={(laps) => onChange('karts', { ...karts, laps })}
           />
         </Field>
       </div>

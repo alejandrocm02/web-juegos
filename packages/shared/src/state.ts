@@ -5,6 +5,7 @@ import type { PublicQuizQuestion, QuizAnswerBreakdown } from './games/quiz.js';
 import type { PoolBallState } from './games/pool.js';
 import type { GolfBallState, GolfFeedEvent, GolfHoleResult, GolfLevel } from './games/golf.js';
 import type { BowlingBallState, BowlingPinState, BowlingScorecard } from './games/bowling.js';
+import type { KartState, KartTrack } from './games/karts.js';
 import type { TeamId } from './games/modes.js';
 
 /* --------------------------------- Quiz ---------------------------------- */
@@ -116,8 +117,33 @@ export interface BowlingPublicState {
   deadline: number;
 }
 
+/* --------------------------------- Karts --------------------------------- */
+
+export type KartsPhase = 'countdown' | 'racing' | 'finished';
+
+export interface KartsPublicState {
+  game: 'karts';
+  phase: KartsPhase;
+  mode: string;
+  track: KartTrack;
+  totalLaps: number;
+  karts: KartState[];
+  /** Milisegundos que faltan para la salida durante la cuenta atras. */
+  countdownMs: number;
+  raceMs: number;
+  /** Momento de la proxima eliminacion en el modo eliminatoria, o null. */
+  nextEliminationMs: number | null;
+  teams: Record<string, TeamId>;
+  deadline: number;
+}
+
 export type GamePublicState =
-  QuizPublicState | DartsPublicState | PoolPublicState | GolfPublicState | BowlingPublicState;
+  | QuizPublicState
+  | DartsPublicState
+  | PoolPublicState
+  | GolfPublicState
+  | BowlingPublicState
+  | KartsPublicState;
 
 export interface GameStartedPayload {
   game: GameId;
