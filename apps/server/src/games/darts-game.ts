@@ -1,14 +1,18 @@
 import {
   DARTS_PER_TURN,
   DART_SPREAD,
+  applyCricketThrow,
   assignTeams,
   clamp,
+  createCricketBoard,
+  cricketWinner,
   isTeamMode,
   resolveDartHit,
   type DartThrow,
   type DartsPublicState,
   type DartsSettings,
   type DartsTurnHistoryEntry,
+  type CricketBoard,
   type GameAction,
   type TeamId,
 } from '@arcade/shared';
@@ -36,6 +40,7 @@ export class DartsGame implements GameRunner {
   private teams: Record<string, TeamId> = {};
   /** Turnos jugados por cada jugador, para cerrar el modo de puntuacion libre. */
   private turnsPlayed = new Map<string, number>();
+  private cricket: CricketBoard | null = null;
 
   constructor(
     private readonly ctx: GameContext,
@@ -53,6 +58,10 @@ export class DartsGame implements GameRunner {
     return this.settings.mode === 'libre';
   }
 
+  private get isCricket(): boolean {
+    return this.settings.mode === 'cricket';
+  }
+
   start(): void {
     this.order = this.ctx.players().map((p) => p.id);
     for (const id of this.order) {
@@ -60,6 +69,7 @@ export class DartsGame implements GameRunner {
       this.turnsPlayed.set(id, 0);
     }
     if (isTeamMode('darts', this.settings.mode)) this.teams = assignTeams(this.order);
+    if (this.isCricket) this.cricket = createCricketBoard(this.order);
     this.activeIndex = 0;
     this.beginTurn();
   }
@@ -112,6 +122,28 @@ export class DartsGame implements GameRunner {
     this.currentThrows.push(hit);
     this.throwsLeft -= 1;
 
+    if (this.isCricket && this.cricket) {
+      const result = applyCricketThrow(this.cricket, playerId, hit);
+      // El marcador visible es el de puntos de cricket.
+      this.scores.set(playerId, this.cricket[playerId]?.score ?? 0);
+      if (result.closed && result.number) {
+        this.ctx.toast('Numero ' + result.number + ' cerrado', playerId);
+      }
+      const winner = cricketWinner(this.cricket);
+      if (winner) {
+        this.winnerId = winner;
+        this.finish();
+        return;
+      }
+      if (this.throwsLeft <= 0) {
+        this.endTurn(playerId, false);
+        return;
+      }
+      this.armTimeout();
+      this.push();
+      return;
+    }
+
     const before = this.scores.get(playerId) ?? this.startScore;
 
     if (this.isFreeScoring) {
@@ -134,6 +166,7 @@ export class DartsGame implements GameRunner {
     this.scores.set(playerId, after);
     if (after === 0) {
       this.winnerId = playerId;
+      this.ctx.broadcastEvent({ kind: 'checkout', playerId, atMs: Date.now() });
       this.finish();
       return;
     }
@@ -157,7 +190,11 @@ export class DartsGame implements GameRunner {
     });
     this.history = this.history.slice(0, 20);
     this.phase = 'resolving';
-    if (bust) this.ctx.toast('Bust: se recupera la puntuacion inicial del turno', playerId);
+    if (bust) {
+      this.ctx.toast('Bust: se recupera la puntuacion inicial del turno', playerId);
+      // Todos ven el bust: es informacion de partida, no solo del que tira.
+      this.ctx.broadcastEvent({ kind: 'bust', playerId, atMs: Date.now() });
+    }
     this.turnsPlayed.set(playerId, (this.turnsPlayed.get(playerId) ?? 0) + 1);
     this.push();
     if (this.timer) clearTimeout(this.timer);
@@ -215,6 +252,7 @@ export class DartsGame implements GameRunner {
       turnStartScore: this.turnStartScore,
       history: this.history,
       lastBust: this.lastBust,
+      cricket: this.cricket,
       deadline: this.deadline,
     };
   }
@@ -239,7 +277,7 @@ export class DartsGame implements GameRunner {
           detail: player.id === this.winnerId ? 'Cierre exacto' : undefined,
         };
       }),
-      { lowerIsBetter: !this.isFreeScoring },
+      { lowerIsBetter: !this.isFreeScoring && !this.isCricket },
     );
     this.push();
     this.ctx.finish({

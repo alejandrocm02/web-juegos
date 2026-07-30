@@ -12,6 +12,7 @@ import KartsView from './games/KartsView.js';
 import ArenaView from './games/ArenaView.js';
 import { Toasts } from './components/ui.js';
 import { GameExitBar } from './components/GameExitBar.js';
+import { GameStage } from './components/GameStage.js';
 import { DisconnectedOverlay, EmptyState } from './views/StatusViews.js';
 
 export default function App() {
@@ -70,7 +71,7 @@ export default function App() {
     <>
       <DisconnectedOverlay visible={!connected} />
       {inGame && <GameExitBar />}
-      {content}
+      {inGame && gameState ? <GameStage state={gameState}>{content}</GameStage> : content}
       <Toasts toasts={toasts} />
     </>
   );

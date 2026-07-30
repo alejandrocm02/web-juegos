@@ -70,3 +70,249 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* ---------------------------------------------------------------------------
+ * Marco de partida (GameStage)
+ * La identidad de cada juego entra por --game-accent, que fija la vista al
+ * montarse. Todo lo demas se deriva de ese token para no repetir colores.
+ * ------------------------------------------------------------------------- */
+
+.game-stage {
+  --game-accent: var(--accent-blue);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: 100%;
+  /* Cada vista de juego aporta su propio contenedor, aqui solo el margen del marco. */
+  padding: 0.9rem 1rem 0;
+}
+
+/* La cabecera se alinea con el ancho maximo que usan los tableros. */
+.stage-head,
+.stage-help,
+.stage-warning {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+}
+
+.stage-body {
+  width: 100%;
+}
+
+/* Halo de identidad: queda detras del contenido y nunca bajo el texto. */
+.game-stage::before {
+  content: '';
+  position: absolute;
+  inset: -6rem -4rem auto -4rem;
+  height: 20rem;
+  background: radial-gradient(60% 60% at 50% 0%, var(--game-accent), transparent 70%);
+  opacity: 0.14;
+  filter: blur(46px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.stage-head,
+.stage-help,
+.stage-warning,
+.stage-body {
+  position: relative;
+  z-index: 1;
+}
+
+/* Las vistas ya traen su propio padding vertical: se recorta el superior. */
+.stage-body > div {
+  padding-top: 0.5rem;
+}
+
+.stage-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.01));
+  box-shadow: var(--shadow-card);
+}
+
+.stage-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.stage-title {
+  display: block;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+.stage-mode {
+  display: inline-block;
+  margin-top: 0.15rem;
+  padding: 0.05rem 0.45rem;
+  border: 1px solid color-mix(in srgb, var(--game-accent) 55%, transparent);
+  border-radius: 999px;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  /* Se aclara el acento para garantizar contraste sobre fondo negro. */
+  color: color-mix(in srgb, var(--game-accent) 45%, #ffffff);
+}
+
+.stage-turn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  margin-inline-start: auto;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+}
+
+.stage-turn.is-mine {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stage-help-toggle {
+  min-height: var(--touch-target);
+  padding: 0 0.9rem;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition:
+    background var(--motion-fast) ease,
+    border-color var(--motion-fast) ease,
+    color var(--motion-fast) ease;
+}
+
+.stage-help-toggle:hover {
+  border-color: color-mix(in srgb, var(--game-accent) 60%, transparent);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.stage-help-toggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--game-accent) 45%, #ffffff);
+  outline-offset: 2px;
+}
+
+.stage-help-toggle:active {
+  transform: translateY(1px);
+}
+
+.stage-help {
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--surface-border);
+  border-radius: var(--radius-lg);
+  /* Fondo plano: la ayuda es texto y no debe llevar degradado detras. */
+  background: var(--surface-raised);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.stage-help-rule {
+  margin: 0 0 0.5rem;
+  color: var(--text-primary);
+}
+
+.stage-help ul {
+  margin: 0;
+  padding-inline-start: 1.1rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.stage-warning {
+  margin: 0;
+  padding: 0.55rem 0.9rem;
+  border: 1px solid color-mix(in srgb, var(--state-warning) 45%, transparent);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--state-warning) 12%, transparent);
+  color: #ffe6a8;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .stage-turn {
+    order: 3;
+    width: 100%;
+    margin-inline-start: 0;
+  }
+
+  .stage-help-toggle {
+    margin-inline-start: auto;
+  }
+}
+
+/* Momento destacado: aparece sobre el tablero y no tapa los controles. */
+.stage-flash {
+  position: fixed;
+  top: 18vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  pointer-events: none;
+}
+
+.stage-flash-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  margin: 0;
+  padding: 0.85rem 1.75rem;
+  border: 1px solid var(--surface-border-strong);
+  border-radius: var(--radius-xl);
+  /* Fondo solido: el texto grande nunca queda sobre un degradado intenso. */
+  background: var(--surface-overlay);
+  box-shadow: var(--shadow-card);
+  animation: stage-flash-in var(--motion-base) ease-out;
+}
+
+.stage-flash-title {
+  font-size: clamp(1.5rem, 4vw, 2.4rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+  text-transform: uppercase;
+}
+
+.stage-flash-detail {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.stage-flash-card.tone-good {
+  border-color: color-mix(in srgb, var(--state-success) 55%, transparent);
+}
+
+.stage-flash-card.tone-bad {
+  border-color: color-mix(in srgb, var(--accent-red) 60%, transparent);
+}
+
+.stage-flash-card.tone-neutral {
+  border-color: color-mix(in srgb, var(--accent-blue) 60%, transparent);
+}
+
+@keyframes stage-flash-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

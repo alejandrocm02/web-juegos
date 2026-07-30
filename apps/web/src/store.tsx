@@ -44,6 +44,8 @@ interface AppStateValue {
   error: AppError | null;
   toasts: Toast[];
   golfEvents: GolfFeedEvent[];
+  /** Ultimo evento de partida sin interpretar, para los momentos destacados. */
+  lastGameEvent: { id: number; payload: unknown } | null;
   snapshotRef: React.MutableRefObject<GolfSnapshot | PoolSnapshot | null>;
   me: RoomSummary['players'][number] | null;
   isHost: boolean;
@@ -72,6 +74,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [error, setError] = useState<AppError | null>(null);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [golfEvents, setGolfEvents] = useState<GolfFeedEvent[]>([]);
+  const [lastGameEvent, setLastGameEvent] = useState<{ id: number; payload: unknown } | null>(null);
+  const eventId = useRef(0);
   const snapshotRef = useRef<GolfSnapshot | PoolSnapshot | null>(null);
   const pendingName = useRef<string>('');
 
@@ -117,6 +121,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     const onGameEvent = (payload: GolfFeedEvent) => {
       setGolfEvents((prev) => [payload, ...prev].slice(0, 8));
+      eventId.current += 1;
+      // El evento se interpreta en la vista, que ya conoce a los jugadores.
+      setLastGameEvent({ id: eventId.current, payload });
     };
     const onOver = (payload: { result: MatchResult }) => setResult(payload.result);
     const onKicked = () => {
@@ -186,6 +193,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       error,
       toasts,
       golfEvents,
+      lastGameEvent,
       snapshotRef,
       me,
       isHost: Boolean(me?.isHost),
@@ -218,7 +226,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       sendAction: (action) => socket.emit(CLIENT_EVENTS.gameAction, action),
       dismissError: () => setError(null),
     }),
-    [connected, session, room, gameState, result, error, toasts, golfEvents, me],
+    [connected, session, room, gameState, result, error, toasts, golfEvents, lastGameEvent, me],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

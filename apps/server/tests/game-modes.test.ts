@@ -51,11 +51,12 @@ const last = <T extends GamePublicState>(states: GamePublicState[]) => states.at
 describe('catalogo de modos', () => {
   it('cada juego declara sus modos con identificadores unicos', () => {
     // Minimos por juego segun lo pedido: la arena solo tiene individual y
-    // equipos, el resto llegan a tres o mas.
+    // equipos, el resto llegan a tres o mas. Dardos incluye cricket y billar
+    // incluye bola 8.
     const minimums: Record<string, number> = {
       quiz: 4,
-      darts: 3,
-      pool: 3,
+      darts: 4,
+      pool: 4,
       golf: 3,
       bowling: 3,
       karts: 3,

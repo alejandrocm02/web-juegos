@@ -9,7 +9,7 @@ import type { GameId } from '../constants.js';
 
 export const QUIZ_MODES = ['clasico', 'rapido', 'eliminacion', 'equipos'] as const;
 export const DARTS_MODES = ['301', '501', 'libre', 'cricket'] as const;
-export const POOL_MODES = ['clasico', 'rapido', 'equipos'] as const;
+export const POOL_MODES = ['clasico', 'bola8', 'rapido', 'equipos'] as const;
 export const GOLF_MODES = ['clasico', 'menos-golpes', 'contrarreloj'] as const;
 export const BOWLING_MODES = ['individual', 'corta', 'equipos'] as const;
 export const KARTS_MODES = ['rapida', 'contrarreloj', 'eliminatoria'] as const;
@@ -94,6 +94,12 @@ export const GAME_MODE_CATALOG: Record<GameId, GameModeInfo[]> = {
       name: 'Clasico',
       summary: 'Hasta vaciar la mesa',
       rule: 'Cada bola de color suma uno, la blanca resta uno. Termina al no quedar bolas.',
+    },
+    {
+      id: 'bola8',
+      name: 'Bola 8',
+      summary: 'Limpia tu grupo y cierra con la negra',
+      rule: 'La mesa esta abierta hasta la primera entrada limpia. Despues cada jugador tiene su grupo (lisas o rayadas) y debe limpiarlo antes de embocar la negra. Meter la negra antes de tiempo pierde la partida.',
     },
     {
       id: 'rapido',

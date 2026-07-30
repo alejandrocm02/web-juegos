@@ -1,5 +1,8 @@
 import {
+  EIGHT_BALL,
   POOL_TABLE,
+  ballsOfGroup,
+  groupOfBall,
   poolPockets,
   type PoolBallState,
   type PoolPublicState,
@@ -20,6 +23,13 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
 
   const isMyTurn = state.activePlayerId === session?.playerId && state.phase === 'aiming';
   const activePlayer = room?.players.find((p) => p.id === state.activePlayerId);
+  const eightBall = state.mode === 'bola8';
+  const myGroup = session ? (state.groups[session.playerId] ?? null) : null;
+  /** Bolas del grupo propio que siguen en la mesa. */
+  const myGroupLeft = myGroup
+    ? state.balls.filter((ball) => !ball.pocketed && ballsOfGroup(myGroup).includes(ball.id)).length
+    : null;
+  const blackOnTable = state.balls.some((ball) => ball.id === EIGHT_BALL.blackId && !ball.pocketed);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 300);
@@ -37,13 +47,13 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
           snapshot && 'balls' in snapshot && Array.isArray(snapshot.balls) && 'settled' in snapshot
             ? (snapshot.balls as PoolBallState[])
             : state.balls;
-        draw(ctx, canvas, balls, dragRef.current, isMyTurn);
+        draw(ctx, canvas, balls, dragRef.current, isMyTurn, eightBall);
       }
       frame = requestAnimationFrame(render);
     };
     frame = requestAnimationFrame(render);
     return () => cancelAnimationFrame(frame);
-  }, [state.balls, snapshotRef, isMyTurn]);
+  }, [state.balls, snapshotRef, isMyTurn, eightBall]);
 
   const pointerToWorld = (event: React.PointerEvent) => {
     const canvas = canvasRef.current;
@@ -127,7 +137,28 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
           />
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-400">
-          <span>Bolas de color restantes: {state.ballsLeft}</span>
+          {eightBall ? (
+            <span className="flex flex-wrap items-center gap-2">
+              {state.tableOpen ? (
+                <span className="chip">Mesa abierta</span>
+              ) : (
+                <span className="chip">
+                  Tu grupo: {myGroup === 'lisas' ? 'Lisas (1-7)' : 'Rayadas (9-15)'}
+                </span>
+              )}
+              {myGroupLeft !== null && (
+                <span>
+                  {myGroupLeft === 0
+                    ? blackOnTable
+                      ? 'Grupo limpio: ve a por la negra'
+                      : 'Negra embocada'
+                    : myGroupLeft + ' bola(s) tuyas en la mesa'}
+                </span>
+              )}
+            </span>
+          ) : (
+            <span>Bolas de color restantes: {state.ballsLeft}</span>
+          )}
           <span className="text-right text-xs">
             {state.lastShotSummary ?? 'Sin golpes todavía'}
           </span>
@@ -142,7 +173,7 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
         )}
       </Panel>
 
-      <Panel title="Puntuacion">
+      <Panel title={eightBall ? 'Grupos' : 'Puntuacion'}>
         <ul className="space-y-2">
           {state.order.map((playerId) => {
             const player = room?.players.find((p) => p.id === playerId);
@@ -161,15 +192,38 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
                   <PlayerIconGlyph icon={player.icon} color={player.color} size={15} />
                   {player.name}
                 </span>
-                <span className="font-display text-lg font-bold tabular-nums">
-                  {state.scores[playerId] ?? 0}
-                </span>
+                {eightBall ? (
+                  <span className="text-right text-xs leading-tight">
+                    <span className="block font-semibold text-white">
+                      {state.groups[playerId]
+                        ? state.groups[playerId] === 'lisas'
+                          ? 'Lisas'
+                          : 'Rayadas'
+                        : 'Sin grupo'}
+                    </span>
+                    <span className="text-slate-400">
+                      {state.groups[playerId]
+                        ? state.balls.filter(
+                            (ball) =>
+                              !ball.pocketed &&
+                              ballsOfGroup(state.groups[playerId]!).includes(ball.id),
+                          ).length + ' restantes'
+                        : 'mesa abierta'}
+                    </span>
+                  </span>
+                ) : (
+                  <span className="font-display text-lg font-bold tabular-nums">
+                    {state.scores[playerId] ?? 0}
+                  </span>
+                )}
               </li>
             );
           })}
         </ul>
         <p className="mt-4 text-xs text-slate-500">
-          Cada bola de color embocada suma 1 punto. Embocar la blanca resta 1 y termina el turno.
+          {eightBall
+            ? 'La mesa esta abierta hasta la primera entrada limpia. Limpia tu grupo y cierra con la negra: meterla antes pierde la partida.'
+            : 'Cada bola de color embocada suma 1 punto. Embocar la blanca resta 1 y termina el turno.'}
         </p>
       </Panel>
     </div>
@@ -182,6 +236,7 @@ function draw(
   balls: PoolBallState[],
   drag: { x: number; y: number } | null,
   isMyTurn: boolean,
+  eightBall: boolean,
 ): void {
   const scale = canvas.width / POOL_TABLE.width;
   ctx.save();
@@ -258,8 +313,9 @@ function draw(
       ball.y,
       POOL_TABLE.ballRadius,
     );
+    const baseColor = eightBall && ball.id === EIGHT_BALL.blackId ? '#1b1d24' : ball.color;
     ballGradient.addColorStop(0, '#ffffff');
-    ballGradient.addColorStop(0.18, ball.color);
+    ballGradient.addColorStop(0.18, baseColor);
     ballGradient.addColorStop(1, ball.id === 0 ? '#aeb7c2' : '#10131a');
     ctx.fillStyle = ballGradient;
     ctx.fill();
@@ -267,6 +323,21 @@ function draw(
     ctx.lineWidth = 0.4;
     ctx.strokeStyle = 'rgba(0,0,0,0.45)';
     ctx.stroke();
+    if (eightBall && groupOfBall(ball.id) === 'rayadas') {
+      // Franja horizontal blanca: distingue rayadas de lisas sin depender del color.
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(ball.x, ball.y, POOL_TABLE.ballRadius, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.fillStyle = 'rgba(255,255,255,0.92)';
+      ctx.fillRect(
+        ball.x - POOL_TABLE.ballRadius,
+        ball.y - POOL_TABLE.ballRadius * 0.34,
+        POOL_TABLE.ballRadius * 2,
+        POOL_TABLE.ballRadius * 0.68,
+      );
+      ctx.restore();
+    }
     if (ball.id !== 0) {
       ctx.fillStyle = 'rgba(255,255,255,0.85)';
       ctx.beginPath();

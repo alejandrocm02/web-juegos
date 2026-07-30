@@ -149,6 +149,11 @@ export class BowlingGame implements GameRunner {
       this.lastEvent = 'spare';
     else this.lastEvent = 'open';
 
+    // Los strikes y spares se anuncian a toda la sala como momento destacado.
+    if (this.lastEvent === 'strike' || this.lastEvent === 'spare') {
+      this.ctx.broadcastEvent({ kind: this.lastEvent, playerId: shooter, atMs: Date.now() });
+    }
+
     this.phase = 'resolving';
     this.push();
 

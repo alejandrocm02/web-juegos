@@ -2,7 +2,8 @@ import type { GameId } from './constants.js';
 import type { GolfSettings, MatchResult, ScoreRow } from './room.js';
 import type { DartThrow, DartsTurnHistoryEntry } from './games/darts.js';
 import type { PublicQuizQuestion, QuizAnswerBreakdown } from './games/quiz.js';
-import type { PoolBallState } from './games/pool.js';
+import type { CricketBoard } from './games/cricket.js';
+import type { PoolBallState, PoolGroup } from './games/pool.js';
 import type { GolfBallState, GolfFeedEvent, GolfHoleResult, GolfLevel } from './games/golf.js';
 import type { BowlingBallState, BowlingPinState, BowlingScorecard } from './games/bowling.js';
 import type { KartState, KartTrack } from './games/karts.js';
@@ -46,6 +47,8 @@ export interface DartsPublicState {
   turnStartScore: number;
   history: DartsTurnHistoryEntry[];
   lastBust: boolean;
+  /** Solo en el modo cricket: marcas y puntos por jugador. */
+  cricket: CricketBoard | null;
   deadline: number;
 }
 
@@ -63,6 +66,12 @@ export interface PoolPublicState {
   scores: Record<string, number>;
   balls: PoolBallState[];
   ballsLeft: number;
+  /** Solo en bola 8: grupo asignado a cada jugador, null si la mesa sigue abierta. */
+  groups: Record<string, PoolGroup | null>;
+  /** true mientras nadie tiene grupo asignado. */
+  tableOpen: boolean;
+  /** Solo en bola 8: bando de cada jugador (con 3-5 jugadores se reparten). */
+  sides: Record<string, TeamId>;
   lastShotSummary: string | null;
   deadline: number;
 }

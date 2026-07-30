@@ -187,6 +187,16 @@ Todos los payloads de cliente a servidor se validan con Zod (`packages/shared/sr
 - Cada bola de color embocada suma **1 punto**; embocar la blanca **resta 1** y se recoloca.
 - La partida acaba cuando no quedan bolas de color. Gana quien más puntos tenga; puede haber empate.
 
+**Modo bola 8** (`pool.mode = 'bola8'`):
+
+- Triángulo completo de **15 bolas**: lisas 1–7, rayadas 9–15 y la negra en el centro del rack.
+- La mesa está **abierta** hasta la primera entrada limpia. Si en ese tiro entran bolas de los dos grupos, sigue abierta.
+- Al cerrarse, el grupo se asigna al bando del tirador y el contrario recibe el otro. Con 3–5 jugadores se reparten dos bandos alternos que comparten grupo y victoria (la bola 8 es 1 contra 1 por naturaleza).
+- Embocar bola propia conserva el turno; bola del rival o ningún acierto cede el turno.
+- Embocar la blanca es **falta**: se recoloca y cambia el turno.
+- Se gana embocando la negra **después** de limpiar el grupo propio. Meterla antes, o junto con la blanca, **pierde la partida**.
+- Fuera de alcance en este MVP: bola cantada, falta por no tocar banda tras el impacto y bola en mano libre (la blanca se recoloca automáticamente).
+
 ### Quiz
 
 - 10 preguntas (configurable 5–20), 4 respuestas, 15 s por pregunta (configurable).
@@ -202,6 +212,14 @@ Todos los payloads de cliente a servidor se validan con Zod (`packages/shared/sr
 - Apuntas con el cursor y el **servidor** aplica una desviación aleatoria según la dificultad elegida.
 - Si te pasas de los puntos restantes es **bust**: recuperas la puntuación con la que empezaste el turno.
 - No hace falta cerrar a doble en este MVP. Gana quien llega exactamente a cero.
+
+**Modo cricket** (`darts.mode = 'cricket'`):
+
+- Números en juego: **15, 16, 17, 18, 19, 20, bull (25) y bullseye (50)**.
+- Cada número necesita **3 marcas** para cerrarse: simple 1, doble 2, triple 3, bull 1 y bullseye 2.
+- Las marcas de sobra puntúan solo si **algún rival** sigue con ese número abierto; si está cerrado por todos, el número queda muerto y no suma.
+- Gana quien cierra **todos** los números y no va por detrás en puntos. Si cierra todo pero pierde en puntos, la partida continúa.
+- El marcador muestra la notación clásica (`·`, `/`, `X`) con etiquetas de texto para lectores de pantalla.
 
 ### Minigolf (10 hoyos)
 
@@ -242,6 +260,18 @@ Juego:
 Los cinco niveles marcados tienen una **ruta real de hoyo en uno basada en habilidad**, verificada por búsqueda exhaustiva sobre el propio simulador y fijada en los tests (`packages/game-engine/tests/golf.test.ts`): hay que acertar dirección, potencia y, en el molino, el momento del golpe.
 
 ---
+
+### Marco visual común de las partidas
+
+Todas las vistas de juego se montan dentro de `apps/web/src/components/GameStage.tsx`, que aporta:
+
+- **Identidad por juego** mediante la variable CSS `--game-accent`, tomada de `GAME_META`. El halo de fondo y los bordes se derivan de ese único token con `color-mix`, así que ningún color queda escrito a mano en las vistas.
+- **Cabecera de partida** con icono, nombre, insignia del modo activo y una línea de turno con `aria-live="polite"` (o "partida simultánea" en los juegos sin turnos).
+- **Ayuda en pantalla** desplegable: la regla del modo sale del catálogo compartido `GAME_MODE_CATALOG` y los controles se declaran por juego.
+- **Aviso de desconexión** con `role="status"` cuando algún jugador se ha caído, indicando que puede volver con el mismo enlace.
+- **Momentos destacados**: los eventos que emite el servidor (`game:event`) se traducen en `components/highlights.ts` a un cartel central grande para hoyo en uno, strike, spare, bust, cierre exacto y eliminación. El cartel usa fondo sólido para no poner texto grande sobre un degradado.
+
+El texto del acento se aclara con `color-mix(... 45%, #ffffff)` porque el rojo y el azul puros no llegan a 4.5:1 sobre negro.
 
 ## 6. Pruebas
 
@@ -303,10 +333,11 @@ Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, config
 
 - Sin cuentas de usuario ni chat de voz o texto: el diseño es "abre el enlace y juega".
 - Las salas viven en memoria y en un único proceso: al reiniciar el servidor se pierden las partidas en curso, y no hay escalado horizontal (haría falta un adaptador Redis para Socket.IO).
-- El billar es una versión casual: no implementa efecto (spin), faltas por no tocar bola ni bola 8.
-- Los dardos no exigen cierre a doble.
+- El billar casual no implementa efecto (spin) ni faltas por no tocar bola. El modo bola 8 sí está completo en grupos, negra y faltas de blanca, pero no cubre bola cantada, falta por no tocar banda ni bola en mano libre.
+- Los dardos 301/501 no exigen cierre a doble. El modo cricket sí implementa marcas, cierres, números muertos y la condición de ganar por puntos.
 - El minigolf usa vista cenital 2.5D: los saltos se simulan con altura, no con una física 3D completa.
 - La reproducción de sonidos del hoyo en uno se limita a un efecto sintetizado por el navegador (WebAudio), sin recursos externos.
+- El rediseño profundo cubre el marco común (cabecera, modo, ayuda, avisos y momentos destacados) y el tablero del billar en bola 8 (rayadas con franja, negra en negro, panel de grupos). Los escenarios de karts, arena y bolos siguen con su arte original de la fase anterior: no se han rehecho sus fondos.
 - Playwright necesita descargar Chromium la primera vez (`npx playwright install chromium`).
 - Si `npm audit` sigue avisando tras actualizar, borra `node_modules` y `package-lock.json` y reinstala: un `npm install` incremental conserva resoluciones antiguas del lockfile. Una instalación limpia da cero avisos.
 - El repositorio fija `overrides: { "brace-expansion": "^5.0.8" }` para que `npm audit` quede a cero: la cadena `eslint → minimatch@3 → brace-expansion@1` arrastraba un aviso de denegación de servicio que solo afectaba a la herramienta de desarrollo.
