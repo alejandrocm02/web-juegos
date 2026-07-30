@@ -1,4 +1,12 @@
 import type { GameId, PlayerIcon } from './constants.js';
+import type {
+  BowlingMode,
+  DartsMode,
+  GolfMode,
+  PoolMode,
+  QuizMode,
+  TeamId,
+} from './games/modes.js';
 
 export type ConnectionState = 'connected' | 'disconnected';
 
@@ -11,28 +19,33 @@ export interface PublicPlayer {
   ready: boolean;
   connection: ConnectionState;
   joinedAt: number;
+  /** Solo se rellena en los modos por equipos. */
+  team?: TeamId;
 }
 
 export type RoomPhase = 'lobby' | 'playing' | 'results';
 
 /** Configuraciones por juego. Se bloquean al iniciar la partida. */
 export interface QuizSettings {
+  mode: QuizMode;
   questionCount: number;
   secondsPerQuestion: number;
   categories: string[];
 }
 
 export interface DartsSettings {
-  startScore: 301;
+  mode: DartsMode;
   aimAssist: 'facil' | 'normal' | 'dificil';
 }
 
 export interface PoolSettings {
+  mode: PoolMode;
   colorBalls: number;
   tableFriction: 'lenta' | 'normal' | 'rapida';
 }
 
 export interface GolfSettings {
+  mode: GolfMode;
   ballCollisions: boolean;
   holeTimeLimitSeconds: 60 | 90 | 120;
   maxStrokes: 8 | 10 | 12;
@@ -40,22 +53,32 @@ export interface GolfSettings {
   outOfBoundsPenalty: boolean;
 }
 
+export interface BowlingSettings {
+  mode: BowlingMode;
+  /** Desviacion que aplica el servidor al lanzamiento, como en dardos. */
+  precision: 'facil' | 'normal' | 'dificil';
+}
+
 export interface GameSettings {
   quiz: QuizSettings;
   darts: DartsSettings;
   pool: PoolSettings;
   golf: GolfSettings;
+  bowling: BowlingSettings;
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
   quiz: {
+    mode: 'clasico',
     questionCount: 10,
     secondsPerQuestion: 15,
     categories: [],
   },
-  darts: { startScore: 301, aimAssist: 'normal' },
-  pool: { colorBalls: 9, tableFriction: 'normal' },
+  darts: { mode: '301', aimAssist: 'normal' },
+  pool: { mode: 'clasico', colorBalls: 9, tableFriction: 'normal' },
+  bowling: { mode: 'individual', precision: 'normal' },
   golf: {
+    mode: 'clasico',
     ballCollisions: true,
     holeTimeLimitSeconds: 90,
     maxStrokes: 10,

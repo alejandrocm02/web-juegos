@@ -1,0 +1,72 @@
+/**
+ * Tokens del sistema visual.
+ *
+ * Toda la paleta, tipografia, espaciados y sombras viven aqui para que ninguna
+ * vista invente valores sueltos. Base negra, texto blanco y acentos rojo y azul.
+ */
+:root {
+  /* Superficies */
+  --surface-base: #05060a;
+  --surface-raised: #0c0f16;
+  --surface-overlay: #12161f;
+  --surface-border: rgba(255, 255, 255, 0.1);
+  --surface-border-strong: rgba(255, 255, 255, 0.22);
+
+  /* Texto: siempre claro sobre fondo oscuro para no perder contraste */
+  --text-primary: #ffffff;
+  --text-secondary: #c7cdd9;
+  --text-muted: #8b93a4;
+
+  /*
+   * Acentos. Las variantes "ink" son las unicas que deben usarse para texto
+   * sobre negro: el rojo y el azul puros no llegan a 4.5:1 y se reservan para
+   * rellenos, bordes y estados.
+   */
+  --accent-red: #e11d2e;
+  --accent-red-ink: #ff8b95;
+  --accent-blue: #1d5ae1;
+  --accent-blue-ink: #8fb6ff;
+
+  --state-success: #34d399;
+  --state-warning: #fbbf24;
+  --state-danger: var(--accent-red);
+
+  /* Espaciado y radios */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.85rem;
+  --radius-lg: 1.15rem;
+  --radius-xl: 1.5rem;
+
+  /* Sombras e iluminacion */
+  --shadow-card: 0 18px 40px -24px rgba(0, 0, 0, 0.9);
+  --shadow-red: 0 0 0 1px rgba(225, 29, 46, 0.35), 0 12px 30px -18px rgba(225, 29, 46, 0.8);
+  --shadow-blue: 0 0 0 1px rgba(29, 90, 225, 0.35), 0 12px 30px -18px rgba(29, 90, 225, 0.8);
+
+  /* Objetivo tactil minimo */
+  --touch-target: 2.75rem;
+
+  /* Duraciones */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+}
+
+/**
+ * Quien pide menos movimiento no recibe animaciones decorativas.
+ * Se reduce a lo imprescindible en lugar de eliminarlo del todo para que las
+ * transiciones de estado sigan siendo perceptibles.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 1ms;
+    --motion-base: 1ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}

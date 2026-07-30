@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { GAME_IDS, MAX_PLAYERS, NAME_MAX_LENGTH, NAME_MIN_LENGTH } from './constants.js';
 import { QUIZ_CATEGORIES } from './games/quiz.js';
+import { BOWLING_MODES, DARTS_MODES, GOLF_MODES, POOL_MODES, QUIZ_MODES } from './games/modes.js';
 import { sanitizeName } from './util.js';
 
 /* -------------------------------------------------------------------------- */
@@ -33,22 +34,25 @@ export const playerIdSchema = z.string().min(6).max(64);
 /* -------------------------------------------------------------------------- */
 
 export const quizSettingsSchema = z.object({
+  mode: z.enum(QUIZ_MODES),
   questionCount: z.number().int().min(5).max(20),
   secondsPerQuestion: z.number().int().min(5).max(60),
   categories: z.array(z.enum(QUIZ_CATEGORIES)).max(QUIZ_CATEGORIES.length),
 });
 
 export const dartsSettingsSchema = z.object({
-  startScore: z.literal(301),
+  mode: z.enum(DARTS_MODES),
   aimAssist: z.enum(['facil', 'normal', 'dificil']),
 });
 
 export const poolSettingsSchema = z.object({
+  mode: z.enum(POOL_MODES),
   colorBalls: z.number().int().min(5).max(12),
   tableFriction: z.enum(['lenta', 'normal', 'rapida']),
 });
 
 export const golfSettingsSchema = z.object({
+  mode: z.enum(GOLF_MODES),
   ballCollisions: z.boolean(),
   holeTimeLimitSeconds: z.union([z.literal(60), z.literal(90), z.literal(120)]),
   maxStrokes: z.union([z.literal(8), z.literal(10), z.literal(12)]),
@@ -56,11 +60,17 @@ export const golfSettingsSchema = z.object({
   outOfBoundsPenalty: z.boolean(),
 });
 
+export const bowlingSettingsSchema = z.object({
+  mode: z.enum(BOWLING_MODES),
+  precision: z.enum(['facil', 'normal', 'dificil']),
+});
+
 export const settingsPatchSchema = z.discriminatedUnion('game', [
   z.object({ game: z.literal('quiz'), settings: quizSettingsSchema }),
   z.object({ game: z.literal('darts'), settings: dartsSettingsSchema }),
   z.object({ game: z.literal('pool'), settings: poolSettingsSchema }),
   z.object({ game: z.literal('golf'), settings: golfSettingsSchema }),
+  z.object({ game: z.literal('bowling'), settings: bowlingSettingsSchema }),
 ]);
 
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
@@ -107,11 +117,21 @@ export const golfShootSchema = z.object({
   seq: z.number().int().min(0).max(100000),
 });
 
+export const bowlingRollSchema = z.object({
+  type: z.literal('bowling:roll'),
+  /** Desviacion lateral del lanzamiento, de -1 (izquierda) a 1 (derecha). */
+  aim: z.number().min(-1).max(1),
+  power: z.number().min(0.15).max(1),
+  /** Efecto lateral que curva la bola durante el recorrido. */
+  spin: z.number().min(-1).max(1),
+});
+
 export const golfResetSchema = z.object({ type: z.literal('golf:reset') });
 export const golfSyncSchema = z.object({ type: z.literal('golf:sync') });
 
 export const gameActionSchema = z.discriminatedUnion('type', [
   quizAnswerSchema,
+  bowlingRollSchema,
   dartsThrowSchema,
   poolShootSchema,
   golfShootSchema,

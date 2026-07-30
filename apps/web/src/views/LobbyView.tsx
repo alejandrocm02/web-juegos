@@ -1,14 +1,17 @@
 import {
   GAME_IDS,
   GAME_META,
+  GAME_MODE_CATALOG,
   MIN_PLAYERS,
   QUIZ_CATEGORIES,
   type GameId,
+  type BowlingSettings,
   type GolfSettings,
 } from '@arcade/shared';
 import { useState } from 'react';
 import { useApp } from '../store.js';
 import { ErrorBanner, GameIcon, PlayerIconGlyph, Panel } from '../components/ui.js';
+import { BackButton } from '../components/navigation.js';
 
 export default function LobbyView() {
   const {
@@ -42,6 +45,13 @@ export default function LobbyView() {
   const connectedPlayers = room.players.filter((player) => player.connection === 'connected');
   const allReady = connectedPlayers.every((player) => player.ready);
   const canStart = connectedPlayers.length >= MIN_PLAYERS && allReady;
+  const currentMode = room.settings[room.selectedGame].mode;
+
+  /** Cambia el modo conservando el resto de opciones del juego. */
+  const applyMode = (game: GameId, mode: string) => {
+    const current = room.settings[game];
+    updateSettings(game, { ...current, mode } as never);
+  };
   const inviteUrl =
     typeof window !== 'undefined' ? window.location.origin + '/?code=' + room.code : room.inviteUrl;
 
@@ -80,9 +90,21 @@ export default function LobbyView() {
             <button className="btn-secondary" onClick={() => copy(inviteUrl, 'enlace')}>
               {copied === 'enlace' ? '✓ Enlace copiado' : 'Invitar amigos'}
             </button>
-            <button className="btn-danger" onClick={leaveRoom}>
-              Salir
-            </button>
+            <BackButton
+              className="btn-danger"
+              action={{
+                label: 'Salir de la sala',
+                confirm: {
+                  title: 'Salir de la sala',
+                  description:
+                    room.players.length > 1
+                      ? 'Los demas jugadores seguiran en la sala. Si eres el anfitrion, el rol pasara a otro jugador.'
+                      : 'La sala quedara vacia y se eliminara en unos minutos.',
+                  confirmLabel: 'Salir',
+                },
+                run: leaveRoom,
+              }}
+            />
           </div>
         </div>
       </header>
@@ -242,9 +264,16 @@ export default function LobbyView() {
           </Panel>
 
           <Panel
-            title={'Configuracion de ' + GAME_META[room.selectedGame].name}
+            title={'Modo y configuracion de ' + GAME_META[room.selectedGame].name}
             subtitle="Se bloquea al empezar la partida"
           >
+            <ModeSelector
+              game={room.selectedGame}
+              value={currentMode}
+              disabled={!isHost}
+              onChange={(mode) => applyMode(room.selectedGame, mode)}
+            />
+
             <GameSettingsForm
               game={room.selectedGame}
               settings={room.settings}
@@ -296,6 +325,63 @@ function Segmented<T extends string | number | boolean>({
           {option.label}
         </button>
       ))}
+    </div>
+  );
+}
+
+function ModeSelector({
+  game,
+  value,
+  disabled,
+  onChange,
+}: {
+  game: GameId;
+  value: string;
+  disabled: boolean;
+  onChange: (mode: string) => void;
+}) {
+  const modes = GAME_MODE_CATALOG[game];
+  const active = modes.find((mode) => mode.id === value) ?? modes[0];
+
+  return (
+    <div className="mb-5">
+      <span className="label">Modo de juego</span>
+      <div className="grid gap-2 sm:grid-cols-2">
+        {modes.map((mode) => {
+          const selected = mode.id === value;
+          return (
+            <button
+              key={mode.id}
+              type="button"
+              disabled={disabled}
+              aria-label={mode.name}
+              aria-pressed={selected}
+              onClick={() => onChange(mode.id)}
+              className={
+                'min-h-11 rounded-xl border px-3 py-2 text-left transition disabled:opacity-50 ' +
+                (selected
+                  ? 'border-[color:var(--accent-blue)] bg-[color:var(--accent-blue)]/15'
+                  : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.07]')
+              }
+            >
+              <span
+                className={
+                  'block text-sm font-semibold ' +
+                  (selected ? 'text-[color:var(--accent-blue-ink)]' : 'text-white')
+                }
+              >
+                {mode.name}
+              </span>
+              <span className="mt-0.5 block text-xs text-slate-400">{mode.summary}</span>
+            </button>
+          );
+        })}
+      </div>
+      {active && (
+        <p className="mt-2 rounded-lg border border-white/5 bg-black/40 px-3 py-2 text-xs text-slate-300">
+          {active.rule}
+        </p>
+      )}
     </div>
   );
 }
@@ -408,6 +494,24 @@ function GameSettingsForm({
           />
         </Field>
       </div>
+    );
+  }
+
+  if (game === 'bowling') {
+    const bowling: BowlingSettings = settings.bowling;
+    return (
+      <Field label="Precision (desviacion que aplica el servidor)">
+        <Segmented
+          disabled={disabled}
+          value={bowling.precision}
+          options={[
+            { label: 'Facil', value: 'facil' as const },
+            { label: 'Normal', value: 'normal' as const },
+            { label: 'Dificil', value: 'dificil' as const },
+          ]}
+          onChange={(precision) => onChange('bowling', { ...bowling, precision })}
+        />
+      </Field>
     );
   }
 
