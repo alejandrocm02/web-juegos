@@ -44,7 +44,7 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
   const seconds = Math.max(0, Math.ceil((state.deadline - now) / 1000));
 
   return (
-    <div className="mx-auto grid min-h-screen w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:px-8">
+    <div className="mx-auto grid w-full max-w-7xl gap-5 px-2 py-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_320px]">
       <Panel
         title={'Turno de ' + (activePlayer?.name ?? '...')}
         subtitle={isMyTurn ? 'Haz clic en la diana para lanzar' : 'Espera tu turno'}
@@ -55,60 +55,74 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
         }
         className="overflow-hidden"
       >
-        <div className="pointer-events-none absolute -left-28 top-1/3 h-64 w-64 rounded-full bg-neon-amber/[0.07] blur-3xl" />
+        <div className="pointer-events-none absolute -left-28 top-1/3 h-64 w-64 rounded-full bg-neon-amber/[0.09] blur-3xl" />
         <div className="flex flex-col items-center gap-4">
           <div className="relative w-full max-w-[500px] py-3">
             <div className="pointer-events-none absolute inset-[12%] rounded-full bg-neon-amber/10 blur-3xl" />
-            <div
-              ref={boardRef}
-              onPointerUp={throwDart}
-              onPointerMove={(event) => setHover(toNormalized(event))}
-              onPointerLeave={() => setHover(null)}
-              role="button"
-              tabIndex={0}
-              aria-label="Diana de dardos"
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && isMyTurn) {
-                  sendAction({ type: 'darts:throw', x: 0, y: 0 });
+            <div className="darts-cabinet">
+              <div
+                ref={boardRef}
+                onPointerUp={throwDart}
+                onPointerMove={(event) => setHover(toNormalized(event))}
+                onPointerLeave={() => setHover(null)}
+                role="button"
+                tabIndex={0}
+                aria-label="Diana de dardos"
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && isMyTurn) {
+                    sendAction({ type: 'darts:throw', x: 0, y: 0 });
+                  }
+                }}
+                className={
+                  'darts-board relative mx-auto touch-none select-none rounded-full ' +
+                  (isMyTurn ? 'cursor-crosshair' : 'cursor-default opacity-80')
                 }
-              }}
-              className={
-                'relative mx-auto touch-none select-none rounded-full border-[10px] border-[#171b27] bg-[#090b10] p-2 shadow-[0_32px_70px_-35px_rgba(0,0,0,1),0_0_0_1px_rgba(255,255,255,.08)] ' +
-                (isMyTurn ? 'cursor-crosshair' : 'cursor-default opacity-80')
-              }
-              style={{ width: SIZE, maxWidth: '100%', aspectRatio: '1' }}
-            >
-              <Dartboard />
-              {state.currentThrows.map((dart, index) => (
-                <span
-                  key={index}
-                  className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-night-900 bg-white shadow-[0_0_14px_rgba(255,255,255,1)]"
-                  style={{
-                    left: ((dart.x + 1) / 2) * 100 + '%',
-                    top: ((dart.y + 1) / 2) * 100 + '%',
-                  }}
-                  title={dart.ring + ' ' + dart.points}
-                />
-              ))}
-              {hover && isMyTurn && (
-                <span
-                  className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-neon-cyan shadow-[0_0_12px_rgba(34,211,238,.8)]"
-                  style={{
-                    left: ((hover.x + 1) / 2) * 100 + '%',
-                    top: ((hover.y + 1) / 2) * 100 + '%',
-                  }}
-                />
-              )}
+                style={{ width: SIZE, maxWidth: '100%', aspectRatio: '1' }}
+              >
+                <Dartboard />
+                {state.currentThrows.map((dart, index) => (
+                  <span
+                    key={index}
+                    className="dart-impact absolute -translate-x-1/2 -translate-y-1/2"
+                    style={{
+                      left: ((dart.x + 1) / 2) * 100 + '%',
+                      top: ((dart.y + 1) / 2) * 100 + '%',
+                      transform: `translate(-50%, -50%) rotate(${index * 38 - 22}deg)`,
+                    }}
+                    title={dart.ring + ' ' + dart.points}
+                  >
+                    <span />
+                  </span>
+                ))}
+                {hover && isMyTurn && (
+                  <span
+                    className="darts-reticle pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
+                    style={{
+                      left: ((hover.x + 1) / 2) * 100 + '%',
+                      top: ((hover.y + 1) / 2) * 100 + '%',
+                    }}
+                  />
+                )}
+              </div>
+              <div className="darts-throw-lights" aria-label={state.throwsLeft + ' lanzamientos'}>
+                {[0, 1, 2].map((index) => (
+                  <span key={index} className={index < state.throwsLeft ? 'is-ready' : ''} />
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 text-sm">
-            <span className="chip">
-              <span className="text-neon-amber">●●●</span> {state.throwsLeft} lanzamientos
+          <div className="game-hud justify-center text-sm">
+            <span className="hud-stat">
+              <span className="hud-stat-label">Dardos</span>
+              <span className="hud-stat-value">{state.throwsLeft} disponibles</span>
             </span>
-            <span className="chip">
-              Turno desde {state.turnStartScore}
-              {state.lastBust && <span className="text-rose-300"> | BUST</span>}
+            <span className="hud-stat">
+              <span className="hud-stat-label">Inicio de turno</span>
+              <span className="hud-stat-value">
+                {state.turnStartScore}
+                {state.lastBust && <span className="text-rose-300"> | BUST</span>}
+              </span>
             </span>
           </div>
           <div className="flex flex-wrap justify-center gap-2 text-xs text-slate-400">
@@ -243,61 +257,86 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
 function Dartboard() {
   const rings = DART_RADII;
   const sectors = DART_SECTORS;
-  const r = 50;
+  const r = 48;
   return (
-    <svg viewBox="-50 -50 100 100" className="h-full w-full">
-      <circle r={r} fill="#0b1020" stroke="#1e293b" />
+    <svg viewBox="-54 -54 108 108" className="h-full w-full">
+      <defs>
+        <radialGradient id="board-core" cx="42%" cy="35%">
+          <stop offset="0" stopColor="#28313d" />
+          <stop offset="0.72" stopColor="#111720" />
+          <stop offset="1" stopColor="#070a0f" />
+        </radialGradient>
+        <filter id="board-shadow">
+          <feDropShadow dx="0" dy="1.5" stdDeviation="1.2" floodOpacity="0.65" />
+        </filter>
+      </defs>
+      <circle r="53" fill="#080b10" stroke="#394150" strokeWidth="1" />
+      <circle r="50.8" fill="url(#board-core)" stroke="#0a0c10" strokeWidth="2" />
       {sectors.map((sector, index) => {
         const start = (index * 18 - 9 - 90) * (Math.PI / 180);
         const end = (index * 18 + 9 - 90) * (Math.PI / 180);
-        const outer = rings.doubleOuter * r;
-        const path = [
-          'M',
-          Math.cos(start) * outer,
-          Math.sin(start) * outer,
-          'A',
-          outer,
-          outer,
-          0,
-          0,
-          1,
-          Math.cos(end) * outer,
-          Math.sin(end) * outer,
-          'L',
-          0,
-          0,
-          'Z',
-        ].join(' ');
+        const dark = index % 2 === 0;
+        const single = dark ? '#191d21' : '#d9d2bd';
+        const band = dark ? '#d73d4d' : '#27a66c';
         return (
-          <g key={sector}>
-            <path d={path} fill={index % 2 === 0 ? '#111827' : '#1f2937'} />
+          <g key={sector} filter="url(#board-shadow)">
+            <path
+              d={ringSectorPath(rings.bull * r, rings.tripleInner * r, start, end)}
+              fill={single}
+            />
+            <path
+              d={ringSectorPath(rings.tripleInner * r, rings.tripleOuter * r, start, end)}
+              fill={band}
+            />
+            <path
+              d={ringSectorPath(rings.tripleOuter * r, rings.doubleInner * r, start, end)}
+              fill={single}
+            />
+            <path
+              d={ringSectorPath(rings.doubleInner * r, rings.doubleOuter * r, start, end)}
+              fill={band}
+            />
           </g>
         );
       })}
       {[rings.doubleOuter, rings.doubleInner, rings.tripleOuter, rings.tripleInner].map(
-        (radius, i) => (
+        (radius) => (
           <circle
-            key={i}
+            key={radius}
             r={radius * r}
             fill="none"
-            stroke={i % 2 === 0 ? '#ef4444' : '#22c55e'}
-            strokeWidth={i % 2 === 0 ? 1.6 : 1.2}
-            opacity={0.85}
+            stroke="rgba(9,12,16,.88)"
+            strokeWidth="0.65"
           />
         ),
       )}
-      <circle r={rings.bull * r} fill="#166534" stroke="#052e16" strokeWidth="0.6" />
-      <circle r={rings.bullseye * r} fill="#b91c1c" />
+      {sectors.map((sector, index) => {
+        const angle = (index * 18 - 9 - 90) * (Math.PI / 180);
+        return (
+          <line
+            key={'wire-' + sector}
+            x1={Math.cos(angle) * rings.bull * r}
+            y1={Math.sin(angle) * rings.bull * r}
+            x2={Math.cos(angle) * r}
+            y2={Math.sin(angle) * r}
+            stroke="rgba(8,10,13,.75)"
+            strokeWidth="0.55"
+          />
+        );
+      })}
+      <circle r={rings.bull * r} fill="#289b66" stroke="#080b0e" strokeWidth="0.8" />
+      <circle r={rings.bullseye * r} fill="#d63c4b" stroke="#080b0e" strokeWidth="0.55" />
       {sectors.map((sector, index) => {
         const angle = (index * 18 - 90) * (Math.PI / 180);
-        const radius = r * 1.06;
+        const radius = r * 1.075;
         return (
           <text
             key={'label-' + sector}
             x={Math.cos(angle) * radius}
             y={Math.sin(angle) * radius}
-            fontSize="5"
-            fill="#94a3b8"
+            fontSize="4.7"
+            fontWeight="700"
+            fill="#e6e8ed"
             textAnchor="middle"
             dominantBaseline="middle"
           >
@@ -305,6 +344,43 @@ function Dartboard() {
           </text>
         );
       })}
+      <circle r="50.3" fill="none" stroke="rgba(255,255,255,.17)" strokeWidth="0.7" />
     </svg>
   );
+}
+
+function ringSectorPath(inner: number, outer: number, start: number, end: number): string {
+  const x1 = Math.cos(start) * outer;
+  const y1 = Math.sin(start) * outer;
+  const x2 = Math.cos(end) * outer;
+  const y2 = Math.sin(end) * outer;
+  const x3 = Math.cos(end) * inner;
+  const y3 = Math.sin(end) * inner;
+  const x4 = Math.cos(start) * inner;
+  const y4 = Math.sin(start) * inner;
+  return [
+    'M',
+    x1,
+    y1,
+    'A',
+    outer,
+    outer,
+    0,
+    0,
+    1,
+    x2,
+    y2,
+    'L',
+    x3,
+    y3,
+    'A',
+    inner,
+    inner,
+    0,
+    0,
+    0,
+    x4,
+    y4,
+    'Z',
+  ].join(' ');
 }

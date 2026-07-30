@@ -31,42 +31,54 @@ export default function QuizView({ state }: { state: QuizPublicState }) {
   };
 
   return (
-    <div className="mx-auto grid min-h-screen w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:px-8">
+    <div className="mx-auto grid w-full max-w-7xl gap-5 px-2 py-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-4">
-        <Panel className="overflow-hidden">
+        <Panel className="quiz-show-card overflow-hidden">
           <div className="pointer-events-none absolute -right-24 -top-28 h-64 w-64 rounded-full bg-neon-pink/10 blur-3xl" />
-          <div className="relative mb-4 flex items-center justify-between gap-3 text-sm text-slate-400">
-            <span className="eyebrow">
-              Pregunta {Math.min(state.questionIndex + 1, state.totalQuestions)} /{' '}
-              {state.totalQuestions}
+          <div className="game-hud relative mb-4">
+            <span className="hud-stat">
+              <span className="hud-stat-label">Ronda</span>
+              <span className="hud-stat-value">
+                {Math.min(state.questionIndex + 1, state.totalQuestions)} / {state.totalQuestions}
+              </span>
             </span>
-            {state.question && <span className="chip capitalize">{state.question.category}</span>}
-            <span
-              className={
-                'font-display text-xl font-black tabular-nums ' +
-                (secondsLeft <= 5 ? 'text-rose-300' : 'text-neon-pink')
-              }
-            >
-              {secondsLeft}s
+            {state.question && (
+              <span className="hud-stat">
+                <span className="hud-stat-label">Categoría</span>
+                <span className="hud-stat-value capitalize">{state.question.category}</span>
+              </span>
+            )}
+            <span className="ml-auto hud-stat quiz-clock">
+              <span className="hud-stat-label">Tiempo</span>
+              <span
+                className={
+                  'hud-stat-value tabular-nums ' +
+                  (secondsLeft <= 5 ? 'text-rose-300' : 'text-neon-pink')
+                }
+              >
+                {secondsLeft}s
+              </span>
             </span>
           </div>
           <ProgressBar value={remaining / phaseDuration.current} color="#f472b6" />
 
           {state.phase === 'countdown' && (
             <div className="py-16 text-center">
-              <span className="mx-auto flex h-16 w-16 animate-pulse items-center justify-center rounded-full border border-neon-pink/30 bg-neon-pink/10 font-display text-2xl font-black text-neon-pink">
-                {secondsLeft}
-              </span>
-              <p className="mt-4 font-display text-2xl font-bold">Preparados...</p>
-              <p className="mt-1 text-sm text-slate-500">
-                La primera pregunta está a punto de salir.
-              </p>
+              <div className="game-countdown">
+                <span className="game-countdown-label">Comienza en</span>
+                <span className="game-countdown-value">{secondsLeft}</span>
+                <p className="mt-3 font-display text-2xl font-bold">Preparad la respuesta</p>
+                <p className="text-sm text-slate-500">La primera pregunta está a punto de salir.</p>
+              </div>
             </div>
           )}
 
           {state.question && (
             <>
-              <h2 className="mb-7 mt-7 max-w-3xl font-display text-2xl font-bold leading-tight sm:text-3xl">
+              <p className="mb-2 mt-7 text-[10px] font-black uppercase tracking-[0.2em] text-neon-pink/70">
+                Pregunta en juego
+              </p>
+              <h2 className="quiz-question mb-7 max-w-3xl font-display text-2xl font-bold leading-tight sm:text-4xl">
                 {state.question.text}
               </h2>
               <div className="grid gap-3.5 sm:grid-cols-2">
@@ -79,21 +91,24 @@ export default function QuizView({ state }: { state: QuizPublicState }) {
                       key={index}
                       onClick={() => choose(index)}
                       disabled={state.phase !== 'question' || picked !== null}
+                      style={
+                        {
+                          '--answer-accent': ['#38bdf8', '#f472b6', '#fbbf24', '#a78bfa'][index],
+                        } as React.CSSProperties
+                      }
                       className={
-                        'group flex min-h-20 items-center rounded-2xl border px-4 py-4 text-left text-sm font-medium transition duration-200 disabled:cursor-default ' +
+                        'quiz-answer group ' +
                         (revealing && isCorrect
-                          ? 'border-neon-lime bg-neon-lime/15 text-neon-lime'
+                          ? 'is-correct'
                           : revealing && isMine
-                            ? 'border-rose-400 bg-rose-500/10 text-rose-200'
+                            ? 'is-wrong'
                             : isMine
-                              ? 'border-neon-cyan bg-neon-cyan/10'
-                              : 'border-white/[0.08] bg-white/[0.035] hover:-translate-y-0.5 hover:border-neon-pink/25 hover:bg-neon-pink/[0.06]')
+                              ? 'is-selected'
+                              : '')
                       }
                     >
-                      <span className="mr-3 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-black/20 font-display font-black text-slate-400 transition group-hover:border-neon-pink/30 group-hover:text-neon-pink">
-                        {['A', 'B', 'C', 'D'][index]}
-                      </span>
-                      {answer}
+                      <span className="quiz-answer-key">{['A', 'B', 'C', 'D'][index]}</span>
+                      <span>{answer}</span>
                     </button>
                   );
                 })}

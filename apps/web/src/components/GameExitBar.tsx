@@ -40,7 +40,7 @@ export function GameExitBar() {
       };
 
   return (
-    <div className="sticky top-0 z-40 border-b border-white/10 bg-black/85 backdrop-blur">
+    <div className="game-exit-bar sticky top-0 z-40">
       <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between gap-3 px-4 py-2">
         <BackButton action={action} />
         <span className="truncate text-sm text-slate-300">

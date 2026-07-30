@@ -226,32 +226,43 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
   const level = state.level;
 
   return (
-    <div className="mx-auto grid min-h-screen w-full max-w-[1500px] gap-5 px-4 py-5 sm:px-6 xl:grid-cols-[minmax(0,1fr)_330px] lg:px-8">
+    <div className="mx-auto grid w-full max-w-[1500px] gap-5 px-2 py-3 sm:px-4 xl:grid-cols-[minmax(0,1fr)_330px]">
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-white/[0.07] bg-white/[0.025] p-2.5 text-sm">
-          <span className="chip border-neon-lime/20 font-display text-neon-lime">
-            Hoyo {level.id}/{state.totalLevels}: {level.name}
+        <div className="game-hud text-sm">
+          <span className="hud-stat">
+            <span className="hud-stat-label">Recorrido</span>
+            <span className="hud-stat-value text-neon-lime">
+              {level.id}/{state.totalLevels} · {level.name}
+            </span>
           </span>
-          <span className="chip">{level.difficulty}</span>
-          <span className="chip">Par {level.par}</span>
-          <span className="chip">Golpes: {myBall?.strokes ?? 0}</span>
-          <span className={'chip tabular-nums ' + (timeLeft <= 10 ? 'text-rose-300' : '')}>
-            {timeLeft}s
+          <span className="hud-stat">
+            <span className="hud-stat-label">Par</span>
+            <span className="hud-stat-value">{level.par}</span>
           </span>
-          <span className="chip">
-            Colisiones: {state.settings.ballCollisions ? 'activadas' : 'desactivadas'}
+          <span className="hud-stat">
+            <span className="hud-stat-label">Golpes</span>
+            <span className="hud-stat-value">{myBall?.strokes ?? 0}</span>
           </span>
-          <span className="chip">Limite: {state.settings.maxStrokes} golpes</span>
+          <span className="hud-stat">
+            <span className="hud-stat-label">Tiempo</span>
+            <span
+              className={'hud-stat-value tabular-nums ' + (timeLeft <= 10 ? 'text-rose-300' : '')}
+            >
+              {timeLeft}s
+            </span>
+          </span>
+          <span className="hud-stat ml-auto">
+            <span className="hud-stat-label">Dificultad</span>
+            <span className="hud-stat-value">{level.difficulty}</span>
+          </span>
         </div>
 
-        <div className="canvas-frame relative">
+        <div className="game-board-frame relative">
           <canvas
             ref={canvasRef}
             width={VIEW_W}
             height={VIEW_H}
-            className={
-              'block w-full touch-none rounded-[1.05rem] ' + (canShoot ? 'cursor-crosshair' : '')
-            }
+            className={'block w-full touch-none ' + (canShoot ? 'cursor-crosshair' : '')}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -260,7 +271,7 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
           />
 
           {state.phase === 'scoreboard' && (
-            <div className="absolute inset-1.5 flex items-center justify-center rounded-[1.05rem] bg-night-900/85 p-6 backdrop-blur">
+            <div className="absolute inset-1.5 z-[4] flex items-center justify-center rounded-[0.95rem] bg-night-900/85 p-6 backdrop-blur">
               <div className="w-full max-w-md">
                 <h3 className="mb-3 text-center font-display text-xl font-bold">
                   Hoyo {level.id} completado
@@ -291,8 +302,8 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
           )}
 
           {aceBanner && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-              <div className="animate-pop rounded-2xl border-2 border-neon-amber bg-night-900/85 px-8 py-5 text-center shadow-glow">
+            <div className="pointer-events-none absolute inset-0 z-[4] flex items-center justify-center">
+              <div className="game-overlay animate-pop border-neon-amber/60 px-8 py-5 text-center shadow-glow">
                 <p className="font-display text-3xl font-black text-neon-amber">HOYO EN UNO</p>
                 <p className="mt-1 text-sm text-slate-200">
                   {aceBanner} lo ha clavado al primer golpe
@@ -302,13 +313,13 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
           )}
 
           {hint && (
-            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-xl border border-white/15 bg-black/85 px-4 py-2 text-sm text-white">
+            <div className="game-overlay absolute bottom-4 left-1/2 z-[4] -translate-x-1/2 px-4 py-2 text-sm text-white">
               {hint}
             </div>
           )}
 
           {myBall?.outOfBounds && (
-            <div className="absolute left-1/2 top-6 -translate-x-1/2 rounded-xl bg-rose-500/90 px-4 py-2 text-sm font-semibold">
+            <div className="game-overlay absolute left-1/2 top-6 z-[4] -translate-x-1/2 border-rose-500/50 px-4 py-2 text-sm font-semibold text-rose-200">
               Fuera del recorrido. Pulsa Reiniciar (R).
             </div>
           )}

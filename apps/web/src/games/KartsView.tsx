@@ -126,44 +126,61 @@ export default function KartsView({ state }: { state: KartsPublicState }) {
   const countdownSeconds = Math.ceil(state.countdownMs / 1000);
 
   return (
-    <div className="mx-auto grid w-full max-w-[1400px] gap-4 px-4 py-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+    <div className="mx-auto grid w-full max-w-[1400px] gap-5 px-2 py-3 sm:px-4 xl:grid-cols-[minmax(0,1fr)_300px]">
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="chip font-display">{modeInfo?.name ?? state.mode}</span>
-          <span className="chip">{state.track.name}</span>
-          <span className="chip">
-            Vuelta {Math.min((myKart?.lap ?? 0) + 1, state.totalLaps)}/{state.totalLaps}
+        <div className="game-hud text-sm">
+          <span className="hud-stat">
+            <span className="hud-stat-label">Circuito</span>
+            <span className="hud-stat-value">{state.track.name}</span>
           </span>
-          <span className="chip">Posicion {myKart?.position ?? '-'}</span>
+          <span className="hud-stat">
+            <span className="hud-stat-label">Vuelta</span>
+            <span className="hud-stat-value">
+              {Math.min((myKart?.lap ?? 0) + 1, state.totalLaps)}/{state.totalLaps}
+            </span>
+          </span>
+          <span className="hud-stat">
+            <span className="hud-stat-label">Posición</span>
+            <span className="hud-stat-value">P{myKart?.position ?? '-'}</span>
+          </span>
           {myKart?.bestLapMs && (
-            <span className="chip">Mejor {(myKart.bestLapMs / 1000).toFixed(2)} s</span>
+            <span className="hud-stat">
+              <span className="hud-stat-label">Mejor vuelta</span>
+              <span className="hud-stat-value">{(myKart.bestLapMs / 1000).toFixed(2)} s</span>
+            </span>
           )}
           {state.nextEliminationMs !== null && (
-            <span className="chip text-[color:var(--accent-red-ink)]">
-              Eliminacion en {Math.ceil(state.nextEliminationMs / 1000)} s
+            <span className="hud-stat ml-auto border-rose-500/30">
+              <span className="hud-stat-label text-rose-300">Eliminación</span>
+              <span className="hud-stat-value text-rose-200">
+                {Math.ceil(state.nextEliminationMs / 1000)} s
+              </span>
             </span>
           )}
         </div>
 
-        <div className="relative">
+        <div className="game-board-frame relative">
           <canvas
             ref={canvasRef}
             width={VIEW_W}
             height={VIEW_H}
-            className="w-full rounded-2xl border border-white/10 bg-black"
+            className="w-full bg-black"
             aria-label={'Circuito ' + state.track.name}
           />
 
           {state.phase === 'countdown' && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/70">
-              <span className="font-display text-7xl font-black text-white">
-                {countdownSeconds > 0 ? countdownSeconds : 'YA'}
-              </span>
+            <div className="absolute inset-1.5 z-[4] flex items-center justify-center rounded-[0.95rem] bg-black/70 backdrop-blur-sm">
+              <div className="game-countdown">
+                <span className="game-countdown-label">Parrilla preparada</span>
+                <span className="game-countdown-value">
+                  {countdownSeconds > 0 ? countdownSeconds : 'YA'}
+                </span>
+              </div>
             </div>
           )}
 
           {myKart?.eliminated && (
-            <div className="absolute left-1/2 top-6 -translate-x-1/2 rounded-xl bg-[color:var(--accent-red)] px-4 py-2 text-sm font-semibold text-white">
+            <div className="game-overlay absolute left-1/2 top-6 z-[4] -translate-x-1/2 px-4 py-2 text-sm font-semibold text-rose-200">
               Eliminado. Sigues viendo la carrera.
             </div>
           )}
@@ -323,8 +340,22 @@ function draw(
   const gates = state.track.gates;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#05060a';
+  const ground = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  ground.addColorStop(0, '#0a231e');
+  ground.addColorStop(0.55, '#071a18');
+  ground.addColorStop(1, '#081311');
+  ctx.fillStyle = ground;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Textura técnica del terreno.
+  ctx.strokeStyle = 'rgba(74, 222, 128, 0.045)';
+  ctx.lineWidth = 1;
+  for (let x = -canvas.height; x < canvas.width; x += 38) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x + canvas.height, canvas.height);
+    ctx.stroke();
+  }
 
   // Asfalto: banda cerrada entre los extremos de las puertas.
   ctx.beginPath();
@@ -337,12 +368,22 @@ function draw(
     ctx.lineTo(gate.right.x, gate.right.y);
   }
   ctx.closePath();
-  ctx.fillStyle = '#14171f';
+  ctx.shadowColor = 'rgba(0,0,0,0.75)';
+  ctx.shadowBlur = 24;
+  ctx.shadowOffsetY = 12;
+  const asphalt = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  asphalt.addColorStop(0, '#2a303a');
+  asphalt.addColorStop(0.45, '#171c24');
+  asphalt.addColorStop(1, '#252a32');
+  ctx.fillStyle = asphalt;
   ctx.fill();
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
 
-  // Muros.
-  ctx.lineWidth = 3;
-  ctx.strokeStyle = 'rgba(143,182,255,0.55)';
+  // Bordes luminosos y pianos alternos.
+  ctx.lineJoin = 'round';
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = 'rgba(5,8,12,0.85)';
   for (const side of ['left', 'right'] as const) {
     ctx.beginPath();
     gates.forEach((gate, index) => {
@@ -353,16 +394,50 @@ function draw(
     ctx.closePath();
     ctx.stroke();
   }
+  for (const side of ['left', 'right'] as const) {
+    for (let index = 0; index < gates.length; index++) {
+      const current = gates[index]![side];
+      const next = gates[(index + 1) % gates.length]![side];
+      ctx.beginPath();
+      ctx.moveTo(current.x, current.y);
+      ctx.lineTo(next.x, next.y);
+      ctx.strokeStyle = index % 2 === 0 ? '#f1f5f9' : '#e11d48';
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.82;
+      ctx.stroke();
+    }
+  }
+  ctx.globalAlpha = 1;
 
   // Checkpoints tenues y meta destacada.
   gates.forEach((gate, index) => {
     ctx.beginPath();
     ctx.moveTo(gate.left.x, gate.left.y);
     ctx.lineTo(gate.right.x, gate.right.y);
-    ctx.strokeStyle = index === 0 ? 'rgba(255,255,255,0.85)' : 'rgba(255,255,255,0.07)';
-    ctx.lineWidth = index === 0 ? 4 : 1;
+    ctx.strokeStyle = index === 0 ? 'rgba(255,255,255,0.95)' : 'rgba(103,232,249,0.055)';
+    ctx.lineWidth = index === 0 ? 5 : 1;
     ctx.stroke();
   });
+
+  // Cajones de parrilla junto a la meta.
+  const start = gates[0]!;
+  const previous = gates[gates.length - 1]!;
+  const centerX = (start.left.x + start.right.x) / 2;
+  const centerY = (start.left.y + start.right.y) / 2;
+  const previousX = (previous.left.x + previous.right.x) / 2;
+  const previousY = (previous.left.y + previous.right.y) / 2;
+  const heading = Math.atan2(centerY - previousY, centerX - previousX);
+  ctx.save();
+  ctx.translate(centerX, centerY);
+  ctx.rotate(heading);
+  ctx.strokeStyle = 'rgba(255,255,255,0.38)';
+  ctx.lineWidth = 1.2;
+  for (let row = 0; row < 3; row++) {
+    for (const side of [-1, 1]) {
+      ctx.strokeRect(-20 - row * 28, side * 18 - 9, 20, 18);
+    }
+  }
+  ctx.restore();
 
   for (const kart of state.karts) {
     const view = render.get(kart.playerId) ?? kart;
@@ -371,10 +446,36 @@ function draw(
     ctx.translate(view.x, view.y);
     ctx.rotate(view.heading);
     ctx.globalAlpha = kart.eliminated ? 0.35 : 1;
-    ctx.fillStyle = player?.color ?? '#ffffff';
-    ctx.fillRect(-KART.radius, -KART.radius * 0.7, KART.radius * 2, KART.radius * 1.4);
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.fillRect(KART.radius * 0.2, -KART.radius * 0.45, KART.radius * 0.6, KART.radius * 0.9);
+    ctx.shadowColor = kart.playerId === myId ? 'rgba(255,255,255,0.8)' : (player?.color ?? '#fff');
+    ctx.shadowBlur = kart.playerId === myId ? 12 : 7;
+    // Neumáticos.
+    ctx.fillStyle = '#05070a';
+    ctx.fillRect(-KART.radius * 0.65, -KART.radius, KART.radius * 0.62, KART.radius * 0.38);
+    ctx.fillRect(KART.radius * 0.25, -KART.radius, KART.radius * 0.62, KART.radius * 0.38);
+    ctx.fillRect(-KART.radius * 0.65, KART.radius * 0.62, KART.radius * 0.62, KART.radius * 0.38);
+    ctx.fillRect(KART.radius * 0.25, KART.radius * 0.62, KART.radius * 0.62, KART.radius * 0.38);
+    // Carrocería.
+    const body = ctx.createLinearGradient(-KART.radius, 0, KART.radius, 0);
+    body.addColorStop(0, player?.color ?? '#fff');
+    body.addColorStop(0.55, player?.color ?? '#fff');
+    body.addColorStop(1, '#f8fafc');
+    ctx.fillStyle = body;
+    ctx.beginPath();
+    ctx.moveTo(-KART.radius, -KART.radius * 0.68);
+    ctx.lineTo(KART.radius * 0.72, -KART.radius * 0.54);
+    ctx.lineTo(KART.radius, 0);
+    ctx.lineTo(KART.radius * 0.72, KART.radius * 0.54);
+    ctx.lineTo(-KART.radius, KART.radius * 0.68);
+    ctx.closePath();
+    ctx.fill();
+    ctx.shadowBlur = 0;
+    // Cabina y alerón.
+    ctx.fillStyle = 'rgba(3,7,18,0.78)';
+    ctx.fillRect(-KART.radius * 0.28, -KART.radius * 0.42, KART.radius * 0.72, KART.radius * 0.84);
+    ctx.fillRect(-KART.radius * 1.05, -KART.radius * 0.82, KART.radius * 0.18, KART.radius * 1.64);
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(KART.radius * 0.78, -KART.radius * 0.38, 2.5, 2.5);
+    ctx.fillRect(KART.radius * 0.78, KART.radius * 0.18, 2.5, 2.5);
     ctx.restore();
 
     if (player) {

@@ -52,8 +52,15 @@ export function drawGolfFrame(
 ): void {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#070912';
+  const backdrop = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  backdrop.addColorStop(0, '#071019');
+  backdrop.addColorStop(0.55, '#09131d');
+  backdrop.addColorStop(1, '#05080f');
+  ctx.fillStyle = backdrop;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = 'rgba(103,232,249,0.025)';
+  for (let x = 0; x < canvas.width; x += 44) ctx.fillRect(x, 0, 1, canvas.height);
+  for (let y = 0; y < canvas.height; y += 44) ctx.fillRect(0, y, canvas.width, 1);
 
   drawLevel(ctx, canvas, frame.level, frame.camera, frame.time);
   drawBalls(ctx, canvas, frame.balls, frame.camera, frame.colorOf, frame.myId);
@@ -78,11 +85,20 @@ function drawLevel(
 
   for (const pad of level.pads) {
     const offset = pad.motion ? motionOffsetPublic(pad.motion, time) : { x: 0, y: 0 };
-    ctx.fillStyle = GOLF_SURFACE_COLORS[pad.surface];
-    ctx.fillRect(pad.rect.x + offset.x, pad.rect.y + offset.y, pad.rect.w, pad.rect.h);
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(pad.rect.x + offset.x, pad.rect.y + offset.y, pad.rect.w, pad.rect.h);
+    const x = pad.rect.x + offset.x;
+    const y = pad.rect.y + offset.y;
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(x + 5, y + 7, pad.rect.w, pad.rect.h);
+    const surface = ctx.createLinearGradient(x, y, x, y + pad.rect.h);
+    surface.addColorStop(0, GOLF_SURFACE_COLORS[pad.surface]);
+    surface.addColorStop(1, colorShade(pad.surface));
+    ctx.fillStyle = surface;
+    ctx.fillRect(x, y, pad.rect.w, pad.rect.h);
+    ctx.strokeStyle = 'rgba(255,255,255,0.13)';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(x, y, pad.rect.w, pad.rect.h);
+    ctx.fillStyle = 'rgba(255,255,255,0.035)';
+    ctx.fillRect(x + 1, y + 1, pad.rect.w - 2, Math.min(3, pad.rect.h - 2));
   }
 
   for (const ramp of level.ramps) {
@@ -91,6 +107,9 @@ function drawLevel(
     gradient.addColorStop(1, 'rgba(168,85,247,0.6)');
     ctx.fillStyle = gradient;
     ctx.fillRect(ramp.rect.x, ramp.rect.y, ramp.rect.w, ramp.rect.h);
+    ctx.strokeStyle = 'rgba(216,180,254,0.7)';
+    ctx.lineWidth = 1.2;
+    ctx.strokeRect(ramp.rect.x, ramp.rect.y, ramp.rect.w, ramp.rect.h);
   }
 
   for (const checkpoint of level.checkpoints) {
@@ -103,10 +122,10 @@ function drawLevel(
   // Hoyo
   ctx.beginPath();
   ctx.arc(level.hole.x, level.hole.y, GOLF.holeRadius, 0, Math.PI * 2);
-  ctx.fillStyle = '#05070d';
+  ctx.fillStyle = '#010204';
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+  ctx.lineWidth = 1.2;
   ctx.stroke();
   ctx.beginPath();
   ctx.moveTo(level.hole.x, level.hole.y);
@@ -116,9 +135,18 @@ function drawLevel(
   ctx.fillStyle = '#ef4444';
   ctx.fillRect(level.hole.x, level.hole.y - 34, 18, 10);
 
-  ctx.strokeStyle = '#94a3b8';
-  ctx.lineWidth = 4;
+  ctx.strokeStyle = 'rgba(0,0,0,0.42)';
+  ctx.lineWidth = 7;
   ctx.lineCap = 'round';
+  for (const wall of level.walls) {
+    const offset = wall.motion ? motionOffsetPublic(wall.motion, time) : { x: 0, y: 0 };
+    ctx.beginPath();
+    ctx.moveTo(wall.a.x + offset.x, wall.a.y + offset.y);
+    ctx.lineTo(wall.b.x + offset.x, wall.b.y + offset.y);
+    ctx.stroke();
+  }
+  ctx.strokeStyle = '#b7c2cf';
+  ctx.lineWidth = 3.5;
   for (const wall of level.walls) {
     const offset = wall.motion ? motionOffsetPublic(wall.motion, time) : { x: 0, y: 0 };
     ctx.beginPath();
@@ -129,16 +157,23 @@ function drawLevel(
 
   for (const circle of level.circles) {
     ctx.beginPath();
-    ctx.arc(circle.pos.x, circle.pos.y, circle.radius, 0, Math.PI * 2);
-    ctx.fillStyle = circle.kind === 'bumper' ? '#f472b6' : '#64748b';
+    ctx.arc(circle.pos.x + 3, circle.pos.y + 4, circle.radius, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
     ctx.fill();
+    ctx.beginPath();
+    ctx.arc(circle.pos.x, circle.pos.y, circle.radius, 0, Math.PI * 2);
+    ctx.fillStyle = circle.kind === 'bumper' ? '#f472b6' : '#6f7d91';
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
   }
 
   for (const blade of level.blades) {
     ctx.save();
     ctx.translate(blade.center.x, blade.center.y);
     ctx.rotate(blade.phase + blade.angularSpeed * time);
-    ctx.fillStyle = '#e2e8f0';
+    ctx.fillStyle = '#dbe4ee';
     for (let i = 0; i < blade.arms; i++) {
       ctx.save();
       ctx.rotate((i * Math.PI * 2) / blade.arms);
@@ -149,6 +184,9 @@ function drawLevel(
     ctx.arc(0, 0, blade.armRadius * 1.6, 0, Math.PI * 2);
     ctx.fillStyle = '#94a3b8';
     ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -180,6 +218,10 @@ function drawBalls(
     }
 
     ctx.beginPath();
+    ctx.arc(ball.rx + 1.5, ball.ry + 2.5, radius, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.38)';
+    ctx.fill();
+    ctx.beginPath();
     ctx.arc(ball.rx, ball.ry, radius, 0, Math.PI * 2);
     ctx.fillStyle = info?.color ?? '#e2e8f0';
     ctx.globalAlpha = isMine ? 1 : 0.72;
@@ -188,6 +230,16 @@ function drawBalls(
     ctx.lineWidth = isMine ? 2.5 : 1;
     ctx.strokeStyle = isMine ? '#f8fafc' : 'rgba(248,250,252,0.35)';
     ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(
+      ball.rx - radius * 0.3,
+      ball.ry - radius * 0.35,
+      Math.max(1, radius * 0.22),
+      0,
+      Math.PI * 2,
+    );
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.fill();
 
     ctx.fillStyle = 'rgba(15,23,42,0.85)';
     ctx.font = 'bold 9px sans-serif';
@@ -241,4 +293,21 @@ function drawAim(
   ctx.strokeStyle = ratio > 0.8 ? '#f43f5e' : ratio > 0.5 ? '#fbbf24' : '#4ade80';
   ctx.lineWidth = 3;
   ctx.stroke();
+}
+
+function colorShade(surface: keyof typeof GOLF_SURFACE_COLORS): string {
+  switch (surface) {
+    case 'green':
+      return '#14532d';
+    case 'sand':
+      return '#9a6c2c';
+    case 'ice':
+      return '#397c9c';
+    case 'turbo':
+      return '#075985';
+    case 'stone':
+      return '#374151';
+    default:
+      return GOLF_SURFACE_COLORS[surface];
+  }
 }

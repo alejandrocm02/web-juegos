@@ -15,12 +15,12 @@ export function Panel({
   actions?: React.ReactNode;
 }) {
   return (
-    <section className={'card ' + className}>
+    <section className={'card game-panel ' + className}>
       {(title || actions) && (
-        <header className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            {title && <h2 className="font-display text-lg font-bold tracking-tight">{title}</h2>}
-            {subtitle && <p className="mt-0.5 text-sm text-slate-400">{subtitle}</p>}
+        <header className="game-panel-head">
+          <div className="min-w-0">
+            {title && <h2 className="game-panel-title">{title}</h2>}
+            {subtitle && <p className="game-panel-subtitle">{subtitle}</p>}
           </div>
           {actions}
         </header>
@@ -204,9 +204,9 @@ export function Countdown({ deadline }: { deadline: number }) {
 
 export function ProgressBar({ value, color = '#22d3ee' }: { value: number; color?: string }) {
   return (
-    <div className="h-2.5 w-full overflow-hidden rounded-full border border-white/5 bg-black/25 p-[2px]">
+    <div className="premium-progress">
       <div
-        className="h-full rounded-full transition-[width] duration-150"
+        className="premium-progress-fill"
         style={{
           width: Math.max(0, Math.min(100, value * 100)) + '%',
           background: color,
@@ -238,26 +238,29 @@ export function Scoreboard({
       {rows.map((row) => (
         <li
           key={row.playerId}
-          className={
-            'score-row flex items-center justify-between gap-3 rounded-2xl border px-3.5 py-3 ' +
-            (row.rank === 1
-              ? 'border-neon-amber/25 bg-neon-amber/[0.07]'
-              : 'border-white/[0.06] bg-white/[0.035]')
-          }
+          className={'score-row ' + (row.rank === 1 ? 'score-row-leading' : '')}
         >
-          <span className="flex items-center gap-2.5">
-            <span className="w-6 text-center text-sm font-bold text-slate-400">
+          <span className="score-row-player">
+            <span className="score-rank">
               {row.rank}
               {row.tied ? '=' : ''}
             </span>
-            <PlayerIconGlyph icon={row.icon} color={row.color} size={16} />
-            <span className="font-medium">{row.name}</span>
-          </span>
-          <span className="flex items-center gap-2 text-sm">
-            {row.detail && <span className="text-xs text-slate-400">{row.detail}</span>}
-            <span className="font-display font-bold tabular-nums">
-              {row.score} {unit}
+            <span
+              className="score-avatar"
+              style={{ borderColor: row.color + '55', background: row.color + '14' }}
+            >
+              <PlayerIconGlyph icon={row.icon} color={row.color} size={15} />
             </span>
+            <span className="min-w-0">
+              <span className="block truncate font-semibold">{row.name}</span>
+              {row.detail && (
+                <span className="block truncate text-[11px] text-slate-500">{row.detail}</span>
+              )}
+            </span>
+          </span>
+          <span className="score-value">
+            <strong>{row.score}</strong>
+            <small>{unit}</small>
           </span>
         </li>
       ))}

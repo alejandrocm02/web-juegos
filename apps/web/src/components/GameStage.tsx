@@ -89,6 +89,10 @@ export function GameStage({
       : 'Turno de ' + (activePlayer?.name ?? 'otro jugador')
     : 'Partida simultanea: todos juegan a la vez';
 
+  // El lobby puede ser largo: cada partida debe abrir con su cabecera visible,
+  // aunque el jugador hubiese dejado la pagina desplazada hacia abajo.
+  useEffect(() => window.scrollTo(0, 0), [state.game]);
+
   // La ayuda se cierra al cambiar de juego para no arrastrar el panel abierto.
   useEffect(() => setHelpOpen(false), [state.game]);
 
@@ -110,10 +114,15 @@ export function GameStage({
     >
       <header className="stage-head">
         <span className="stage-identity">
-          <GameIcon game={state.game} size={30} />
+          <span className="stage-mark">
+            <GameIcon game={state.game} size={27} />
+          </span>
           <span>
+            <span className="stage-kicker">
+              <span className="stage-live-dot" />
+              Partida en directo
+            </span>
             <span className="stage-title">{meta.name}</span>
-            {mode && <span className="stage-mode">{mode.name}</span>}
           </span>
         </span>
 
@@ -123,6 +132,11 @@ export function GameStage({
           )}
           {turnLine}
         </p>
+
+        <span className="stage-meta">
+          {mode && <span className="stage-mode">{mode.name}</span>}
+          {room && <span className="stage-room">Sala {room.code}</span>}
+        </span>
 
         <button
           type="button"

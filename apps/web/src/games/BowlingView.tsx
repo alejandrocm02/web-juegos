@@ -60,25 +60,52 @@ export default function BowlingView({ state }: { state: BowlingPublicState }) {
   const seconds = Math.max(0, Math.ceil((state.deadline - now) / 1000));
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl gap-4 px-4 py-6 lg:grid-cols-[minmax(0,420px)_minmax(0,1fr)]">
+    <div className="mx-auto grid w-full max-w-6xl gap-5 px-2 py-3 sm:px-4 lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="chip font-display">{modeInfo?.name ?? state.mode}</span>
-          <span className="chip">
-            Frame {Math.min((myCard?.currentFrame ?? 0) + 1, state.totalFrames)}/{state.totalFrames}
+        <div className="game-hud text-sm">
+          <span className="hud-stat">
+            <span className="hud-stat-label">Formato</span>
+            <span className="hud-stat-value">{modeInfo?.name ?? state.mode}</span>
           </span>
-          {state.phase === 'aiming' && <span className="chip tabular-nums">{seconds}s</span>}
+          <span className="hud-stat">
+            <span className="hud-stat-label">Frame</span>
+            <span className="hud-stat-value">
+              {Math.min((myCard?.currentFrame ?? 0) + 1, state.totalFrames)}/{state.totalFrames}
+            </span>
+          </span>
+          {state.phase === 'aiming' && (
+            <span className="hud-stat ml-auto">
+              <span className="hud-stat-label">Tiempo</span>
+              <span className="hud-stat-value tabular-nums">{seconds}s</span>
+            </span>
+          )}
         </div>
 
-        <canvas
-          ref={canvasRef}
-          width={VIEW_W}
-          height={VIEW_H}
-          className="w-full rounded-2xl border border-white/10 bg-black"
-          aria-label="Pista de bolos"
-        />
+        <div className="game-board-frame bowling-lane-frame">
+          <canvas
+            ref={canvasRef}
+            width={VIEW_W}
+            height={VIEW_H}
+            className="w-full bg-black"
+            aria-label="Pista de bolos"
+          />
+          {state.lastEvent && (
+            <div className={'bowling-result is-' + state.lastEvent}>
+              <span className="bowling-result-label">Último lanzamiento</span>
+              <strong>
+                {state.lastEvent === 'strike'
+                  ? 'STRIKE'
+                  : state.lastEvent === 'spare'
+                    ? 'SPARE'
+                    : state.lastEvent === 'gutter'
+                      ? 'CANALETA'
+                      : state.lastKnocked + ' BOLOS'}
+              </strong>
+            </div>
+          )}
+        </div>
 
-        <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+        <div className="bowling-console">
           <p className="mb-3 text-sm font-semibold text-white">
             {isMyTurn
               ? 'Tu turno: ajusta y lanza'
@@ -133,30 +160,8 @@ export default function BowlingView({ state }: { state: BowlingPublicState }) {
           />
 
           <button className="btn-primary mt-3 min-h-11 w-full" onClick={roll} disabled={!isMyTurn}>
-            Lanzar
+            Lanzar bola
           </button>
-
-          {state.lastEvent && (
-            <p
-              className="mt-3 text-center font-display text-lg font-bold"
-              style={{
-                color:
-                  state.lastEvent === 'strike'
-                    ? 'var(--accent-red-ink)'
-                    : state.lastEvent === 'spare'
-                      ? 'var(--accent-blue-ink)'
-                      : 'var(--text-secondary)',
-              }}
-            >
-              {state.lastEvent === 'strike'
-                ? 'STRIKE'
-                : state.lastEvent === 'spare'
-                  ? 'SPARE'
-                  : state.lastEvent === 'gutter'
-                    ? 'CANALETA'
-                    : state.lastKnocked + ' bolos'}
-            </p>
-          )}
         </div>
       </div>
 
@@ -241,21 +246,37 @@ function drawLane(
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = '#05060a';
+  const room = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  room.addColorStop(0, '#070a11');
+  room.addColorStop(0.55, '#10131b');
+  room.addColorStop(1, '#05070b');
+  ctx.fillStyle = room;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // La pista se dibuja con el fondo abajo: el jugador lanza desde la parte inferior.
   const toY = (y: number) => canvas.height - (y + 60) * scaleY;
 
-  ctx.fillStyle = '#1a1206';
+  // Luz del pin deck.
+  const laneGlow = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  laneGlow.addColorStop(0, '#f3d293');
+  laneGlow.addColorStop(0.38, '#d7a85d');
+  laneGlow.addColorStop(1, '#9c6231');
+  ctx.shadowColor = 'rgba(245, 201, 126, 0.35)';
+  ctx.shadowBlur = 18;
+  ctx.fillStyle = laneGlow;
   ctx.fillRect(
     BOWLING_LANE.gutterWidth * scaleX,
     toY(BOWLING_LANE.length + 40),
     (BOWLING_LANE.width - BOWLING_LANE.gutterWidth * 2) * scaleX,
     (BOWLING_LANE.length + 100) * scaleY,
   );
+  ctx.shadowBlur = 0;
 
-  ctx.fillStyle = '#0a0c12';
+  const gutter = ctx.createLinearGradient(0, 0, canvas.width, 0);
+  gutter.addColorStop(0, '#030509');
+  gutter.addColorStop(0.5, '#161a22');
+  gutter.addColorStop(1, '#030509');
+  ctx.fillStyle = gutter;
   ctx.fillRect(0, 0, BOWLING_LANE.gutterWidth * scaleX, canvas.height);
   ctx.fillRect(
     canvas.width - BOWLING_LANE.gutterWidth * scaleX,
@@ -264,21 +285,42 @@ function drawLane(
     canvas.height,
   );
 
-  ctx.strokeStyle = 'rgba(255,255,255,0.07)';
-  ctx.lineWidth = 1;
-  for (let i = 1; i < 7; i++) {
-    const x = (BOWLING_LANE.width / 7) * i * scaleX;
+  // Lamas de madera y reflejos longitudinales.
+  ctx.strokeStyle = 'rgba(77, 42, 20, 0.28)';
+  ctx.lineWidth = 0.8;
+  for (let i = 1; i < 15; i++) {
+    const x =
+      BOWLING_LANE.gutterWidth * scaleX +
+      ((BOWLING_LANE.width - BOWLING_LANE.gutterWidth * 2) / 15) * i * scaleX;
     ctx.beginPath();
     ctx.moveTo(x, toY(BOWLING_LANE.length));
     ctx.lineTo(x, canvas.height);
     ctx.stroke();
   }
 
+  // Línea de falta, marcas de objetivo y puntos de salida.
+  const foulY = toY(80);
+  ctx.fillStyle = 'rgba(225, 29, 46, 0.9)';
+  ctx.fillRect(BOWLING_LANE.gutterWidth * scaleX, foulY, (BOWLING_LANE.width - 24) * scaleX, 2);
+  ctx.fillStyle = 'rgba(42, 52, 64, 0.72)';
+  for (let i = -2; i <= 2; i++) {
+    const x = (BOWLING_LANE.width / 2 + i * 12) * scaleX;
+    const y = toY(520);
+    ctx.beginPath();
+    ctx.moveTo(x, y - 5);
+    ctx.lineTo(x - 3.5, y + 3);
+    ctx.lineTo(x + 3.5, y + 3);
+    ctx.closePath();
+    ctx.fill();
+  }
+
   if (aim !== null) {
     const usable = BOWLING_LANE.width - BOWLING_LANE.gutterWidth * 2;
     const startX = (BOWLING_LANE.width / 2 + aim * (usable / 2 - BOWLING_LANE.ballRadius)) * scaleX;
-    ctx.strokeStyle = 'rgba(143,182,255,0.75)';
-    ctx.lineWidth = 2;
+    ctx.strokeStyle = 'rgba(103, 232, 249, 0.85)';
+    ctx.lineWidth = 2.2;
+    ctx.shadowColor = 'rgba(34, 211, 238, 0.6)';
+    ctx.shadowBlur = 8;
     ctx.setLineDash([6, 6]);
     ctx.beginPath();
     ctx.moveTo(startX, canvas.height - 20);
@@ -289,37 +331,78 @@ function drawLane(
       toY(BOWLING_LANE.length),
     );
     ctx.stroke();
+    ctx.shadowBlur = 0;
     ctx.setLineDash([]);
   }
 
   for (const pin of pins) {
     if (!pin.standing) continue;
+    const px = pin.x * scaleX;
+    const py = toY(pin.y);
+    const radius = Math.max(3.4, BOWLING_LANE.pinRadius * scaleX);
     ctx.beginPath();
-    ctx.arc(
-      pin.x * scaleX,
-      toY(pin.y),
-      Math.max(3, BOWLING_LANE.pinRadius * scaleX),
-      0,
-      Math.PI * 2,
-    );
-    ctx.fillStyle = '#ffffff';
+    ctx.ellipse(px + 1, py + radius * 0.72, radius * 0.95, radius * 0.42, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(225,29,46,0.9)';
+
+    const pinGradient = ctx.createRadialGradient(
+      px - radius * 0.35,
+      py - radius * 0.5,
+      radius * 0.2,
+      px,
+      py,
+      radius * 1.35,
+    );
+    pinGradient.addColorStop(0, '#ffffff');
+    pinGradient.addColorStop(0.58, '#e8edf4');
+    pinGradient.addColorStop(1, '#9ba7b8');
+    ctx.beginPath();
+    ctx.arc(px, py, radius, 0, Math.PI * 2);
+    ctx.fillStyle = pinGradient;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 0.7;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(px, py - radius * 0.1, radius * 0.73, 0.15, Math.PI - 0.15);
+    ctx.strokeStyle = '#e11d2e';
     ctx.lineWidth = 1.5;
     ctx.stroke();
   }
 
+  const ballX = ball.x * scaleX;
+  const ballY = toY(ball.y);
+  const ballRadius = Math.max(4.5, BOWLING_LANE.ballRadius * scaleX);
   ctx.beginPath();
-  ctx.arc(
-    ball.x * scaleX,
-    toY(ball.y),
-    Math.max(4, BOWLING_LANE.ballRadius * scaleX),
-    0,
-    Math.PI * 2,
-  );
-  ctx.fillStyle = ball.gutter ? '#4b5563' : '#1d5ae1';
+  ctx.ellipse(ballX + 2, ballY + ballRadius * 0.8, ballRadius, ballRadius * 0.4, 0, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-  ctx.lineWidth = 1.5;
+  const ballGradient = ctx.createRadialGradient(
+    ballX - ballRadius * 0.4,
+    ballY - ballRadius * 0.45,
+    1,
+    ballX,
+    ballY,
+    ballRadius,
+  );
+  ballGradient.addColorStop(0, ball.gutter ? '#94a3b8' : '#67e8f9');
+  ballGradient.addColorStop(0.35, ball.gutter ? '#475569' : '#1d5ae1');
+  ballGradient.addColorStop(1, '#090d18');
+  ctx.beginPath();
+  ctx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2);
+  ctx.fillStyle = ballGradient;
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.62)';
+  ctx.lineWidth = 1;
   ctx.stroke();
+  ctx.fillStyle = 'rgba(3, 7, 18, 0.8)';
+  for (const [dx, dy] of [
+    [-0.22, -0.18],
+    [0.18, -0.28],
+    [0.05, 0.08],
+  ]) {
+    ctx.beginPath();
+    ctx.arc(ballX + dx * ballRadius, ballY + dy * ballRadius, ballRadius * 0.11, 0, Math.PI * 2);
+    ctx.fill();
+  }
 }

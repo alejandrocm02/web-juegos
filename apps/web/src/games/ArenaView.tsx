@@ -158,25 +158,44 @@ export default function ArenaView({ state }: { state: ArenaPublicState }) {
   const secondsLeft = Math.max(0, Math.ceil((ARENA.maxMatchMs - state.matchMs) / 1000));
 
   return (
-    <div className="mx-auto grid w-full max-w-[1400px] gap-4 px-4 py-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+    <div className="mx-auto grid w-full max-w-[1400px] gap-5 px-2 py-3 sm:px-4 xl:grid-cols-[minmax(0,1fr)_300px]">
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="chip font-display">{modeInfo?.name ?? state.mode}</span>
-          <span className="chip">En pie: {state.aliveCount}</span>
-          <span className="chip tabular-nums">{secondsLeft} s</span>
+        <div className="game-hud text-sm">
+          <span className="hud-stat">
+            <span className="hud-stat-label">Modo</span>
+            <span className="hud-stat-value">{modeInfo?.name ?? state.mode}</span>
+          </span>
+          <span className="hud-stat">
+            <span className="hud-stat-label">En pie</span>
+            <span className="hud-stat-value">{state.aliveCount}</span>
+          </span>
+          <span className="hud-stat">
+            <span className="hud-stat-label">Cierre total</span>
+            <span className="hud-stat-value tabular-nums">{secondsLeft} s</span>
+          </span>
           {me && (
-            <span className="chip">
-              Vida {me.health}
-              {me.shield > 0 && ' +' + me.shield}
+            <span className="hud-stat">
+              <span className="hud-stat-label">Protección</span>
+              <span className="hud-stat-value">
+                {me.health} HP {me.shield > 0 && ' · ' + me.shield + ' escudo'}
+              </span>
             </span>
           )}
           {me?.inStorm && (
-            <span className="chip text-[color:var(--accent-red-ink)]">Fuera de la zona</span>
+            <span className="hud-stat ml-auto border-rose-500/40 bg-rose-500/10">
+              <span className="hud-stat-label text-rose-300">Alerta</span>
+              <span className="hud-stat-value text-rose-200">Fuera de la zona</span>
+            </span>
           )}
-          {me && me.kills > 0 && <span className="chip">Eliminaciones {me.kills}</span>}
+          {me && me.kills > 0 && (
+            <span className="hud-stat">
+              <span className="hud-stat-label">Eliminaciones</span>
+              <span className="hud-stat-value">{me.kills}</span>
+            </span>
+          )}
         </div>
 
-        <div className="relative">
+        <div className="game-board-frame relative">
           <canvas
             ref={canvasRef}
             width={VIEW}
@@ -188,20 +207,23 @@ export default function ArenaView({ state }: { state: ArenaPublicState }) {
             }}
             onPointerUp={() => setTouch({ attack: false })}
             onPointerLeave={() => setTouch({ attack: false })}
-            className="w-full touch-none rounded-2xl border border-white/10 bg-black"
+            className="w-full touch-none bg-black"
             aria-label="Arena de Battle Royale"
           />
 
           {state.phase === 'countdown' && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/70">
-              <span className="font-display text-6xl font-black text-white">
-                {Math.max(1, Math.ceil(state.countdownMs / 1000))}
-              </span>
+            <div className="absolute inset-1.5 z-[4] flex items-center justify-center rounded-[0.95rem] bg-black/70 backdrop-blur-sm">
+              <div className="game-countdown">
+                <span className="game-countdown-label">Despliegue</span>
+                <span className="game-countdown-value">
+                  {Math.max(1, Math.ceil(state.countdownMs / 1000))}
+                </span>
+              </div>
             </div>
           )}
 
           {spectating && (
-            <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-xl border border-white/20 bg-black/85 px-4 py-2 text-sm text-white">
+            <div className="game-overlay absolute left-1/2 top-4 z-[4] -translate-x-1/2 px-4 py-2 text-sm text-white">
               Eliminado. Sigues la partida como espectador.
             </div>
           )}
@@ -410,45 +432,142 @@ function draw(
   ctx.save();
   ctx.scale(scale, scale);
 
-  // Tormenta: todo lo que queda fuera del circulo hace dano.
-  ctx.fillStyle = 'rgba(225,29,46,0.16)';
+  // Tormenta y terreno táctico.
+  const storm = ctx.createRadialGradient(
+    zone.x,
+    zone.y,
+    zone.radius * 0.45,
+    zone.x,
+    zone.y,
+    ARENA.width * 0.72,
+  );
+  storm.addColorStop(0, 'rgba(29, 78, 216, 0.12)');
+  storm.addColorStop(0.55, 'rgba(88, 28, 135, 0.35)');
+  storm.addColorStop(1, 'rgba(190, 18, 60, 0.5)');
+  ctx.fillStyle = storm;
   ctx.fillRect(0, 0, ARENA.width, ARENA.height);
   ctx.save();
   ctx.beginPath();
   ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
   ctx.clip();
-  ctx.fillStyle = '#0a0d14';
+  const safeGround = ctx.createRadialGradient(
+    zone.x,
+    zone.y,
+    0,
+    zone.x,
+    zone.y,
+    Math.max(1, zone.radius),
+  );
+  safeGround.addColorStop(0, '#10242a');
+  safeGround.addColorStop(0.7, '#0b171d');
+  safeGround.addColorStop(1, '#10151c');
+  ctx.fillStyle = safeGround;
   ctx.fillRect(0, 0, ARENA.width, ARENA.height);
+
+  // Retícula del campo, recortada dentro de la zona segura.
+  ctx.strokeStyle = 'rgba(103,232,249,0.055)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x <= ARENA.width; x += 50) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, ARENA.height);
+    ctx.stroke();
+  }
+  for (let y = 0; y <= ARENA.height; y += 50) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(ARENA.width, y);
+    ctx.stroke();
+  }
   ctx.restore();
 
+  ctx.shadowColor = 'rgba(96, 165, 250, 0.9)';
+  ctx.shadowBlur = 14;
   ctx.beginPath();
   ctx.arc(zone.x, zone.y, zone.radius, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(143,182,255,0.9)';
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = 'rgba(125, 211, 252, 0.92)';
+  ctx.lineWidth = 3.5;
   ctx.stroke();
+  ctx.shadowBlur = 0;
 
   for (const obstacle of ARENA_OBSTACLES) {
     ctx.beginPath();
-    ctx.arc(obstacle.x, obstacle.y, obstacle.radius, 0, Math.PI * 2);
-    ctx.fillStyle = '#1b2029';
+    ctx.ellipse(
+      obstacle.x + 5,
+      obstacle.y + obstacle.radius * 0.55,
+      obstacle.radius,
+      obstacle.radius * 0.58,
+      0,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fillStyle = 'rgba(0,0,0,0.42)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    const rock = ctx.createRadialGradient(
+      obstacle.x - obstacle.radius * 0.35,
+      obstacle.y - obstacle.radius * 0.35,
+      obstacle.radius * 0.1,
+      obstacle.x,
+      obstacle.y,
+      obstacle.radius,
+    );
+    rock.addColorStop(0, '#394653');
+    rock.addColorStop(0.58, '#1d2833');
+    rock.addColorStop(1, '#0b1118');
+    ctx.beginPath();
+    ctx.arc(obstacle.x, obstacle.y, obstacle.radius, 0, Math.PI * 2);
+    ctx.fillStyle = rock;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
     ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(
+      obstacle.x - obstacle.radius * 0.12,
+      obstacle.y - obstacle.radius * 0.1,
+      obstacle.radius * 0.58,
+      0.3,
+      Math.PI * 1.45,
+    );
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1.5;
     ctx.stroke();
   }
 
   for (const pickup of pickups) {
     if (!pickup.active) continue;
     const meta = ARENA_PICKUP_META[pickup.kind];
+    ctx.shadowColor = meta.color;
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.arc(pickup.x, pickup.y, ARENA.pickupRadius + 3, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(7,10,16,0.92)';
+    ctx.fill();
     ctx.beginPath();
     ctx.arc(pickup.x, pickup.y, ARENA.pickupRadius, 0, Math.PI * 2);
     ctx.fillStyle = meta.color;
-    ctx.globalAlpha = 0.9;
+    ctx.globalAlpha = 0.88;
     ctx.fill();
     ctx.globalAlpha = 1;
     ctx.strokeStyle = 'rgba(255,255,255,0.6)';
     ctx.lineWidth = 1.5;
     ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 13px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(
+      pickup.kind === 'botiquin'
+        ? '+'
+        : pickup.kind === 'escudo'
+          ? 'S'
+          : pickup.kind === 'velocidad'
+            ? '»'
+            : '×',
+      pickup.x,
+      pickup.y + 0.5,
+    );
   }
 
   for (const fighter of fighters) {
@@ -458,6 +577,7 @@ function draw(
 
     // Cono de ataque del propio jugador, para entender el alcance.
     if (fighter.playerId === myId) {
+      const attackReady = fighter.attackCooldownMs <= 0;
       ctx.beginPath();
       ctx.moveTo(view.x, view.y);
       ctx.arc(
@@ -468,14 +588,43 @@ function draw(
         view.facing + ARENA.attackArc,
       );
       ctx.closePath();
-      ctx.fillStyle = 'rgba(255,255,255,0.09)';
+      ctx.fillStyle = attackReady ? 'rgba(103,232,249,0.13)' : 'rgba(255,255,255,0.045)';
       ctx.fill();
+      ctx.strokeStyle = attackReady ? 'rgba(103,232,249,0.3)' : 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
 
     ctx.beginPath();
-    ctx.arc(view.x, view.y, ARENA.playerRadius, 0, Math.PI * 2);
-    ctx.fillStyle = player?.color ?? '#ffffff';
+    ctx.ellipse(
+      view.x + 2,
+      view.y + ARENA.playerRadius * 0.7,
+      ARENA.playerRadius * 0.95,
+      ARENA.playerRadius * 0.5,
+      0,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fillStyle = 'rgba(0,0,0,0.42)';
     ctx.fill();
+    const fighterFill = ctx.createRadialGradient(
+      view.x - ARENA.playerRadius * 0.35,
+      view.y - ARENA.playerRadius * 0.45,
+      1,
+      view.x,
+      view.y,
+      ARENA.playerRadius * 1.1,
+    );
+    fighterFill.addColorStop(0, '#ffffff');
+    fighterFill.addColorStop(0.25, player?.color ?? '#ffffff');
+    fighterFill.addColorStop(1, '#111827');
+    ctx.shadowColor = player?.color ?? '#ffffff';
+    ctx.shadowBlur = fighter.playerId === myId ? 14 : 6;
+    ctx.beginPath();
+    ctx.arc(view.x, view.y, ARENA.playerRadius, 0, Math.PI * 2);
+    ctx.fillStyle = fighterFill;
+    ctx.fill();
+    ctx.shadowBlur = 0;
     ctx.lineWidth = fighter.playerId === myId ? 3 : 1.5;
     ctx.strokeStyle = fighter.playerId === myId ? '#ffffff' : 'rgba(255,255,255,0.4)';
     ctx.stroke();
@@ -492,23 +641,26 @@ function draw(
     ctx.stroke();
 
     if (fighter.shield > 0) {
+      ctx.shadowColor = 'rgba(96,165,250,0.8)';
+      ctx.shadowBlur = 9;
       ctx.beginPath();
       ctx.arc(view.x, view.y, ARENA.playerRadius + 5, 0, Math.PI * 2);
       ctx.strokeStyle = 'rgba(143,182,255,0.85)';
       ctx.lineWidth = 2;
       ctx.stroke();
+      ctx.shadowBlur = 0;
     }
 
     // Barra de vida sobre el personaje.
-    const barWidth = 30;
+    const barWidth = 34;
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(view.x - barWidth / 2, view.y - ARENA.playerRadius - 12, barWidth, 4);
+    ctx.fillRect(view.x - barWidth / 2, view.y - ARENA.playerRadius - 13, barWidth, 4.5);
     ctx.fillStyle = fighter.health > 40 ? '#34d399' : '#e11d2e';
     ctx.fillRect(
       view.x - barWidth / 2,
-      view.y - ARENA.playerRadius - 12,
+      view.y - ARENA.playerRadius - 13,
       (barWidth * fighter.health) / ARENA.maxHealth,
-      4,
+      4.5,
     );
   }
 

@@ -105,7 +105,7 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
     drag && cue ? Math.min(1, Math.hypot(cue.x - drag.x, cue.y - drag.y) / MAX_DRAG) : 0;
 
   return (
-    <div className="mx-auto grid min-h-screen w-full max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_300px] lg:px-8">
+    <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_310px] lg:px-8">
       <Panel
         title={'Turno de ' + (activePlayer?.name ?? '...')}
         subtitle={
@@ -115,15 +115,42 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
               ? 'Bolas en movimiento...'
               : 'Espera tu turno'
         }
-        actions={
-          <span className={'chip tabular-nums ' + (seconds <= 5 ? 'text-rose-300' : '')}>
-            {state.phase === 'aiming' ? seconds + 's' : '...'}
-          </span>
-        }
         className="overflow-hidden"
       >
-        <div className="pointer-events-none absolute -right-20 top-1/4 h-64 w-64 rounded-full bg-neon-cyan/[0.07] blur-3xl" />
-        <div className="canvas-frame relative">
+        <div className="game-hud mb-4">
+          <div className="hud-stat">
+            <span className="hud-stat-label">Modalidad</span>
+            <strong className="hud-stat-value">{eightBall ? 'Bola 8' : 'Clásico'}</strong>
+          </div>
+          <div className="hud-stat">
+            <span className="hud-stat-label">Estado</span>
+            <strong className="hud-stat-value">
+              {state.phase === 'simulating' ? 'En movimiento' : isMyTurn ? 'Tu turno' : 'Rival'}
+            </strong>
+          </div>
+          <div className="hud-stat">
+            <span className="hud-stat-label">Tiempo</span>
+            <strong
+              className={'hud-stat-value tabular-nums ' + (seconds <= 5 ? 'text-rose-300' : '')}
+            >
+              {state.phase === 'aiming' ? seconds + 's' : '—'}
+            </strong>
+          </div>
+          <div className="hud-stat">
+            <span className="hud-stat-label">{eightBall ? 'Tu objetivo' : 'Restantes'}</span>
+            <strong className="hud-stat-value">
+              {eightBall
+                ? myGroup === 'lisas'
+                  ? 'Lisas'
+                  : myGroup === 'rayadas'
+                    ? 'Rayadas'
+                    : 'Mesa abierta'
+                : state.ballsLeft}
+            </strong>
+          </div>
+        </div>
+
+        <div className="game-board-frame pool-table-frame relative">
           <canvas
             ref={canvasRef}
             width={1016}
@@ -135,40 +162,42 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
             onPointerCancel={onPointerUp}
             aria-label="Mesa de billar"
           />
+          {state.phase === 'simulating' && (
+            <div className="game-overlay pool-status-overlay">Bolas en movimiento</div>
+          )}
         </div>
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-sm text-slate-400">
+
+        <div className="pool-console mt-4">
+          <div className="pool-console-copy">
+            <span className="pool-console-kicker">Lectura de mesa</span>
+            <strong>{state.lastShotSummary ?? 'Prepara el primer golpe'}</strong>
+          </div>
           {eightBall ? (
-            <span className="flex flex-wrap items-center gap-2">
+            <div className="pool-objective">
               {state.tableOpen ? (
-                <span className="chip">Mesa abierta</span>
+                <span>Mesa abierta · cualquier grupo es válido</span>
               ) : (
-                <span className="chip">
-                  Tu grupo: {myGroup === 'lisas' ? 'Lisas (1-7)' : 'Rayadas (9-15)'}
-                </span>
-              )}
-              {myGroupLeft !== null && (
                 <span>
                   {myGroupLeft === 0
                     ? blackOnTable
-                      ? 'Grupo limpio: ve a por la negra'
-                      : 'Negra embocada'
-                    : myGroupLeft + ' bola(s) tuyas en la mesa'}
+                      ? 'Mesa limpia · juega la bola 8'
+                      : 'Bola 8 embocada'
+                    : `${myGroupLeft ?? '—'} bola(s) de tu grupo en mesa`}
                 </span>
               )}
-            </span>
+            </div>
           ) : (
-            <span>Bolas de color restantes: {state.ballsLeft}</span>
+            <div className="pool-objective">{state.ballsLeft} bolas de color restantes</div>
           )}
-          <span className="text-right text-xs">
-            {state.lastShotSummary ?? 'Sin golpes todavía'}
-          </span>
         </div>
+
         {isMyTurn && (
-          <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-white/10">
-            <div
-              className="h-full rounded-full bg-neon-cyan transition-[width] duration-75"
-              style={{ width: dragPower * 100 + '%' }}
-            />
+          <div className="pool-power mt-3">
+            <span>Potencia</span>
+            <div className="premium-progress flex-1">
+              <div className="premium-progress-fill" style={{ width: dragPower * 100 + '%' }} />
+            </div>
+            <strong className="tabular-nums">{Math.round(dragPower * 100)}%</strong>
           </div>
         )}
       </Panel>
@@ -182,15 +211,18 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
               <li
                 key={playerId}
                 className={
-                  'flex items-center justify-between rounded-xl border px-3 py-2 ' +
-                  (playerId === state.activePlayerId
-                    ? 'border-neon-cyan bg-neon-cyan/10'
-                    : 'border-white/5 bg-white/5')
+                  'score-row ' +
+                  (playerId === state.activePlayerId ? 'border-neon-cyan/60 bg-neon-cyan/10' : '')
                 }
               >
-                <span className="flex items-center gap-2">
-                  <PlayerIconGlyph icon={player.icon} color={player.color} size={15} />
-                  {player.name}
+                <span className="score-row-leading">
+                  <span className="score-avatar">
+                    <PlayerIconGlyph icon={player.icon} color={player.color} size={15} />
+                  </span>
+                  <span className="score-row-player">
+                    <strong>{player.name}</strong>
+                    <small>{playerId === state.activePlayerId ? 'En la mesa' : 'Esperando'}</small>
+                  </span>
                 </span>
                 {eightBall ? (
                   <span className="text-right text-xs leading-tight">
@@ -254,24 +286,55 @@ function draw(
   cloth.addColorStop(0, '#167a55');
   cloth.addColorStop(0.65, '#0e6042');
   cloth.addColorStop(1, '#08442f');
-  ctx.fillStyle = cloth;
+  ctx.fillStyle = '#17120d';
   ctx.fillRect(0, 0, POOL_TABLE.width, POOL_TABLE.height);
-  ctx.strokeStyle = '#6f4220';
-  ctx.lineWidth = 9;
+  ctx.shadowColor = 'rgba(0,0,0,0.75)';
+  ctx.shadowBlur = 12;
+  ctx.fillStyle = cloth;
+  ctx.fillRect(7, 7, POOL_TABLE.width - 14, POOL_TABLE.height - 14);
+  ctx.shadowBlur = 0;
+
+  const rail = ctx.createLinearGradient(0, 0, 0, POOL_TABLE.height);
+  rail.addColorStop(0, '#b78345');
+  rail.addColorStop(0.18, '#71421d');
+  rail.addColorStop(0.55, '#3b210f');
+  rail.addColorStop(1, '#8a5427');
+  ctx.strokeStyle = rail;
+  ctx.lineWidth = 10;
   ctx.strokeRect(1, 1, POOL_TABLE.width - 2, POOL_TABLE.height - 2);
   ctx.strokeStyle = 'rgba(255,255,255,0.1)';
   ctx.lineWidth = 0.6;
   ctx.strokeRect(6, 6, POOL_TABLE.width - 12, POOL_TABLE.height - 12);
 
-  ctx.fillStyle = 'rgba(255,255,255,0.22)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.035)';
+  ctx.lineWidth = 0.45;
+  for (let x = 18; x < POOL_TABLE.width; x += 18) {
+    ctx.beginPath();
+    ctx.moveTo(x, 8);
+    ctx.lineTo(x, POOL_TABLE.height - 8);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = 'rgba(255,255,255,0.36)';
   ctx.beginPath();
   ctx.arc(POOL_TABLE.width * 0.25, POOL_TABLE.height / 2, 1.2, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = '#0b0f1a';
   for (const pocket of poolPockets()) {
+    const pocketGlow = ctx.createRadialGradient(
+      pocket.x,
+      pocket.y,
+      POOL_TABLE.pocketRadius * 0.2,
+      pocket.x,
+      pocket.y,
+      POOL_TABLE.pocketRadius * 1.4,
+    );
+    pocketGlow.addColorStop(0, '#000000');
+    pocketGlow.addColorStop(0.65, '#040609');
+    pocketGlow.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = pocketGlow;
     ctx.beginPath();
-    ctx.arc(pocket.x, pocket.y, POOL_TABLE.pocketRadius, 0, Math.PI * 2);
+    ctx.arc(pocket.x, pocket.y, POOL_TABLE.pocketRadius * 1.4, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -281,13 +344,16 @@ function draw(
     const dy = cue.y - drag.y;
     const length = Math.min(MAX_DRAG, Math.hypot(dx, dy));
     const angle = Math.atan2(dy, dx);
-    ctx.strokeStyle = 'rgba(34,211,238,0.85)';
-    ctx.lineWidth = 1;
+    ctx.shadowColor = 'rgba(34,211,238,0.75)';
+    ctx.shadowBlur = 4;
+    ctx.strokeStyle = 'rgba(103,232,249,0.95)';
+    ctx.lineWidth = 1.25;
     ctx.setLineDash([4, 3]);
     ctx.beginPath();
     ctx.moveTo(cue.x, cue.y);
     ctx.lineTo(cue.x + Math.cos(angle) * length * 1.4, cue.y + Math.sin(angle) * length * 1.4);
     ctx.stroke();
+    ctx.shadowBlur = 0;
     ctx.setLineDash([]);
     ctx.strokeStyle = 'rgba(248,250,252,0.6)';
     ctx.beginPath();
