@@ -1,5 +1,6 @@
 import type { PoolBallState, PoolSnapshot } from '@arcade/shared';
 import {
+  EIGHT_BALL,
   PHYSICS_DT,
   POOL_FRICTION,
   POOL_MAX_SPEED,
@@ -38,9 +39,14 @@ export class PoolWorld {
   private outcome: PoolShotOutcome = { pocketedColors: [], cuePocketed: false };
   tick = 0;
 
-  constructor(colorBalls: number, friction: keyof typeof POOL_FRICTION) {
+  constructor(
+    colorBalls: number,
+    friction: keyof typeof POOL_FRICTION,
+    /** La variante bola 8 coloca las quince bolas con la negra en el centro. */
+    private readonly eightBall = false,
+  ) {
     this.frictionCoef = POOL_FRICTION[friction];
-    this.rack(colorBalls);
+    this.rack(eightBall ? EIGHT_BALL.totalBalls : colorBalls);
   }
 
   private rack(colorBalls: number): void {
@@ -59,10 +65,13 @@ export class PoolWorld {
     ];
     const apexX = width * 0.68;
     const gap = ballRadius * 2 + 0.35;
-    let id = 1;
+    const order = this.eightBall ? eightBallRackOrder() : sequentialOrder(colorBalls);
+
+    let index = 0;
     let row = 0;
-    while (id <= colorBalls) {
-      for (let i = 0; i <= row && id <= colorBalls; i++) {
+    while (index < order.length) {
+      for (let i = 0; i <= row && index < order.length; i++) {
+        const id = order[index]!;
         const x = apexX + row * gap * 0.87;
         const y = height / 2 + (i - row / 2) * gap;
         this.balls.push({
@@ -75,7 +84,7 @@ export class PoolWorld {
           spin: 0,
           pocketed: false,
         });
-        id++;
+        index++;
       }
       row++;
     }
@@ -232,6 +241,15 @@ export class PoolWorld {
       }
     }
   }
+}
+
+/** Orden clasico del triangulo de bola 8: la negra ocupa el centro. */
+function eightBallRackOrder(): number[] {
+  return [1, 9, 2, 10, 8, 3, 11, 4, 12, 5, 13, 6, 14, 7, 15];
+}
+
+function sequentialOrder(count: number): number[] {
+  return Array.from({ length: count }, (_, index) => index + 1);
 }
 
 function round(value: number): number {

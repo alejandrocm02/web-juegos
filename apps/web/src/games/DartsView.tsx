@@ -1,4 +1,10 @@
-import { DART_RADII, DART_SECTORS, type DartsPublicState } from '@arcade/shared';
+import {
+  CRICKET_MARKS_TO_CLOSE,
+  CRICKET_NUMBERS,
+  DART_RADII,
+  DART_SECTORS,
+  type DartsPublicState,
+} from '@arcade/shared';
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
@@ -116,7 +122,7 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
       </Panel>
 
       <div className="space-y-4">
-        <Panel title="Puntuaciones (301)">
+        <Panel title={'Puntuaciones · ' + state.mode}>
           <ul className="space-y-2">
             {state.order.map((playerId) => {
               const player = room?.players.find((p) => p.id === playerId);
@@ -142,6 +148,76 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
             })}
           </ul>
         </Panel>
+
+        {state.cricket && (
+          <Panel title="Cricket: marcas y puntos">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <caption className="sr-only">
+                  Marcas por numero y puntos de cada jugador en el modo cricket
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col" className="pb-1 text-left font-semibold text-slate-400">
+                      Jugador
+                    </th>
+                    {CRICKET_NUMBERS.map((number) => (
+                      <th
+                        key={number}
+                        scope="col"
+                        className="pb-1 text-center font-semibold text-slate-400"
+                      >
+                        {number === 25 ? 'B' : number}
+                      </th>
+                    ))}
+                    <th scope="col" className="pb-1 text-right font-semibold text-slate-400">
+                      Pts
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {state.order.map((playerId) => {
+                    const player = room?.players.find((entry) => entry.id === playerId);
+                    const entry = state.cricket?.[playerId];
+                    if (!player || !entry) return null;
+                    return (
+                      <tr key={playerId} className="border-t border-white/5">
+                        <th scope="row" className="py-1 text-left font-medium text-white">
+                          {player.name}
+                        </th>
+                        {CRICKET_NUMBERS.map((number) => {
+                          const marks = entry.marks[number] ?? 0;
+                          const closed = marks >= CRICKET_MARKS_TO_CLOSE;
+                          return (
+                            <td
+                              key={number}
+                              className={
+                                'py-1 text-center tabular-nums ' +
+                                (closed
+                                  ? 'font-bold text-[color:var(--state-success)]'
+                                  : 'text-slate-300')
+                              }
+                            >
+                              {/* Notacion clasica: barra, cruz y circulo. */}
+                              {closed ? 'X' : marks === 2 ? '//' : marks === 1 ? '/' : '·'}
+                            </td>
+                          );
+                        })}
+                        <td className="py-1 text-right font-semibold tabular-nums text-white">
+                          {entry.score}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-xs text-slate-400">
+              Tres marcas cierran un numero. Con el numero cerrado y algun rival sin cerrarlo, los
+              impactos suman puntos.
+            </p>
+          </Panel>
+        )}
 
         <Panel title="Historial">
           <ul className="space-y-2 text-xs">

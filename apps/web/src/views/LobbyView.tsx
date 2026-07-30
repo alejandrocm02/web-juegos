@@ -476,14 +476,23 @@ function GameSettingsForm({
     const pool = settings.pool;
     return (
       <div className="space-y-4">
-        <Field label="Bolas de color">
-          <Segmented
-            disabled={disabled}
-            value={pool.colorBalls}
-            options={[6, 9, 12].map((n) => ({ label: String(n), value: n }))}
-            onChange={(colorBalls) => onChange('pool', { ...pool, colorBalls })}
-          />
-        </Field>
+        {pool.mode === 'bola8' ? (
+          <Field label="Bolas">
+            <p className="text-sm text-slate-400">
+              La bola 8 usa siempre las quince bolas numeradas: lisas de la 1 a la 7, rayadas de la
+              9 a la 15 y la negra en el centro del triangulo.
+            </p>
+          </Field>
+        ) : (
+          <Field label="Bolas de color">
+            <Segmented
+              disabled={disabled}
+              value={pool.colorBalls}
+              options={[6, 9, 12].map((n) => ({ label: String(n), value: n }))}
+              onChange={(colorBalls) => onChange('pool', { ...pool, colorBalls })}
+            />
+          </Field>
+        )}
         <Field label="Velocidad del pano">
           <Segmented
             disabled={disabled}

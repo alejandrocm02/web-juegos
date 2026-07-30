@@ -4,6 +4,7 @@ export * from './room.js';
 export * from './events.js';
 export * from './games/quiz.js';
 export * from './games/darts.js';
+export * from './games/cricket.js';
 export * from './games/pool.js';
 export * from './games/golf.js';
 export * from './games/golf-levels.js';
