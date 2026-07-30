@@ -33,6 +33,8 @@ export interface ShotResult {
 
 interface InternalBall extends GolfBallState {
   airTimeLeft: number;
+  /** Segundos que faltan para que un aspa pueda volver a impulsar la bola. */
+  bladeCooldown: number;
   airTotal: number;
   lastStable: Vec2;
   respawn: Vec2;
@@ -81,6 +83,7 @@ export class GolfWorld {
       outOfBounds: false,
       finished: false,
       airTimeLeft: 0,
+      bladeCooldown: 0,
       airTotal: 1,
       lastStable: { ...start },
       respawn: { ...start },
@@ -276,6 +279,8 @@ export class GolfWorld {
       return;
     }
 
+    if (ball.bladeCooldown > 0) ball.bladeCooldown = Math.max(0, ball.bladeCooldown - dt);
+
     const pad = this.padAt(ball.x, ball.y, time);
     if (!pad) {
       this.handleOutOfBounds(ball);
@@ -461,12 +466,34 @@ export class GolfWorld {
         const n: V2 = { x: dx / dist, y: dy / dist };
         ball.x = p.x + n.x * (min + 0.05);
         ball.y = p.y + n.y * (min + 0.05);
+
+        const incoming = Math.hypot(ball.vx, ball.vy);
         const vel = reflect({ x: ball.vx, y: ball.vy }, n, blade.restitution);
+
         // Empuje tangencial del aspa en movimiento.
         const rx = p.x - blade.center.x;
         const ry = p.y - blade.center.y;
-        ball.vx = vel.x + -ry * blade.angularSpeed;
-        ball.vy = vel.y + rx * blade.angularSpeed;
+        const tipSpeed = Math.hypot(rx, ry) * Math.abs(blade.angularSpeed);
+        const boost = ball.bladeCooldown > 0 ? 0 : 1;
+        let vx = vel.x + -ry * blade.angularSpeed * boost;
+        let vy = vel.y + rx * blade.angularSpeed * boost;
+
+        /*
+         * Sin este limite el aspa reinyecta energia en cada contacto y la bola
+         * puede quedar rebotando junto al molino indefinidamente: el jugador ve
+         * que su bola no se detiene nunca y no puede volver a golpear.
+         * El aspa redirige y puede empujar, pero nunca por encima de la
+         * velocidad de llegada ni de la del propio brazo.
+         */
+        const cap = Math.max(incoming, tipSpeed);
+        const after = Math.hypot(vx, vy);
+        if (after > cap && after > 1e-6) {
+          vx = (vx / after) * cap;
+          vy = (vy / after) * cap;
+        }
+        ball.vx = vx;
+        ball.vy = vy;
+        if (boost === 1) ball.bladeCooldown = 0.15;
       }
     }
   }

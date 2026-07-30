@@ -147,7 +147,7 @@ export const GOLF = {
 export const GOLF_SURFACE_FRICTION: Record<GolfSurface, number> = {
   green: 0.95,
   sand: 3.4,
-  ice: 0.18,
+  ice: 0.75,
   turbo: 0.5,
   stone: 0.7,
 };

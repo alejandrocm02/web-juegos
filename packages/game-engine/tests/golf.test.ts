@@ -180,9 +180,9 @@ describe('rutas de hoyo en uno disenadas', () => {
   const solutions: Record<number, { angle: number; power: number; delay?: number }> = {
     1: { angle: 0, power: 0.68 },
     2: { angle: 1.5, power: 0.8 },
-    4: { angle: 153, power: 0.78 },
+    4: { angle: 346, power: 0.96 },
     6: { angle: 352.5, power: 0.98 },
-    10: { angle: 34.5, power: 0.82 },
+    10: { angle: 35, power: 0.96 },
   };
 
   for (const [id, shot] of Object.entries(solutions)) {
@@ -254,5 +254,45 @@ describe('determinismo de la simulacion', () => {
       max = Math.max(max, Math.hypot(ball.vx, ball.vy));
     }
     expect(max).toBeLessThanOrEqual(GOLF.maxShotSpeed * 1.35);
+  });
+});
+
+describe('la bola siempre acaba deteniendose', () => {
+  /**
+   * Regresion: en los niveles con aspas la bola podia quedar rebotando junto al
+   * molino indefinidamente, porque cada contacto le reinyectaba energia. El
+   * jugador veia que no podia volver a golpear nunca.
+   */
+  it('ningun nivel deja la bola en movimiento perpetuo', () => {
+    for (const level of GOLF_LEVELS) {
+      for (const degrees of [0, 90, 180, 270]) {
+        const world = new GolfWorld(level, settings(), ['p1']);
+        world.shoot('p1', (degrees * Math.PI) / 180, 1);
+        let seconds = 0;
+        const limit = 60 * 15;
+        for (let i = 0; i < limit; i++) {
+          world.step(1 / 60);
+          const ball = world.getBall('p1')!;
+          if (ball.holed || ball.finished) break;
+          if (!ball.airborne && Math.hypot(ball.vx, ball.vy) === 0) break;
+          seconds = (i + 1) / 60;
+        }
+        expect(seconds, 'nivel ' + level.id + ' angulo ' + degrees).toBeLessThan(14);
+      }
+    }
+  }, 30000);
+
+  it('un aspa redirige la bola pero no la acelera indefinidamente', () => {
+    const level = getGolfLevel(4);
+    const world = new GolfWorld(level, settings(), ['p1']);
+    world.shoot('p1', 0, 0.9);
+    let maxSpeed = 0;
+    for (let i = 0; i < 60 * 12; i++) {
+      world.step(1 / 60);
+      const ball = world.getBall('p1')!;
+      maxSpeed = Math.max(maxSpeed, Math.hypot(ball.vx, ball.vy));
+    }
+    // Nunca debe superar la velocidad de un golpe a maxima potencia.
+    expect(maxSpeed).toBeLessThanOrEqual(GOLF.maxShotSpeed);
   });
 });

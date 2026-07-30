@@ -1,9 +1,10 @@
-import { GOLF, type GolfPublicState, type GolfSnapshot } from '@arcade/shared';
+import type { GolfBallState, GolfPublicState, GolfSnapshot } from '@arcade/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph, Scoreboard } from '../components/ui.js';
 import { playAceSound, playHoledSound, playOutSound } from '../lib/sound.js';
 import { relativeToPar } from '../lib/format.js';
+import { canShootBall, pickLiveBall } from './golf-input.js';
 import { MAX_DRAG, drawGolfFrame, type PlayerLook, type RenderBall } from './golf-render.js';
 
 const VIEW_W = 960;
@@ -19,16 +20,26 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
   const clockRef = useRef({ levelClockMs: 0, receivedAt: performance.now() });
   const [overview, setOverview] = useState(false);
   const [aceBanner, setAceBanner] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
   const lastEventRef = useRef<string>('');
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
 
-  const myBall = state.balls.find((ball) => ball.playerId === session?.playerId) ?? null;
+  const liveBallRef = useRef<GolfBallState | null>(null);
+  const [, uiTick] = useState(0);
+  const myBall = liveBallRef.current ?? pickLiveBall(null, state.balls, session?.playerId) ?? null;
   const myPlayer = room?.players.find((p) => p.id === session?.playerId) ?? null;
 
   useEffect(() => {
     if (!session?.playerId) return;
     seqRef.current = Math.max(seqRef.current, state.lastSequences[session.playerId] ?? -1);
   }, [session?.playerId, state.lastSequences]);
+
+  // Refresco ligero para que el boton y el cursor reaccionen en decimas, no en
+  // segundos: el estado publico del servidor solo llega una vez por segundo.
+  useEffect(() => {
+    const id = setInterval(() => uiTick((value) => value + 1), 120);
+    return () => clearInterval(id);
+  }, []);
 
   useEffect(() => {
     renderBalls.current = new Map();
@@ -93,6 +104,11 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
         if (snapshot && 'levelClockMs' in snapshot) {
           clockRef.current = { levelClockMs: snapshot.levelClockMs, receivedAt: time };
         }
+        liveBallRef.current = pickLiveBall(
+          snapshot && 'levelClockMs' in snapshot ? snapshot : null,
+          state.balls,
+          session?.playerId,
+        );
 
         // Interpolacion suave hacia la ultima posicion autoritativa.
         for (const ball of source) {
@@ -161,17 +177,10 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
     };
   };
 
-  const canShoot =
-    state.phase === 'playing' &&
-    myBall !== null &&
-    !myBall.holed &&
-    !myBall.finished &&
-    !myBall.airborne &&
-    !myBall.outOfBounds &&
-    Math.hypot(myBall.vx, myBall.vy) <= GOLF.stopSpeed;
+  const canShoot = state.phase === 'playing' && canShootBall(myBall);
 
   const onPointerDown = (event: React.PointerEvent) => {
-    if (!canShoot) return;
+    if (!canShootBall(liveBallRef.current) || state.phase !== 'playing') return;
     const point = pointerToWorld(event);
     if (!point) return;
     dragRef.current = point;
@@ -191,11 +200,17 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
     const point = dragRef.current;
     dragRef.current = null;
     setDrag(null);
-    if (!point || !canShoot || !myBall) return;
-    const dx = myBall.x - point.x;
-    const dy = myBall.y - point.y;
+    const ball = liveBallRef.current;
+    if (!point || !ball || !canShootBall(ball) || state.phase !== 'playing') return;
+    const dx = ball.x - point.x;
+    const dy = ball.y - point.y;
     const distance = Math.hypot(dx, dy);
-    if (distance < 6) return;
+    if (distance < 6) {
+      // Antes se ignoraba en silencio y parecia que el juego no respondia.
+      setHint('Arrastra un poco mas para dar potencia al golpe');
+      return;
+    }
+    setHint(null);
     seqRef.current += 1;
     sendAction({
       type: 'golf:shoot',
@@ -283,6 +298,12 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
                   {aceBanner} lo ha clavado al primer golpe
                 </p>
               </div>
+            </div>
+          )}
+
+          {hint && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 rounded-xl border border-white/15 bg-black/85 px-4 py-2 text-sm text-white">
+              {hint}
             </div>
           )}
 
