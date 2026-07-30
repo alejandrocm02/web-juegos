@@ -6,6 +6,7 @@ import {
   QUIZ_CATEGORIES,
   type GameId,
   KART_TRACKS,
+  type ArenaSettings,
   type BowlingSettings,
   type KartsSettings,
   type GolfSettings,
@@ -493,6 +494,37 @@ function GameSettingsForm({
               { label: 'Rapida', value: 'rapida' as const },
             ]}
             onChange={(tableFriction) => onChange('pool', { ...pool, tableFriction })}
+          />
+        </Field>
+      </div>
+    );
+  }
+
+  if (game === 'arena') {
+    const arena: ArenaSettings = settings.arena;
+    return (
+      <div className="space-y-4">
+        <Field label="Velocidad de cierre de la zona">
+          <Segmented
+            disabled={disabled}
+            value={arena.zonePace}
+            options={[
+              { label: 'Lenta', value: 'lenta' as const },
+              { label: 'Normal', value: 'normal' as const },
+              { label: 'Rapida', value: 'rapida' as const },
+            ]}
+            onChange={(zonePace) => onChange('arena', { ...arena, zonePace })}
+          />
+        </Field>
+        <Field label="Objetos en la arena">
+          <Segmented
+            disabled={disabled}
+            value={arena.pickups}
+            options={[
+              { label: 'Activados', value: true },
+              { label: 'Desactivados', value: false },
+            ]}
+            onChange={(pickups) => onChange('arena', { ...arena, pickups })}
           />
         </Field>
       </div>

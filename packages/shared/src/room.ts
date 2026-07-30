@@ -1,5 +1,6 @@
 import type { GameId, PlayerIcon } from './constants.js';
 import type {
+  ArenaMode,
   BowlingMode,
   KartsMode,
   DartsMode,
@@ -67,6 +68,13 @@ export interface KartsSettings {
   laps: 2 | 3 | 5;
 }
 
+export interface ArenaSettings {
+  mode: ArenaMode;
+  /** Velocidad a la que se cierra la zona. */
+  zonePace: 'lenta' | 'normal' | 'rapida';
+  pickups: boolean;
+}
+
 export interface GameSettings {
   quiz: QuizSettings;
   darts: DartsSettings;
@@ -74,6 +82,7 @@ export interface GameSettings {
   golf: GolfSettings;
   bowling: BowlingSettings;
   karts: KartsSettings;
+  arena: ArenaSettings;
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -87,6 +96,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   pool: { mode: 'clasico', colorBalls: 9, tableFriction: 'normal' },
   bowling: { mode: 'individual', precision: 'normal' },
   karts: { mode: 'rapida', track: 'ovalo', laps: 3 },
+  arena: { mode: 'individual', zonePace: 'normal', pickups: true },
   golf: {
     mode: 'clasico',
     ballCollisions: true,

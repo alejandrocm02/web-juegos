@@ -6,6 +6,7 @@ import type { PoolBallState } from './games/pool.js';
 import type { GolfBallState, GolfFeedEvent, GolfHoleResult, GolfLevel } from './games/golf.js';
 import type { BowlingBallState, BowlingPinState, BowlingScorecard } from './games/bowling.js';
 import type { KartState, KartTrack } from './games/karts.js';
+import type { ArenaFighterState, ArenaPickup, ArenaZone } from './games/arena.js';
 import type { TeamId } from './games/modes.js';
 
 /* --------------------------------- Quiz ---------------------------------- */
@@ -137,13 +138,35 @@ export interface KartsPublicState {
   deadline: number;
 }
 
+/* ----------------------------- Battle Royale ----------------------------- */
+
+export type ArenaPhase = 'countdown' | 'fighting' | 'finished';
+
+export interface ArenaPublicState {
+  game: 'arena';
+  phase: ArenaPhase;
+  mode: string;
+  fighters: ArenaFighterState[];
+  pickups: ArenaPickup[];
+  zone: ArenaZone;
+  matchMs: number;
+  countdownMs: number;
+  /** Jugadores todavia en pie. */
+  aliveCount: number;
+  teams: Record<string, TeamId>;
+  /** Ultimos sucesos de combate para el marcador lateral. */
+  feed: { kind: string; playerId: string; targetId?: string; atMs: number }[];
+  deadline: number;
+}
+
 export type GamePublicState =
   | QuizPublicState
   | DartsPublicState
   | PoolPublicState
   | GolfPublicState
   | BowlingPublicState
-  | KartsPublicState;
+  | KartsPublicState
+  | ArenaPublicState;
 
 export interface GameStartedPayload {
   game: GameId;
