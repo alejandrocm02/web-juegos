@@ -25,10 +25,12 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
   const gestureBallRef = useRef<GolfBallState | null>(null);
   const gestureCameraRef = useRef<Camera | null>(null);
   const seqRef = useRef(0);
+  const lastSyncedLevelRef = useRef<number | null>(null);
   const clockRef = useRef({ levelClockMs: 0, receivedAt: performance.now() });
   const [overview, setOverview] = useState(false);
   const [aceBanner, setAceBanner] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
+  const [pendingSeq, setPendingSeq] = useState<number | null>(null);
   const lastEventRef = useRef<string>('');
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
 
@@ -52,6 +54,12 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
   useEffect(() => {
     renderBalls.current = new Map();
     cameraRef.current = { x: state.level.start.x, y: state.level.start.y, zoom: 1 };
+    dragRef.current = null;
+    gestureBallRef.current = null;
+    gestureCameraRef.current = null;
+    setDrag(null);
+    setHint(null);
+    setPendingSeq(null);
   }, [state.levelIndex, state.level.start.x, state.level.start.y]);
 
   useEffect(() => {
@@ -64,6 +72,8 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
   }, [sendAction]);
 
   useEffect(() => {
+    if (lastSyncedLevelRef.current === state.levelIndex) return;
+    lastSyncedLevelRef.current = state.levelIndex;
     sendAction({ type: 'golf:sync' });
   }, [state.levelIndex, sendAction]);
 
@@ -185,10 +195,15 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
     };
   };
 
-  const canShoot = state.phase === 'playing' && canShootBall(myBall);
+  const canShoot = state.phase === 'playing' && pendingSeq === null && canShootBall(myBall);
 
   const onPointerDown = (event: React.PointerEvent) => {
-    if (event.button !== 0 || !canShootBall(liveBallRef.current) || state.phase !== 'playing')
+    if (
+      event.button !== 0 ||
+      pendingSeq !== null ||
+      !canShootBall(liveBallRef.current) ||
+      state.phase !== 'playing'
+    )
       return;
     const ball = liveBallRef.current;
     if (!ball) return;
@@ -224,12 +239,14 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
       return;
     }
     setHint('Golpe enviado…');
-    seqRef.current += 1;
+    const shotSeq = seqRef.current + 1;
+    seqRef.current = shotSeq;
+    setPendingSeq(shotSeq);
     sendAction({
       type: 'golf:shoot',
       angle: shot.angle,
       power: shot.power,
-      seq: seqRef.current,
+      seq: shotSeq,
     });
   };
 
@@ -242,9 +259,21 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
   };
 
   useEffect(() => {
-    if (!session?.playerId || hint !== 'Golpe enviado…') return;
-    if ((state.lastSequences[session.playerId] ?? -1) >= seqRef.current) setHint(null);
-  }, [hint, session?.playerId, state.lastSequences]);
+    if (!session?.playerId || pendingSeq === null) return;
+    if ((state.lastSequences[session.playerId] ?? -1) < pendingSeq) return;
+    setPendingSeq(null);
+    setHint(null);
+  }, [pendingSeq, session?.playerId, state.lastSequences]);
+
+  useEffect(() => {
+    if (pendingSeq === null) return;
+    const timer = setTimeout(() => {
+      setPendingSeq(null);
+      setHint('El servidor no confirmó el golpe. Inténtalo de nuevo.');
+      sendAction({ type: 'golf:sync' });
+    }, 4000);
+    return () => clearTimeout(timer);
+  }, [pendingSeq, sendAction]);
 
   const power =
     drag && myBall ? Math.min(1, Math.hypot(myBall.x - drag.x, myBall.y - drag.y) / MAX_DRAG) : 0;

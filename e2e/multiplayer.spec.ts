@@ -71,6 +71,22 @@ test('el minigolf arranca con 10 niveles y muestra el HUD', async ({ browser }) 
   await expect(host.getByText(/Colisiones:/)).toBeVisible();
   await expect(host.getByRole('button', { name: /Reiniciar bola/ })).toBeVisible();
 
+  // El primer golpe debe llegar al servidor y confirmarse. Esta comprobación
+  // evita que una resincronización en bucle agote el límite de mensajes.
+  const course = host.locator('canvas').first();
+  const box = await course.boundingBox();
+  expect(box).not.toBeNull();
+  const centerX = box!.x + box!.width / 2;
+  const centerY = box!.y + box!.height / 2;
+  await host.mouse.move(centerX, centerY);
+  await host.mouse.down();
+  await host.mouse.move(centerX - 100, centerY, { steps: 8 });
+  await host.mouse.up();
+
+  await expect(host.locator('.hud-stat').filter({ hasText: 'Golpes' })).toContainText('1');
+  await expect(host.getByText('Golpe enviado…')).toHaveCount(0);
+  await expect(host.getByText(/demasiadas acciones/i)).toHaveCount(0);
+
   await hostContext.close();
   await guestContext.close();
 });

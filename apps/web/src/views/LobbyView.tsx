@@ -16,6 +16,7 @@ import { useApp } from '../store.js';
 import { ErrorBanner, GameIcon, PlayerIconGlyph, Panel } from '../components/ui.js';
 import { BackButton } from '../components/navigation.js';
 import { quizCategoryLabel } from '../lib/format.js';
+import { EmptyState } from './StatusViews.js';
 
 export default function LobbyView() {
   const {
@@ -34,7 +35,14 @@ export default function LobbyView() {
   } = useApp();
   const [copied, setCopied] = useState<string | null>(null);
 
-  if (!room || !me) return null;
+  if (!room || !me) {
+    return (
+      <EmptyState
+        title="Recuperando tu sesión…"
+        description="Estamos volviendo a enlazar tu jugador con la sala."
+      />
+    );
+  }
 
   const copy = async (value: string, label: string) => {
     try {

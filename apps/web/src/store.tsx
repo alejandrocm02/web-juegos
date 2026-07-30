@@ -78,6 +78,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const eventId = useRef(0);
   const snapshotRef = useRef<GolfSnapshot | PoolSnapshot | null>(null);
   const pendingName = useRef<string>('');
+  const sessionRef = useRef<SessionInfo | null>(null);
+  const sessionRecoveryRef = useRef(false);
 
   const pushToast = useCallback((message: string) => {
     const id = Date.now() + Math.random();
@@ -85,21 +87,44 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4200);
   }, []);
 
+  // Esta referencia debe ser estable: varios juegos la usan como dependencia
+  // de efectos de entrada o sincronización.
+  const sendAction = useCallback((action: GameAction) => {
+    socket.emit(CLIENT_EVENTS.gameAction, action);
+  }, []);
+
   useEffect(() => {
     const onConnect = () => {
       setConnected(true);
       const stored = loadSession();
-      if (stored) socket.emit(CLIENT_EVENTS.rejoin, { code: stored.code, token: stored.token });
+      // La sesión en memoria pertenece a esta pestaña y tiene prioridad sobre
+      // localStorage, que puede haber sido modificado por otra pestaña.
+      const active = sessionRef.current ?? stored;
+      if (active) {
+        sessionRecoveryRef.current = true;
+        socket.emit(CLIENT_EVENTS.rejoin, { code: active.code, token: active.token });
+      }
     };
     const onDisconnect = () => setConnected(false);
 
     const onSession = (payload: SessionInfo) => {
+      sessionRef.current = payload;
+      sessionRecoveryRef.current = false;
       setSession(payload);
       setError(null);
       saveSession({ ...payload, name: pendingName.current || loadSession()?.name || '' });
     };
     const onRoom = (payload: RoomSummary) => {
       setRoom(payload);
+      const active = sessionRef.current;
+      if (
+        active?.code === payload.code &&
+        !payload.players.some((player) => player.id === active.playerId) &&
+        !sessionRecoveryRef.current
+      ) {
+        sessionRecoveryRef.current = true;
+        socket.emit(CLIENT_EVENTS.rejoin, { code: active.code, token: active.token });
+      }
       if (payload.phase === 'results' && payload.result) {
         // El resultado viaja también dentro del estado de la sala. Así la
         // pantalla final no depende de haber recibido un único evento efímero.
@@ -112,8 +137,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     };
     const onError = (payload: AppError) => {
+      sessionRecoveryRef.current = false;
       setError(payload);
       if (payload.code === 'SESSION_EXPIRED' || payload.code === 'ROOM_NOT_FOUND') {
+        sessionRef.current = null;
         clearSession();
         setSession(null);
         setRoom(null);
@@ -136,6 +163,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     };
     const onOver = (payload: { result: MatchResult }) => setResult(payload.result);
     const onKicked = () => {
+      sessionRef.current = null;
+      sessionRecoveryRef.current = false;
       clearSession();
       setSession(null);
       setRoom(null);
@@ -143,6 +172,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setError({ code: 'NOT_IN_ROOM', message: 'El anfitrión te ha expulsado de la sala.' });
     };
     const onSessionReplaced = () => {
+      sessionRef.current = null;
+      sessionRecoveryRef.current = false;
       clearSession();
       setSession(null);
       setRoom(null);
@@ -218,6 +249,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       },
       leaveRoom: () => {
         socket.emit(CLIENT_EVENTS.leaveRoom);
+        sessionRef.current = null;
+        sessionRecoveryRef.current = false;
         clearSession();
         setSession(null);
         setRoom(null);
@@ -232,10 +265,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       kickPlayer: (playerId) => socket.emit(CLIENT_EVENTS.kickPlayer, { playerId }),
       transferHost: (playerId) => socket.emit(CLIENT_EVENTS.transferHost, { playerId }),
       backToLobby: () => socket.emit(CLIENT_EVENTS.backToLobby),
-      sendAction: (action) => socket.emit(CLIENT_EVENTS.gameAction, action),
+      sendAction,
       dismissError: () => setError(null),
     }),
-    [connected, session, room, gameState, result, error, toasts, golfEvents, lastGameEvent, me],
+    [
+      connected,
+      session,
+      room,
+      gameState,
+      result,
+      error,
+      toasts,
+      golfEvents,
+      lastGameEvent,
+      me,
+      sendAction,
+    ],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
