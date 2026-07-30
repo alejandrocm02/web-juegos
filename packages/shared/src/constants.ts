@@ -23,7 +23,7 @@ export const PLAYER_ICONS = ['circle', 'triangle', 'square', 'diamond', 'star'] 
 
 export type PlayerIcon = (typeof PLAYER_ICONS)[number];
 
-export const GAME_IDS = ['pool', 'quiz', 'darts', 'golf', 'bowling'] as const;
+export const GAME_IDS = ['pool', 'quiz', 'darts', 'golf', 'bowling', 'karts'] as const;
 export type GameId = (typeof GAME_IDS)[number];
 
 export const GAME_META: Record<GameId, { name: string; tagline: string; accent: string }> = {
@@ -32,4 +32,5 @@ export const GAME_META: Record<GameId, { name: string; tagline: string; accent: 
   darts: { name: 'Dardos', tagline: 'Modalidad 301', accent: '#fbbf24' },
   golf: { name: 'Minigolf', tagline: '10 hoyos del parque', accent: '#4ade80' },
   bowling: { name: 'Bolos', tagline: 'Diez frames, strikes y spares', accent: '#f87171' },
+  karts: { name: 'Karts', tagline: 'Carreras por vueltas y checkpoints', accent: '#60a5fa' },
 };

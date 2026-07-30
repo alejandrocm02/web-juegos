@@ -68,6 +68,15 @@ export function GameIcon({
         <circle cx="17.5" cy="18.5" r="2.5" />
       </>
     ),
+    karts: (
+      <>
+        <path d="M4 16.5h16" />
+        <path d="M6.5 16.5 8 11h8l1.5 5.5" />
+        <circle cx="7.5" cy="18.5" r="1.8" />
+        <circle cx="16.5" cy="18.5" r="1.8" />
+        <path d="M9.5 11V8.5h5V11" />
+      </>
+    ),
     bowling: (
       <>
         <circle cx="8" cy="15" r="5.5" />

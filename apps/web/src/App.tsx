@@ -8,6 +8,7 @@ import DartsView from './games/DartsView.js';
 import PoolView from './games/PoolView.js';
 import GolfView from './games/GolfView.js';
 import BowlingView from './games/BowlingView.js';
+import KartsView from './games/KartsView.js';
 import { Toasts } from './components/ui.js';
 import { GameExitBar } from './components/GameExitBar.js';
 import { DisconnectedOverlay, EmptyState } from './views/StatusViews.js';
@@ -43,6 +44,9 @@ export default function App() {
         break;
       case 'bowling':
         content = <BowlingView state={gameState} />;
+        break;
+      case 'karts':
+        content = <KartsView state={gameState} />;
         break;
       default:
         content = <EmptyState title="Juego desconocido" description="Vuelve al lobby." />;

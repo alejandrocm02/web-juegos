@@ -55,8 +55,8 @@ export default function HomeView() {
             <span className="text-gradient block">sin instalar nada.</span>
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-7 text-slate-400 sm:text-lg">
-            Reúne de 2 a 5 amigos en una sala privada y competid en cuatro juegos en tiempo real. Un
-            enlace, cero cuentas y toda la tensión de una recreativa.
+            Reúne de 2 a 5 amigos en una sala privada y competid en {GAME_IDS.length} juegos en
+            tiempo real. Un enlace, cero cuentas y toda la tensión de una recreativa.
           </p>
           <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-300">
             {['Salas privadas', 'Multijugador en vivo', 'Móvil y escritorio'].map((item) => (
@@ -159,7 +159,7 @@ export default function HomeView() {
       <section aria-labelledby="games-heading">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="eyebrow">Cuatro maneras de ganar</p>
+            <p className="eyebrow">{GAME_IDS.length} maneras de ganar</p>
             <h2 id="games-heading" className="mt-1 font-display text-2xl font-bold sm:text-3xl">
               Elige tu terreno de juego
             </h2>
