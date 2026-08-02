@@ -13,6 +13,8 @@ import {
   SONGLESS_MODES,
   AIR_HOCKEY_MODES,
   TABLE_TENNIS_MODES,
+  HEAD_SOCCER_MODES,
+  HEAD_BASKETBALL_MODES,
 } from './games/modes.js';
 import { sanitizeName } from './util.js';
 
@@ -109,6 +111,16 @@ export const tableTennisSettingsSchema = z.object({
   pointsToWin: z.union([z.literal(7), z.literal(11), z.literal(15)]),
 });
 
+export const headSoccerSettingsSchema = z.object({
+  mode: z.enum(HEAD_SOCCER_MODES),
+  goalLimit: z.union([z.literal(3), z.literal(5), z.literal(7)]),
+});
+
+export const headBasketballSettingsSchema = z.object({
+  mode: z.enum(HEAD_BASKETBALL_MODES),
+  pointsToWin: z.union([z.literal(6), z.literal(10), z.literal(14)]),
+});
+
 export const settingsPatchSchema = z.discriminatedUnion('game', [
   z.object({ game: z.literal('quiz'), settings: quizSettingsSchema }),
   z.object({ game: z.literal('darts'), settings: dartsSettingsSchema }),
@@ -121,6 +133,8 @@ export const settingsPatchSchema = z.discriminatedUnion('game', [
   z.object({ game: z.literal('songless'), settings: songlessSettingsSchema }),
   z.object({ game: z.literal('air-hockey'), settings: airHockeySettingsSchema }),
   z.object({ game: z.literal('table-tennis'), settings: tableTennisSettingsSchema }),
+  z.object({ game: z.literal('head-soccer'), settings: headSoccerSettingsSchema }),
+  z.object({ game: z.literal('head-basketball'), settings: headBasketballSettingsSchema }),
 ]);
 
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
@@ -220,6 +234,14 @@ export const sportInputSchema = z.object({
   y: z.number().min(0).max(1),
 });
 
+export const headSportInputSchema = z.object({
+  type: z.literal('head-sport:input'),
+  game: z.enum(['head-soccer', 'head-basketball']),
+  moveX: z.number().min(-1).max(1),
+  jump: z.boolean(),
+  kick: z.boolean(),
+});
+
 export const golfResetSchema = z.object({ type: z.literal('golf:reset') });
 export const golfSyncSchema = z.object({ type: z.literal('golf:sync') });
 
@@ -232,6 +254,7 @@ export const gameActionSchema = z.discriminatedUnion('type', [
   blackjackStandSchema,
   songlessAnswerSchema,
   sportInputSchema,
+  headSportInputSchema,
   dartsThrowSchema,
   poolShootSchema,
   golfShootSchema,

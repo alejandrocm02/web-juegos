@@ -11,6 +11,7 @@ import {
   type MatchResult,
   type PoolSnapshot,
   type ArcadeSportSnapshot,
+  type HeadSportSnapshot,
   type RoomSummary,
 } from '@arcade/shared';
 import React, {
@@ -47,7 +48,9 @@ interface AppStateValue {
   golfEvents: GolfFeedEvent[];
   /** Ultimo evento de partida sin interpretar, para los momentos destacados. */
   lastGameEvent: { id: number; payload: unknown } | null;
-  snapshotRef: React.MutableRefObject<GolfSnapshot | PoolSnapshot | ArcadeSportSnapshot | null>;
+  snapshotRef: React.MutableRefObject<
+    GolfSnapshot | PoolSnapshot | ArcadeSportSnapshot | HeadSportSnapshot | null
+  >;
   me: RoomSummary['players'][number] | null;
   isHost: boolean;
   createRoom: (name: string) => void;
@@ -78,7 +81,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [golfEvents, setGolfEvents] = useState<GolfFeedEvent[]>([]);
   const [lastGameEvent, setLastGameEvent] = useState<{ id: number; payload: unknown } | null>(null);
   const eventId = useRef(0);
-  const snapshotRef = useRef<GolfSnapshot | PoolSnapshot | ArcadeSportSnapshot | null>(null);
+  const snapshotRef = useRef<
+    GolfSnapshot | PoolSnapshot | ArcadeSportSnapshot | HeadSportSnapshot | null
+  >(null);
   const pendingName = useRef<string>('');
   const sessionRef = useRef<SessionInfo | null>(null);
   const sessionRecoveryRef = useRef(false);
@@ -151,10 +156,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const onStarted = (payload: { game: GameId; state: GamePublicState }) => {
       setResult(null);
       setGolfEvents([]);
+      // Evita interpolar durante unos milisegundos el último snapshot de la
+      // partida anterior cuando dos juegos comparten la misma forma de datos.
+      snapshotRef.current = null;
       setGameState(payload.state);
     };
     const onState = (payload: GamePublicState) => setGameState(payload);
-    const onSnapshot = (payload: GolfSnapshot | PoolSnapshot | ArcadeSportSnapshot) => {
+    const onSnapshot = (
+      payload: GolfSnapshot | PoolSnapshot | ArcadeSportSnapshot | HeadSportSnapshot,
+    ) => {
       snapshotRef.current = payload;
     };
     const onGameEvent = (payload: GolfFeedEvent) => {

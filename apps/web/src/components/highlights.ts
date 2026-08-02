@@ -77,6 +77,12 @@ export function describeGameEvent(
         detail: event.team === 'rojo' ? 'Equipo rojo' : 'Equipo azul',
         tone: 'good',
       };
+    case 'head-score':
+      return {
+        title: '¡' + (typeof event.value === 'string' ? event.value : 'Punto') + '!',
+        detail: event.team === 'rojo' ? 'Equipo rojo' : 'Equipo azul',
+        tone: 'good',
+      };
     default:
       // El resto de eventos (penalizaciones, reinicios, fin de tiempo) ya se
       // comunican en el HUD de cada juego y no interrumpen la pantalla.

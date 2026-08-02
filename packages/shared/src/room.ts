@@ -12,6 +12,8 @@ import type {
   SonglessMode,
   AirHockeyMode,
   TableTennisMode,
+  HeadSoccerMode,
+  HeadBasketballMode,
 } from './games/modes.js';
 
 export type ConnectionState = 'connected' | 'disconnected';
@@ -99,6 +101,16 @@ export interface TableTennisSettings {
   pointsToWin: 7 | 11 | 15;
 }
 
+export interface HeadSoccerSettings {
+  mode: HeadSoccerMode;
+  goalLimit: 3 | 5 | 7;
+}
+
+export interface HeadBasketballSettings {
+  mode: HeadBasketballMode;
+  pointsToWin: 6 | 10 | 14;
+}
+
 export interface GameSettings {
   quiz: QuizSettings;
   darts: DartsSettings;
@@ -111,6 +123,8 @@ export interface GameSettings {
   songless: SonglessSettings;
   'air-hockey': AirHockeySettings;
   'table-tennis': TableTennisSettings;
+  'head-soccer': HeadSoccerSettings;
+  'head-basketball': HeadBasketballSettings;
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -129,6 +143,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
   songless: { mode: 'clasico', rounds: 7 },
   'air-hockey': { mode: 'clasico', goalLimit: 7 },
   'table-tennis': { mode: 'clasico', pointsToWin: 11 },
+  'head-soccer': { mode: 'clasico', goalLimit: 5 },
+  'head-basketball': { mode: 'clasico', pointsToWin: 10 },
   golf: {
     mode: 'clasico',
     ballCollisions: true,

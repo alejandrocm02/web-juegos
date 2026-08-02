@@ -144,3 +144,56 @@ test('navegacion principal: seleccionar modo, entrar en partida y volver al lobb
   await hostContext.close();
   await guestContext.close();
 });
+
+test('Head Soccer y Head Basketball arrancan y aceptan controles en dos navegadores', async ({
+  browser,
+}) => {
+  const hostContext = await browser.newContext();
+  const guestContext = await browser.newContext();
+  const host = await hostContext.newPage();
+  const guest = await guestContext.newPage();
+
+  await enterName(host, 'Delantera');
+  await host.getByRole('button', { name: 'Crear sala privada' }).click();
+  const code = (await host.locator('h1.font-display').first().textContent())!.trim();
+
+  await enterName(guest, 'Defensa');
+  await guest.getByRole('button', { name: 'Unirse' }).click();
+  await guest.getByLabel('Codigo de sala').fill(code);
+  await guest.getByRole('button', { name: 'Entrar en la sala' }).click();
+  await expect(host.getByText('Defensa')).toBeVisible();
+
+  await host.getByRole('button', { name: 'Head Soccer', exact: true }).click();
+  await host.getByRole('button', { name: 'Estoy listo' }).click();
+  await guest.getByRole('button', { name: 'Estoy listo' }).click();
+  await host.getByRole('button', { name: /Iniciar Head Soccer/ }).click();
+
+  await expect(host.getByLabel('Campo de Head Soccer')).toBeVisible({ timeout: 20_000 });
+  await expect(guest.getByLabel('Campo de Head Soccer')).toBeVisible({ timeout: 20_000 });
+  await expect(host.getByText('Clásico · a 5')).toBeVisible();
+  await host.keyboard.down('ArrowRight');
+  await host.waitForTimeout(250);
+  await host.keyboard.up('ArrowRight');
+  await host.keyboard.press('KeyK');
+  await expect(host.getByText(/demasiadas acciones/i)).toHaveCount(0);
+
+  await host.getByRole('button', { name: 'Volver al lobby' }).click();
+  await host.getByRole('button', { name: 'Terminar y volver' }).click();
+  await expect(host.getByText('Elige el juego')).toBeVisible({ timeout: 15_000 });
+  await expect(guest.getByText('Elige el juego')).toBeVisible({ timeout: 15_000 });
+
+  await host.getByRole('button', { name: 'Head Basketball', exact: true }).click();
+  await host.getByRole('button', { name: 'Estoy listo' }).click();
+  await guest.getByRole('button', { name: 'Estoy listo' }).click();
+  await host.getByRole('button', { name: /Iniciar Head Basketball/ }).click();
+
+  await expect(host.getByLabel('Cancha de Head Basketball')).toBeVisible({ timeout: 20_000 });
+  await expect(guest.getByLabel('Cancha de Head Basketball')).toBeVisible({ timeout: 20_000 });
+  await expect(host.getByText('Clásico · a 10')).toBeVisible();
+  await guest.keyboard.press('ArrowUp');
+  await guest.keyboard.press('Space');
+  await expect(guest.getByText(/demasiadas acciones/i)).toHaveCount(0);
+
+  await hostContext.close();
+  await guestContext.close();
+});

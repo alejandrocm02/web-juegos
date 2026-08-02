@@ -18,6 +18,8 @@ export const BLACKJACK_MODES = ['clasico', 'rapido', 'alto-riesgo'] as const;
 export const SONGLESS_MODES = ['clasico', 'relampago', 'oido-fino'] as const;
 export const AIR_HOCKEY_MODES = ['clasico', 'turbo', 'gol-de-oro'] as const;
 export const TABLE_TENNIS_MODES = ['clasico', 'rapido', 'vertigo'] as const;
+export const HEAD_SOCCER_MODES = ['clasico', 'turbo', 'gol-de-oro'] as const;
+export const HEAD_BASKETBALL_MODES = ['clasico', 'rapido', 'gravedad-baja'] as const;
 
 export type QuizMode = (typeof QUIZ_MODES)[number];
 export type DartsMode = (typeof DARTS_MODES)[number];
@@ -30,6 +32,8 @@ export type BlackjackMode = (typeof BLACKJACK_MODES)[number];
 export type SonglessMode = (typeof SONGLESS_MODES)[number];
 export type AirHockeyMode = (typeof AIR_HOCKEY_MODES)[number];
 export type TableTennisMode = (typeof TABLE_TENNIS_MODES)[number];
+export type HeadSoccerMode = (typeof HEAD_SOCCER_MODES)[number];
+export type HeadBasketballMode = (typeof HEAD_BASKETBALL_MODES)[number];
 
 export interface GameModeInfo {
   id: string;
@@ -282,6 +286,52 @@ export const GAME_MODE_CATALOG: Record<GameId, GameModeInfo[]> = {
       name: 'Vértigo',
       summary: 'Pelota un 30 % más rápida',
       rule: 'La pelota acelera desde el saque y gana velocidad en cada devolución.',
+      teams: true,
+    },
+  ],
+  'head-soccer': [
+    {
+      id: 'clasico',
+      name: 'Clásico',
+      summary: 'Saltos y remates hasta el límite de goles',
+      rule: 'Protege tu portería y marca con cabezazos o remates. Gana el primer equipo que alcance el límite.',
+      teams: true,
+    },
+    {
+      id: 'turbo',
+      name: 'Turbo',
+      summary: 'Jugadores y balón un 25 % más rápidos',
+      rule: 'La aceleración y la potencia de remate aumentan para una partida más vertical.',
+      teams: true,
+    },
+    {
+      id: 'gol-de-oro',
+      name: 'Gol de oro',
+      summary: 'El primer gol decide el duelo',
+      rule: 'Una sola jugada puede decidirlo todo: el primer equipo que marque gana.',
+      teams: true,
+    },
+  ],
+  'head-basketball': [
+    {
+      id: 'clasico',
+      name: 'Clásico',
+      summary: 'Canastas de dos hasta el objetivo',
+      rule: 'Salta, disputa el balón y lánzalo por el aro rival. Cada canasta suma dos puntos.',
+      teams: true,
+    },
+    {
+      id: 'rapido',
+      name: 'Rápido',
+      summary: 'Partida corta a seis puntos',
+      rule: 'Tres canastas bastan: el primer equipo que llegue a seis puntos gana.',
+      teams: true,
+    },
+    {
+      id: 'gravedad-baja',
+      name: 'Gravedad baja',
+      summary: 'Saltos largos y tiros más altos',
+      rule: 'La gravedad se reduce y el impulso vertical aumenta para favorecer jugadas aéreas.',
       teams: true,
     },
   ],

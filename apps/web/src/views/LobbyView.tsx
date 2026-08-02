@@ -14,6 +14,8 @@ import {
   type SonglessSettings,
   type AirHockeySettings,
   type TableTennisSettings,
+  type HeadSoccerSettings,
+  type HeadBasketballSettings,
 } from '@arcade/shared';
 import { useState } from 'react';
 import { useApp } from '../store.js';
@@ -692,6 +694,54 @@ function GameSettingsForm({
             value: pointsToWin as 7 | 11 | 15,
           }))}
           onChange={(pointsToWin) => onChange('table-tennis', { ...tennis, pointsToWin })}
+        />
+      </Field>
+    );
+  }
+
+  if (game === 'head-soccer') {
+    const soccer: HeadSoccerSettings = settings['head-soccer'];
+    if (soccer.mode === 'gol-de-oro') {
+      return (
+        <Field label="Marcador">
+          <p className="text-sm text-slate-400">El primer gol decide la partida.</p>
+        </Field>
+      );
+    }
+    return (
+      <Field label="Goles para ganar">
+        <Segmented
+          disabled={disabled}
+          value={soccer.goalLimit}
+          options={[3, 5, 7].map((goalLimit) => ({
+            label: String(goalLimit),
+            value: goalLimit as 3 | 5 | 7,
+          }))}
+          onChange={(goalLimit) => onChange('head-soccer', { ...soccer, goalLimit })}
+        />
+      </Field>
+    );
+  }
+
+  if (game === 'head-basketball') {
+    const basketball: HeadBasketballSettings = settings['head-basketball'];
+    if (basketball.mode === 'rapido') {
+      return (
+        <Field label="Marcador">
+          <p className="text-sm text-slate-400">El modo rápido se juega siempre a seis puntos.</p>
+        </Field>
+      );
+    }
+    return (
+      <Field label="Puntos para ganar">
+        <Segmented
+          disabled={disabled}
+          value={basketball.pointsToWin}
+          options={[6, 10, 14].map((pointsToWin) => ({
+            label: String(pointsToWin),
+            value: pointsToWin as 6 | 10 | 14,
+          }))}
+          onChange={(pointsToWin) => onChange('head-basketball', { ...basketball, pointsToWin })}
         />
       </Field>
     );

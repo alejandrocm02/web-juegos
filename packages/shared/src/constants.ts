@@ -35,6 +35,8 @@ export const GAME_IDS = [
   'songless',
   'air-hockey',
   'table-tennis',
+  'head-soccer',
+  'head-basketball',
 ] as const;
 export type GameId = (typeof GAME_IDS)[number];
 
@@ -69,5 +71,15 @@ export const GAME_META: Record<GameId, { name: string; tagline: string; accent: 
     name: 'Tenis de mesa',
     tagline: 'Peloteos rápidos hasta el punto decisivo',
     accent: '#fb7185',
+  },
+  'head-soccer': {
+    name: 'Head Soccer',
+    tagline: 'Saltos, remates y goles de cabeza',
+    accent: '#4ade80',
+  },
+  'head-basketball': {
+    name: 'Head Basketball',
+    tagline: 'Duelos aéreos y canastas imposibles',
+    accent: '#f97316',
   },
 };
