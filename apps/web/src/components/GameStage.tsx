@@ -48,6 +48,11 @@ const GAME_CONTROLS: Record<GameId, string[]> = {
     'Apunta con el ratón y ataca con clic o espacio.',
     'Mantén la zona segura a la vista: fuera pierdes vida.',
   ],
+  blackjack: [
+    'Pide carta para acercarte a 21 sin pasarte.',
+    'Plántate cuando quieras conservar tu total.',
+    'Tras jugar todos, el crupier revela su carta oculta y pide hasta 17.',
+  ],
 };
 
 function modeName(game: GameId, mode: string | undefined): { name: string; rule: string } | null {

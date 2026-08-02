@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Plataforma web de minijuegos multijugador en tiempo real (billar, quiz, dardos, minigolf)",
+  "description": "Plataforma web de minijuegos multijugador en tiempo real con ocho juegos",
   "workspaces": [
     "packages/*",
     "apps/*"

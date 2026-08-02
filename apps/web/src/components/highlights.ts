@@ -22,6 +22,7 @@ interface RawEvent {
   targetId?: unknown;
   strokes?: unknown;
   value?: unknown;
+  result?: unknown;
 }
 
 function nameOf(players: PublicPlayer[], id: unknown): string | null {
@@ -60,6 +61,13 @@ export function describeGameEvent(
       };
     case 'out':
       return { title: 'Fuera del recorrido', detail: who, tone: 'bad' };
+    case 'blackjack-bust':
+      return { title: 'Se pasa de 21', detail: who, tone: 'bad' };
+    case 'blackjack-result':
+      if (event.result === 'blackjack') {
+        return { title: 'Blackjack', detail: who, tone: 'good' };
+      }
+      return null;
     default:
       // El resto de eventos (penalizaciones, reinicios, fin de tiempo) ya se
       // comunican en el HUD de cada juego y no interrumpen la pantalla.

@@ -7,6 +7,7 @@ import { GolfGame } from './golf-game.js';
 import { BowlingGame } from './bowling-game.js';
 import { KartsGame } from './karts-game.js';
 import { ArenaGame } from './arena-game.js';
+import { BlackjackGame } from './blackjack-game.js';
 
 export function createGameRunner(
   game: GameId,
@@ -28,6 +29,8 @@ export function createGameRunner(
       return new KartsGame(ctx, settings.karts);
     case 'arena':
       return new ArenaGame(ctx, settings.arena);
+    case 'blackjack':
+      return new BlackjackGame(ctx, settings.blackjack);
     default: {
       const never: never = game;
       throw new Error('Juego no soportado: ' + String(never));

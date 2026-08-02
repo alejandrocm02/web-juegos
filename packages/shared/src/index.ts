@@ -11,5 +11,6 @@ export * from './games/golf-levels.js';
 export * from './games/bowling.js';
 export * from './games/karts.js';
 export * from './games/arena.js';
+export * from './games/blackjack.js';
 export * from './games/modes.js';
 export * from './state.js';
