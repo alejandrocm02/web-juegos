@@ -61,6 +61,7 @@ describe('catalogo de modos', () => {
       bowling: 3,
       karts: 3,
       arena: 2,
+      blackjack: 3,
     };
     for (const [game, modes] of Object.entries(GAME_MODE_CATALOG)) {
       expect(modes.length, game).toBeGreaterThanOrEqual(minimums[game] ?? 2);

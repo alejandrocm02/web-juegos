@@ -1,6 +1,6 @@
 # Parque Arcade
 
-Plataforma web de **minijuegos multijugador en tiempo real** para jugar con amigos, cada uno desde su propio ordenador. Salas privadas con código, entrada como invitado, anfitrión que configura la partida y cuatro juegos completos: **Billar**, **Quiz**, **Dardos** y **Minigolf de 10 hoyos**.
+Plataforma web de **minijuegos multijugador en tiempo real** para jugar con amigos, cada uno desde su propio ordenador. Salas privadas con código, entrada como invitado y ocho juegos completos: **Billar**, **Quiz**, **Dardos**, **Minigolf**, **Bolos**, **Karts**, **Battle Royale** y **Blackjack**.
 
 El servidor es **autoritativo**: valida jugadores, turnos, golpes, posiciones, puntuaciones, temporizadores y ganadores. El navegador solo envía intenciones y dibuja los snapshots que recibe.
 
@@ -94,18 +94,18 @@ arcade-party/
 ├─ apps/
 │  ├─ server/            Express + Socket.IO + Prisma (servidor autoritativo)
 │  │  ├─ src/rooms/      Room, RoomManager, contexto de juego
-│  │  ├─ src/games/      quiz, dardos, billar, minigolf + puntuaciones
+│  │  ├─ src/games/      lógica autoritativa de los ocho juegos + puntuaciones
 │  │  ├─ src/socket.ts   Eventos tipados y validados con Zod
 │  │  ├─ src/security.ts Rate limiting y tamaño máximo de mensaje
 │  │  └─ prisma/         Esquema SQLite de estadísticas
 │  └─ web/               React + Vite + TypeScript + Tailwind
 │     ├─ src/views/      Inicio, lobby, resultados, estados de error
-│     ├─ src/games/      QuizView, DartsView, PoolView, GolfView
+│     ├─ src/games/      una vista React por juego
 │     └─ src/store.tsx   Estado global y conexión Socket.IO
 ├─ packages/
 │  ├─ shared/            Tipos, esquemas Zod, eventos, reglas, banco de quiz,
 │  │                     los 10 niveles de minigolf y constantes comunes
-│  └─ game-engine/       Física determinista reutilizable (golf y billar)
+│  └─ game-engine/       Física determinista reutilizable (golf, billar, bolos, karts y arena)
 ├─ e2e/                  Tests Playwright con dos navegadores
 ├─ Dockerfile            Imagen única: cliente + servidor en un proceso
 ├─ render.yaml           Despliegue de un servicio en Render
@@ -258,6 +258,16 @@ Juego:
 | 10  | Golpe maestro       | Experto     | 4   | ✅          |
 
 Los cinco niveles marcados tienen una **ruta real de hoyo en uno basada en habilidad**, verificada por búsqueda exhaustiva sobre el propio simulador y fijada en los tests (`packages/game-engine/tests/golf.test.ts`): hay que acertar dirección, potencia y, en el molino, el momento del golpe.
+
+### Blackjack (2–5 jugadores)
+
+- Cada participante juega su mano por turnos contra un crupier controlado por el servidor.
+- La segunda carta del crupier permanece oculta hasta que todos se plantan, consiguen 21 o se pasan.
+- Los ases valen 11 o 1 automáticamente; las figuras valen 10 y un 21 inicial es blackjack natural.
+- Puntuación por ronda: blackjack 3 puntos, victoria 2, empate 1 y derrota 0.
+- Modos **Clásico**, **Rápido** (tres rondas) y **Alto riesgo** (blackjack de 4 puntos y el crupier pide con 17 suave).
+- El anfitrión puede configurar 3, 5 o 7 rondas. Un turno agotado se planta automáticamente para que la mesa no quede bloqueada.
+- El mazo, el reparto, las acciones válidas, el crupier y la clasificación se resuelven de forma autoritativa en el servidor.
 
 ---
 

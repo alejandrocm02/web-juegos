@@ -3,6 +3,7 @@ import { GAME_IDS, MAX_PLAYERS, NAME_MAX_LENGTH, NAME_MIN_LENGTH } from './const
 import { QUIZ_CATEGORIES } from './games/quiz.js';
 import {
   ARENA_MODES,
+  BLACKJACK_MODES,
   BOWLING_MODES,
   DARTS_MODES,
   GOLF_MODES,
@@ -85,6 +86,11 @@ export const arenaSettingsSchema = z.object({
   pickups: z.boolean(),
 });
 
+export const blackjackSettingsSchema = z.object({
+  mode: z.enum(BLACKJACK_MODES),
+  rounds: z.union([z.literal(3), z.literal(5), z.literal(7)]),
+});
+
 export const settingsPatchSchema = z.discriminatedUnion('game', [
   z.object({ game: z.literal('quiz'), settings: quizSettingsSchema }),
   z.object({ game: z.literal('darts'), settings: dartsSettingsSchema }),
@@ -93,6 +99,7 @@ export const settingsPatchSchema = z.discriminatedUnion('game', [
   z.object({ game: z.literal('bowling'), settings: bowlingSettingsSchema }),
   z.object({ game: z.literal('karts'), settings: kartsSettingsSchema }),
   z.object({ game: z.literal('arena'), settings: arenaSettingsSchema }),
+  z.object({ game: z.literal('blackjack'), settings: blackjackSettingsSchema }),
 ]);
 
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
@@ -176,6 +183,9 @@ export const arenaInputSchema = z.object({
   attack: z.boolean(),
 });
 
+export const blackjackHitSchema = z.object({ type: z.literal('blackjack:hit') });
+export const blackjackStandSchema = z.object({ type: z.literal('blackjack:stand') });
+
 export const golfResetSchema = z.object({ type: z.literal('golf:reset') });
 export const golfSyncSchema = z.object({ type: z.literal('golf:sync') });
 
@@ -184,6 +194,8 @@ export const gameActionSchema = z.discriminatedUnion('type', [
   bowlingRollSchema,
   kartsInputSchema,
   arenaInputSchema,
+  blackjackHitSchema,
+  blackjackStandSchema,
   dartsThrowSchema,
   poolShootSchema,
   golfShootSchema,

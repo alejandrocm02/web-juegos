@@ -10,6 +10,7 @@ import {
   type BowlingSettings,
   type KartsSettings,
   type GolfSettings,
+  type BlackjackSettings,
 } from '@arcade/shared';
 import { useState } from 'react';
 import { useApp } from '../store.js';
@@ -592,6 +593,30 @@ function GameSettingsForm({
             { label: 'Difícil', value: 'dificil' as const },
           ]}
           onChange={(precision) => onChange('bowling', { ...bowling, precision })}
+        />
+      </Field>
+    );
+  }
+
+  if (game === 'blackjack') {
+    const blackjack: BlackjackSettings = settings.blackjack;
+    if (blackjack.mode === 'rapido') {
+      return (
+        <Field label="Duración">
+          <p className="text-sm text-slate-400">El modo rápido juega siempre tres rondas.</p>
+        </Field>
+      );
+    }
+    return (
+      <Field label="Rondas">
+        <Segmented
+          disabled={disabled}
+          value={blackjack.rounds}
+          options={[3, 5, 7].map((rounds) => ({
+            label: String(rounds),
+            value: rounds as 3 | 5 | 7,
+          }))}
+          onChange={(rounds) => onChange('blackjack', { ...blackjack, rounds })}
         />
       </Field>
     );

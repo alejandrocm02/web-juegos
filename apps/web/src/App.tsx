@@ -10,6 +10,7 @@ import GolfView from './games/GolfView.js';
 import BowlingView from './games/BowlingView.js';
 import KartsView from './games/KartsView.js';
 import ArenaView from './games/ArenaView.js';
+import BlackjackView from './games/BlackjackView.js';
 import { ErrorBanner, Toasts } from './components/ui.js';
 import { GameExitBar } from './components/GameExitBar.js';
 import { GameStage } from './components/GameStage.js';
@@ -66,6 +67,9 @@ export default function App() {
         break;
       case 'arena':
         content = <ArenaView state={gameState} />;
+        break;
+      case 'blackjack':
+        content = <BlackjackView state={gameState} />;
         break;
       default:
         content = <EmptyState title="Juego desconocido" description="Vuelve al lobby." />;

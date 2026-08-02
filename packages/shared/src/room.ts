@@ -8,6 +8,7 @@ import type {
   PoolMode,
   QuizMode,
   TeamId,
+  BlackjackMode,
 } from './games/modes.js';
 
 export type ConnectionState = 'connected' | 'disconnected';
@@ -75,6 +76,11 @@ export interface ArenaSettings {
   pickups: boolean;
 }
 
+export interface BlackjackSettings {
+  mode: BlackjackMode;
+  rounds: 3 | 5 | 7;
+}
+
 export interface GameSettings {
   quiz: QuizSettings;
   darts: DartsSettings;
@@ -83,6 +89,7 @@ export interface GameSettings {
   bowling: BowlingSettings;
   karts: KartsSettings;
   arena: ArenaSettings;
+  blackjack: BlackjackSettings;
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -97,6 +104,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   bowling: { mode: 'individual', precision: 'normal' },
   karts: { mode: 'rapida', track: 'ovalo', laps: 3 },
   arena: { mode: 'individual', zonePace: 'normal', pickups: true },
+  blackjack: { mode: 'clasico', rounds: 5 },
   golf: {
     mode: 'clasico',
     ballCollisions: true,

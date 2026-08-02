@@ -23,7 +23,16 @@ export const PLAYER_ICONS = ['circle', 'triangle', 'square', 'diamond', 'star'] 
 
 export type PlayerIcon = (typeof PLAYER_ICONS)[number];
 
-export const GAME_IDS = ['pool', 'quiz', 'darts', 'golf', 'bowling', 'karts', 'arena'] as const;
+export const GAME_IDS = [
+  'pool',
+  'quiz',
+  'darts',
+  'golf',
+  'bowling',
+  'karts',
+  'arena',
+  'blackjack',
+] as const;
 export type GameId = (typeof GAME_IDS)[number];
 
 export const GAME_META: Record<GameId, { name: string; tagline: string; accent: string }> = {
@@ -37,5 +46,10 @@ export const GAME_META: Record<GameId, { name: string; tagline: string; accent: 
     name: 'Battle Royale',
     tagline: 'Último en pie con zona que se cierra',
     accent: '#e11d2e',
+  },
+  blackjack: {
+    name: 'Blackjack',
+    tagline: 'Plántate, pide carta y vence al crupier',
+    accent: '#f5c451',
   },
 };

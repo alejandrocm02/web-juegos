@@ -9,6 +9,11 @@ import type { BowlingBallState, BowlingPinState, BowlingScorecard } from './game
 import type { KartState, KartTrack } from './games/karts.js';
 import type { ArenaFighterState, ArenaPickup, ArenaZone } from './games/arena.js';
 import type { TeamId } from './games/modes.js';
+import type {
+  BlackjackCard,
+  BlackjackPlayerHand,
+  BlackjackRoundResult,
+} from './games/blackjack.js';
 
 /* --------------------------------- Quiz ---------------------------------- */
 
@@ -168,6 +173,28 @@ export interface ArenaPublicState {
   deadline: number;
 }
 
+/* ------------------------------- Blackjack ------------------------------- */
+
+export type BlackjackPhase = 'playing' | 'dealer' | 'round-over' | 'finished';
+
+export interface BlackjackPublicState {
+  game: 'blackjack';
+  phase: BlackjackPhase;
+  mode: string;
+  round: number;
+  totalRounds: number;
+  order: string[];
+  activePlayerId: string;
+  hands: Record<string, BlackjackPlayerHand>;
+  /** La segunda carta es null hasta que el crupier revela su mano. */
+  dealerCards: (BlackjackCard | null)[];
+  dealerTotal: number | null;
+  dealerSoft: boolean;
+  points: Record<string, number>;
+  roundResults: Record<string, BlackjackRoundResult>;
+  deadline: number;
+}
+
 export type GamePublicState =
   | QuizPublicState
   | DartsPublicState
@@ -175,7 +202,8 @@ export type GamePublicState =
   | GolfPublicState
   | BowlingPublicState
   | KartsPublicState
-  | ArenaPublicState;
+  | ArenaPublicState
+  | BlackjackPublicState;
 
 export interface GameStartedPayload {
   game: GameId;

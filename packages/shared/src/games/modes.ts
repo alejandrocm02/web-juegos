@@ -14,6 +14,7 @@ export const GOLF_MODES = ['clasico', 'menos-golpes', 'contrarreloj'] as const;
 export const BOWLING_MODES = ['individual', 'corta', 'equipos'] as const;
 export const KARTS_MODES = ['rapida', 'contrarreloj', 'eliminatoria'] as const;
 export const ARENA_MODES = ['individual', 'equipos'] as const;
+export const BLACKJACK_MODES = ['clasico', 'rapido', 'alto-riesgo'] as const;
 
 export type QuizMode = (typeof QUIZ_MODES)[number];
 export type DartsMode = (typeof DARTS_MODES)[number];
@@ -22,6 +23,7 @@ export type GolfMode = (typeof GOLF_MODES)[number];
 export type BowlingMode = (typeof BOWLING_MODES)[number];
 export type KartsMode = (typeof KARTS_MODES)[number];
 export type ArenaMode = (typeof ARENA_MODES)[number];
+export type BlackjackMode = (typeof BLACKJACK_MODES)[number];
 
 export interface GameModeInfo {
   id: string;
@@ -189,6 +191,26 @@ export const GAME_MODE_CATALOG: Record<GameId, GameModeInfo[]> = {
       summary: 'Rojo contra azul, sin fuego amigo',
       rule: 'Los compañeros no pueden dañarse. Gana el equipo que conserve algún jugador vivo.',
       teams: true,
+    },
+  ],
+  blackjack: [
+    {
+      id: 'clasico',
+      name: 'Clásico',
+      summary: 'Cinco rondas contra el crupier',
+      rule: 'Blackjack suma 3 puntos, una victoria 2 y un empate 1. El crupier se planta en 17.',
+    },
+    {
+      id: 'rapido',
+      name: 'Rápido',
+      summary: 'Tres rondas decisivas',
+      rule: 'La partida se limita a tres rondas con la puntuación clásica.',
+    },
+    {
+      id: 'alto-riesgo',
+      name: 'Alto riesgo',
+      summary: 'El blackjack vale más y el crupier aprieta',
+      rule: 'El blackjack natural suma 4 puntos y el crupier pide carta con 17 suave.',
     },
   ],
 };
