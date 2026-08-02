@@ -24,6 +24,7 @@ interface RawEvent {
   value?: unknown;
   result?: unknown;
   team?: unknown;
+  damage?: unknown;
 }
 
 function nameOf(players: PublicPlayer[], id: unknown): string | null {
@@ -83,6 +84,16 @@ export function describeGameEvent(
         detail: event.team === 'rojo' ? 'Equipo rojo' : 'Equipo azul',
         tone: 'good',
       };
+    case 'tank-destroyed':
+      return {
+        title: 'Tanque destruido',
+        detail: who && target ? who + ' elimina a ' + target : (target ?? who),
+        tone: 'neutral',
+      };
+    case 'tank-hit':
+      return typeof event.damage === 'number' && event.damage >= 50
+        ? { title: 'Impacto crítico', detail: target, tone: 'good' }
+        : null;
     default:
       // El resto de eventos (penalizaciones, reinicios, fin de tiempo) ya se
       // comunican en el HUD de cada juego y no interrumpen la pantalla.

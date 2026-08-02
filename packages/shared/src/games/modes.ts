@@ -20,6 +20,7 @@ export const AIR_HOCKEY_MODES = ['clasico', 'turbo', 'gol-de-oro'] as const;
 export const TABLE_TENNIS_MODES = ['clasico', 'rapido', 'vertigo'] as const;
 export const HEAD_SOCCER_MODES = ['clasico', 'turbo', 'gol-de-oro'] as const;
 export const HEAD_BASKETBALL_MODES = ['clasico', 'rapido', 'gravedad-baja'] as const;
+export const TANKS_MODES = ['clasico', 'blitz', 'rebotes'] as const;
 
 export type QuizMode = (typeof QUIZ_MODES)[number];
 export type DartsMode = (typeof DARTS_MODES)[number];
@@ -34,6 +35,7 @@ export type AirHockeyMode = (typeof AIR_HOCKEY_MODES)[number];
 export type TableTennisMode = (typeof TABLE_TENNIS_MODES)[number];
 export type HeadSoccerMode = (typeof HEAD_SOCCER_MODES)[number];
 export type HeadBasketballMode = (typeof HEAD_BASKETBALL_MODES)[number];
+export type TanksMode = (typeof TANKS_MODES)[number];
 
 export interface GameModeInfo {
   id: string;
@@ -333,6 +335,26 @@ export const GAME_MODE_CATALOG: Record<GameId, GameModeInfo[]> = {
       summary: 'Saltos largos y tiros más altos',
       rule: 'La gravedad se reduce y el impulso vertical aumenta para favorecer jugadas aéreas.',
       teams: true,
+    },
+  ],
+  tanks: [
+    {
+      id: 'clasico',
+      name: 'Clásico',
+      summary: 'Cien puntos de blindaje y viento variable',
+      rule: 'Mueve tu tanque, calcula la trayectoria y deja al resto sin blindaje.',
+    },
+    {
+      id: 'blitz',
+      name: 'Blitz',
+      summary: 'Menos blindaje y turnos de 18 segundos',
+      rule: 'Los tanques parten con 70 de vida y las explosiones hacen más daño.',
+    },
+    {
+      id: 'rebotes',
+      name: 'Rebotes',
+      summary: 'Los proyectiles rebotan hasta dos veces',
+      rule: 'Las paredes y los obstáculos pueden desviar el proyectil antes de explotar.',
     },
   ],
 };

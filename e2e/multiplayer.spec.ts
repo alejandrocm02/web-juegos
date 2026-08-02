@@ -197,3 +197,41 @@ test('Head Soccer y Head Basketball arrancan y aceptan controles en dos navegado
   await hostContext.close();
   await guestContext.close();
 });
+
+test('Tanques inicia, permite moverse y dispara con estado compartido', async ({ browser }) => {
+  const hostContext = await browser.newContext();
+  const guestContext = await browser.newContext();
+  const host = await hostContext.newPage();
+  const guest = await guestContext.newPage();
+
+  await enterName(host, 'Artillera');
+  await host.getByRole('button', { name: 'Crear sala privada' }).click();
+  const code = (await host.locator('h1.font-display').first().textContent())!.trim();
+
+  await enterName(guest, 'Blindado');
+  await guest.getByRole('button', { name: 'Unirse' }).click();
+  await guest.getByLabel('Codigo de sala').fill(code);
+  await guest.getByRole('button', { name: 'Entrar en la sala' }).click();
+  await expect(host.getByText('Blindado')).toBeVisible();
+
+  await host.getByRole('button', { name: 'Tanques', exact: true }).click();
+  await expect(host.getByRole('button', { name: 'Blitz', exact: true })).toBeVisible();
+  await host.getByRole('button', { name: 'Blitz', exact: true }).click();
+  await host.getByRole('button', { name: 'Fortaleza Neón', exact: true }).click();
+  await host.getByRole('button', { name: 'Estoy listo' }).click();
+  await guest.getByRole('button', { name: 'Estoy listo' }).click();
+  await host.getByRole('button', { name: /Iniciar Tanques/ }).click();
+
+  await expect(host.getByLabel('Campo de batalla de Tanques')).toBeVisible({ timeout: 20_000 });
+  await expect(guest.getByLabel('Campo de batalla de Tanques')).toBeVisible({ timeout: 20_000 });
+  await expect(host.getByRole('button', { name: 'Disparar' })).toBeEnabled({ timeout: 10_000 });
+  await host.getByRole('button', { name: 'Mover tanque a la derecha' }).click();
+  await expect(host.getByText(/2 combustible/)).toBeVisible();
+  await host.getByRole('button', { name: 'Disparar' }).click();
+  await expect(host.getByRole('button', { name: 'Disparar' })).toHaveCount(0);
+  await expect(host.getByText(/demasiadas acciones/i)).toHaveCount(0);
+  await expect(guest.getByText(/demasiadas acciones/i)).toHaveCount(0);
+
+  await hostContext.close();
+  await guestContext.close();
+});

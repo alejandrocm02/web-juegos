@@ -16,6 +16,8 @@ import {
   type TableTennisSettings,
   type HeadSoccerSettings,
   type HeadBasketballSettings,
+  type TanksSettings,
+  TANK_MAPS,
 } from '@arcade/shared';
 import { useState } from 'react';
 import { useApp } from '../store.js';
@@ -743,6 +745,22 @@ function GameSettingsForm({
           }))}
           onChange={(pointsToWin) => onChange('head-basketball', { ...basketball, pointsToWin })}
         />
+      </Field>
+    );
+  }
+
+  if (game === 'tanks') {
+    const tanks: TanksSettings = settings.tanks;
+    const map = TANK_MAPS.find((entry) => entry.id === tanks.map);
+    return (
+      <Field label="Campo de batalla">
+        <Segmented
+          disabled={disabled}
+          value={tanks.map}
+          options={TANK_MAPS.map((entry) => ({ label: entry.name, value: entry.id }))}
+          onChange={(mapId) => onChange('tanks', { ...tanks, map: mapId })}
+        />
+        {map && <p className="mt-2 text-xs text-slate-400">{map.description}</p>}
       </Field>
     );
   }

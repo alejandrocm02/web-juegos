@@ -1,6 +1,6 @@
 # Parque Arcade
 
-Plataforma web de **minijuegos multijugador en tiempo real** para jugar con amigos, cada uno desde su propio ordenador. Salas privadas con código, entrada como invitado y trece juegos completos: **Billar**, **Quiz**, **Dardos**, **Minigolf**, **Bolos**, **Karts**, **Battle Royale**, **Blackjack**, **Songless**, **Air Hockey**, **Tenis de mesa**, **Head Soccer** y **Head Basketball**.
+Plataforma web de **minijuegos multijugador en tiempo real** para jugar con amigos, cada uno desde su propio ordenador. Salas privadas con código, entrada como invitado y catorce juegos completos: **Billar**, **Quiz**, **Dardos**, **Minigolf**, **Bolos**, **Karts**, **Battle Royale**, **Blackjack**, **Songless**, **Air Hockey**, **Tenis de mesa**, **Head Soccer**, **Head Basketball** y **Tanques**.
 
 El servidor es **autoritativo**: valida jugadores, turnos, golpes, posiciones, puntuaciones, temporizadores y ganadores. El navegador solo envía intenciones y dibuja los snapshots que recibe.
 
@@ -94,7 +94,7 @@ arcade-party/
 ├─ apps/
 │  ├─ server/            Express + Socket.IO + Prisma (servidor autoritativo)
 │  │  ├─ src/rooms/      Room, RoomManager, contexto de juego
-│  │  ├─ src/games/      lógica autoritativa de los trece juegos + puntuaciones
+│  │  ├─ src/games/      lógica autoritativa de los catorce juegos + puntuaciones
 │  │  ├─ src/socket.ts   Eventos tipados y validados con Zod
 │  │  ├─ src/security.ts Rate limiting y tamaño máximo de mensaje
 │  │  └─ prisma/         Esquema SQLite de estadísticas
@@ -105,7 +105,7 @@ arcade-party/
 ├─ packages/
 │  ├─ shared/            Tipos, esquemas Zod, eventos, reglas, banco de quiz,
 │  │                     los 10 niveles de minigolf y constantes comunes
-│  └─ game-engine/       Física determinista reutilizable (golf, billar, bolos, karts, arena y deportes)
+│  └─ game-engine/       Física determinista reutilizable (golf, billar, bolos, karts, arena, deportes y tanques)
 ├─ e2e/                  Tests Playwright con dos navegadores
 ├─ Dockerfile            Imagen única: cliente + servidor en un proceso
 ├─ render.yaml           Despliegue de un servicio en Render
@@ -145,20 +145,20 @@ Todos los payloads de cliente a servidor se validan con Zod (`packages/shared/sr
 
 ### Cliente → servidor
 
-| Evento                 | Payload              | Reglas                                                                              |
-| ---------------------- | -------------------- | ----------------------------------------------------------------------------------- |
-| `room:create`          | `{ name }`           | Nombre saneado, 2–16 caracteres                                                     |
-| `room:join`            | `{ code, name }`     | Sala existente, con hueco, en lobby y sin nombre duplicado                          |
-| `room:rejoin`          | `{ code, token }`    | Token anónimo guardado en `localStorage`                                            |
-| `room:leave`           | —                    | Libera la plaza y promociona anfitrión si hace falta                                |
-| `room:select-game`     | `{ game }`           | Solo anfitrión, solo en lobby                                                       |
-| `room:update-settings` | `{ game, settings }` | Solo anfitrión, solo en lobby                                                       |
-| `room:ready`           | `{ ready }`          | Cualquier jugador                                                                   |
-| `room:start`           | —                    | Solo anfitrión, con 2–5 conectados y todos preparados                               |
-| `room:kick`            | `{ playerId }`       | Solo anfitrión, no a sí mismo                                                       |
-| `room:transfer-host`   | `{ playerId }`       | Solo el anfitrión actual                                                            |
-| `room:back-to-lobby`   | —                    | Solo anfitrión                                                                      |
-| `game:action`          | unión discriminada   | `quiz:answer`, `darts:throw`, `pool:shoot`, `golf:shoot`, `golf:reset`, `golf:sync` |
+| Evento                 | Payload              | Reglas                                                                            |
+| ---------------------- | -------------------- | --------------------------------------------------------------------------------- |
+| `room:create`          | `{ name }`           | Nombre saneado, 2–16 caracteres                                                   |
+| `room:join`            | `{ code, name }`     | Sala existente, con hueco, en lobby y sin nombre duplicado                        |
+| `room:rejoin`          | `{ code, token }`    | Token anónimo guardado en `localStorage`                                          |
+| `room:leave`           | —                    | Libera la plaza y promociona anfitrión si hace falta                              |
+| `room:select-game`     | `{ game }`           | Solo anfitrión, solo en lobby                                                     |
+| `room:update-settings` | `{ game, settings }` | Solo anfitrión, solo en lobby                                                     |
+| `room:ready`           | `{ ready }`          | Cualquier jugador                                                                 |
+| `room:start`           | —                    | Solo anfitrión, con 2–5 conectados y todos preparados                             |
+| `room:kick`            | `{ playerId }`       | Solo anfitrión, no a sí mismo                                                     |
+| `room:transfer-host`   | `{ playerId }`       | Solo el anfitrión actual                                                          |
+| `room:back-to-lobby`   | —                    | Solo anfitrión                                                                    |
+| `game:action`          | unión discriminada   | Acciones tipadas de los catorce juegos: respuestas, tiros, movimiento y controles |
 
 ### Servidor → cliente
 
@@ -307,6 +307,14 @@ Los cinco niveles marcados tienen una **ruta real de hoyo en uno basada en habil
 - Modos **Clásico**, **Rápido** (siempre a seis puntos) y **Gravedad baja** para jugadas aéreas.
 - El anfitrión puede fijar el objetivo en 6, 10 o 14 puntos.
 
+### Tanques (2–5 jugadores)
+
+- Artillería lateral por turnos con trayectoria balística, viento variable, obstáculos y daño radial.
+- Cada tanque puede gastar hasta tres cargas de combustible antes de disparar; el servidor valida movimiento, colisiones, impacto, blindaje y bajas.
+- Modos **Clásico**, **Blitz** (70 PV, más daño y turnos de 18 segundos) y **Rebotes** (hasta dos rebotes en paredes u obstáculos).
+- Tres campos propios: **Cañón Carmesí**, **Fortaleza Neón** y **Cráter Lunar**.
+- Controles con botones, teclado y sliders de ángulo/potencia; la trayectoria discontinua es solo una ayuda visual y el servidor resuelve el disparo real.
+
 ---
 
 ### Marco visual común de las partidas
@@ -317,18 +325,18 @@ Todas las vistas de juego se montan dentro de `apps/web/src/components/GameStage
 - **Cabecera de partida** con icono, nombre, insignia del modo activo y una línea de turno con `aria-live="polite"` (o "partida simultánea" en los juegos sin turnos).
 - **Ayuda en pantalla** desplegable: la regla del modo sale del catálogo compartido `GAME_MODE_CATALOG` y los controles se declaran por juego.
 - **Aviso de desconexión** con `role="status"` cuando algún jugador se ha caído, indicando que puede volver con el mismo enlace.
-- **Momentos destacados**: los eventos que emite el servidor (`game:event`) se traducen en `components/highlights.ts` a un cartel central grande para hoyo en uno, strike, spare, bust, cierre exacto y eliminación. El cartel usa fondo sólido para no poner texto grande sobre un degradado.
+- **Momentos destacados**: los eventos que emite el servidor (`game:event`) se traducen en `components/highlights.ts` a un cartel central grande para hoyo en uno, strike, spare, bust, cierre exacto, eliminación y tanque destruido. El cartel usa fondo sólido para no poner texto grande sobre un degradado.
 
 El texto del acento se aclara con `color-mix(... 45%, #ffffff)` porque el rojo y el azul puros no llegan a 4.5:1 sobre negro.
 
 ## 6. Pruebas
 
 ```bash
-npm test          # Vitest: 239 tests
+npm test          # Vitest: 250 tests
 npm run test:e2e  # Playwright: dos navegadores compartiendo sala
 ```
 
-Actualmente hay **239 tests Vitest** y 4 flujos E2E. GitHub Actions ejecuta el control completo
+Actualmente hay **250 tests Vitest** y 5 flujos E2E. GitHub Actions ejecuta el control completo
 en cada pull request y cada actualización de `main`, y conserva las trazas de Playwright si falla.
 
 Cobertura de los tests exigidos del minigolf:

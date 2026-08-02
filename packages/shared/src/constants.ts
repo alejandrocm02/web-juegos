@@ -37,6 +37,7 @@ export const GAME_IDS = [
   'table-tennis',
   'head-soccer',
   'head-basketball',
+  'tanks',
 ] as const;
 export type GameId = (typeof GAME_IDS)[number];
 
@@ -81,5 +82,10 @@ export const GAME_META: Record<GameId, { name: string; tagline: string; accent: 
     name: 'Head Basketball',
     tagline: 'Duelos aéreos y canastas imposibles',
     accent: '#f97316',
+  },
+  tanks: {
+    name: 'Tanques',
+    tagline: 'Artillería, viento y duelos de precisión',
+    accent: '#ef4444',
   },
 };

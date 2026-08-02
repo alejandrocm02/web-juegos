@@ -15,7 +15,9 @@ import {
   TABLE_TENNIS_MODES,
   HEAD_SOCCER_MODES,
   HEAD_BASKETBALL_MODES,
+  TANKS_MODES,
 } from './games/modes.js';
+import { TANK_MAP_IDS } from './games/tanks.js';
 import { sanitizeName } from './util.js';
 
 /* -------------------------------------------------------------------------- */
@@ -121,6 +123,11 @@ export const headBasketballSettingsSchema = z.object({
   pointsToWin: z.union([z.literal(6), z.literal(10), z.literal(14)]),
 });
 
+export const tanksSettingsSchema = z.object({
+  mode: z.enum(TANKS_MODES),
+  map: z.enum(TANK_MAP_IDS),
+});
+
 export const settingsPatchSchema = z.discriminatedUnion('game', [
   z.object({ game: z.literal('quiz'), settings: quizSettingsSchema }),
   z.object({ game: z.literal('darts'), settings: dartsSettingsSchema }),
@@ -135,6 +142,7 @@ export const settingsPatchSchema = z.discriminatedUnion('game', [
   z.object({ game: z.literal('table-tennis'), settings: tableTennisSettingsSchema }),
   z.object({ game: z.literal('head-soccer'), settings: headSoccerSettingsSchema }),
   z.object({ game: z.literal('head-basketball'), settings: headBasketballSettingsSchema }),
+  z.object({ game: z.literal('tanks'), settings: tanksSettingsSchema }),
 ]);
 
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
@@ -242,6 +250,20 @@ export const headSportInputSchema = z.object({
   kick: z.boolean(),
 });
 
+export const tanksMoveSchema = z.object({
+  type: z.literal('tanks:move'),
+  direction: z.union([z.literal(-1), z.literal(1)]),
+});
+
+export const tanksFireSchema = z.object({
+  type: z.literal('tanks:fire'),
+  angle: z
+    .number()
+    .min(-Math.PI + 0.12)
+    .max(-0.12),
+  power: z.number().min(0.2).max(1),
+});
+
 export const golfResetSchema = z.object({ type: z.literal('golf:reset') });
 export const golfSyncSchema = z.object({ type: z.literal('golf:sync') });
 
@@ -255,6 +277,8 @@ export const gameActionSchema = z.discriminatedUnion('type', [
   songlessAnswerSchema,
   sportInputSchema,
   headSportInputSchema,
+  tanksMoveSchema,
+  tanksFireSchema,
   dartsThrowSchema,
   poolShootSchema,
   golfShootSchema,

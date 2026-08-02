@@ -7,3 +7,4 @@ export * from './karts-sim.js';
 export * from './arena-sim.js';
 export * from './arcade-sport-sim.js';
 export * from './head-sport-sim.js';
+export * from './tanks-sim.js';
