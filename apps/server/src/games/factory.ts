@@ -10,6 +10,7 @@ import { ArenaGame } from './arena-game.js';
 import { BlackjackGame } from './blackjack-game.js';
 import { SonglessGame } from './songless-game.js';
 import { ArcadeSportGame } from './arcade-sport-game.js';
+import { HeadSportGame } from './head-sport-game.js';
 
 export function createGameRunner(
   game: GameId,
@@ -39,6 +40,10 @@ export function createGameRunner(
       return new ArcadeSportGame('air-hockey', ctx, settings['air-hockey']);
     case 'table-tennis':
       return new ArcadeSportGame('table-tennis', ctx, settings['table-tennis']);
+    case 'head-soccer':
+      return new HeadSportGame('head-soccer', ctx, settings['head-soccer']);
+    case 'head-basketball':
+      return new HeadSportGame('head-basketball', ctx, settings['head-basketball']);
     default: {
       const never: never = game;
       throw new Error('Juego no soportado: ' + String(never));

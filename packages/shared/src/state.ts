@@ -16,6 +16,7 @@ import type {
 } from './games/blackjack.js';
 import type { SonglessAnswerBreakdown, SonglessPublicTrack } from './games/songless.js';
 import type { ArcadeSportSnapshot } from './games/arcade-sport.js';
+import type { HeadSportSnapshot } from './games/head-sport.js';
 
 /* --------------------------------- Quiz ---------------------------------- */
 
@@ -231,6 +232,17 @@ export interface ArcadeSportPublicState extends ArcadeSportSnapshot {
   deadline: number;
 }
 
+/* ------------------------- Deportes de cabezones ------------------------- */
+
+export interface HeadSportPublicState extends HeadSportSnapshot {
+  game: 'head-soccer' | 'head-basketball';
+  phase: ArcadeSportPhase;
+  mode: string;
+  targetScore: number;
+  countdownMs: number;
+  deadline: number;
+}
+
 export type GamePublicState =
   | QuizPublicState
   | DartsPublicState
@@ -241,7 +253,8 @@ export type GamePublicState =
   | ArenaPublicState
   | BlackjackPublicState
   | SonglessPublicState
-  | ArcadeSportPublicState;
+  | ArcadeSportPublicState
+  | HeadSportPublicState;
 
 export interface GameStartedPayload {
   game: GameId;

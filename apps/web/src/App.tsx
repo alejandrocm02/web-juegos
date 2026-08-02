@@ -13,6 +13,7 @@ import ArenaView from './games/ArenaView.js';
 import BlackjackView from './games/BlackjackView.js';
 import SonglessView from './games/SonglessView.js';
 import ArcadeSportView from './games/ArcadeSportView.js';
+import HeadSportView from './games/HeadSportView.js';
 import { ErrorBanner, Toasts } from './components/ui.js';
 import { GameExitBar } from './components/GameExitBar.js';
 import { GameStage } from './components/GameStage.js';
@@ -79,6 +80,10 @@ export default function App() {
       case 'air-hockey':
       case 'table-tennis':
         content = <ArcadeSportView state={gameState} />;
+        break;
+      case 'head-soccer':
+      case 'head-basketball':
+        content = <HeadSportView state={gameState} />;
         break;
       default:
         content = <EmptyState title="Juego desconocido" description="Vuelve al lobby." />;

@@ -1,6 +1,6 @@
 # Parque Arcade
 
-Plataforma web de **minijuegos multijugador en tiempo real** para jugar con amigos, cada uno desde su propio ordenador. Salas privadas con código, entrada como invitado y once juegos completos: **Billar**, **Quiz**, **Dardos**, **Minigolf**, **Bolos**, **Karts**, **Battle Royale**, **Blackjack**, **Songless**, **Air Hockey** y **Tenis de mesa**.
+Plataforma web de **minijuegos multijugador en tiempo real** para jugar con amigos, cada uno desde su propio ordenador. Salas privadas con código, entrada como invitado y trece juegos completos: **Billar**, **Quiz**, **Dardos**, **Minigolf**, **Bolos**, **Karts**, **Battle Royale**, **Blackjack**, **Songless**, **Air Hockey**, **Tenis de mesa**, **Head Soccer** y **Head Basketball**.
 
 El servidor es **autoritativo**: valida jugadores, turnos, golpes, posiciones, puntuaciones, temporizadores y ganadores. El navegador solo envía intenciones y dibuja los snapshots que recibe.
 
@@ -94,7 +94,7 @@ arcade-party/
 ├─ apps/
 │  ├─ server/            Express + Socket.IO + Prisma (servidor autoritativo)
 │  │  ├─ src/rooms/      Room, RoomManager, contexto de juego
-│  │  ├─ src/games/      lógica autoritativa de los once juegos + puntuaciones
+│  │  ├─ src/games/      lógica autoritativa de los trece juegos + puntuaciones
 │  │  ├─ src/socket.ts   Eventos tipados y validados con Zod
 │  │  ├─ src/security.ts Rate limiting y tamaño máximo de mensaje
 │  │  └─ prisma/         Esquema SQLite de estadísticas
@@ -293,6 +293,20 @@ Los cinco niveles marcados tienen una **ruta real de hoyo en uno basada en habil
 - El anfitrión puede fijar el objetivo en 7, 11 o 15 puntos.
 - Comparte el motor de red y movimiento de Air Hockey, pero usa colisiones rectangulares y reglas de mesa propias.
 
+### Head Soccer (2–5 jugadores)
+
+- Equipos rojo y azul en un campo lateral con movimiento, salto, remate, gravedad y colisiones autoritativas.
+- Controles de teclado y botones táctiles: A/D o flechas para moverse, W/↑ para saltar y Espacio/K para rematar.
+- Modos **Clásico**, **Turbo** (movimiento y balón un 25 % más rápidos) y **Gol de oro**.
+- El anfitrión puede elegir partidas a 3, 5 o 7 goles; el gol solo cuenta por debajo del larguero.
+
+### Head Basketball (2–5 jugadores)
+
+- Reutiliza el movimiento lateral de Head Soccer con aros, rebotes de aro y detección de canasta descendente.
+- Cada canasta suma dos puntos y el remate cercano orienta el tiro hacia el aro rival.
+- Modos **Clásico**, **Rápido** (siempre a seis puntos) y **Gravedad baja** para jugadas aéreas.
+- El anfitrión puede fijar el objetivo en 6, 10 o 14 puntos.
+
 ---
 
 ### Marco visual común de las partidas
@@ -310,11 +324,11 @@ El texto del acento se aclara con `color-mix(... 45%, #ffffff)` porque el rojo y
 ## 6. Pruebas
 
 ```bash
-npm test          # Vitest: 226 tests
+npm test          # Vitest: 239 tests
 npm run test:e2e  # Playwright: dos navegadores compartiendo sala
 ```
 
-Actualmente hay **226 tests Vitest** y 2 flujos E2E. GitHub Actions ejecuta el control completo
+Actualmente hay **239 tests Vitest** y 4 flujos E2E. GitHub Actions ejecuta el control completo
 en cada pull request y cada actualización de `main`, y conserva las trazas de Playwright si falla.
 
 Cobertura de los tests exigidos del minigolf:

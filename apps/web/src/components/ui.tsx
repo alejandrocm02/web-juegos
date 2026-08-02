@@ -124,6 +124,22 @@ export function GameIcon({
         <path d="M14.5 10.5h2v4h-2" />
       </>
     ),
+    'head-soccer': (
+      <>
+        <circle cx="12" cy="8" r="4.5" />
+        <path d="M8.5 13.5h7l1.5 6h-3l-2-3-2 3H7z" />
+        <circle cx="19" cy="16" r="2.3" />
+        <path d="M7 8H4m16 0h-3" />
+      </>
+    ),
+    'head-basketball': (
+      <>
+        <circle cx="9" cy="8" r="4.5" />
+        <path d="M5.5 13.5h7l1.5 6h-3l-2-3-2 3H4z" />
+        <circle cx="18" cy="12" r="3" />
+        <path d="M15.2 12h5.6M18 9.2v5.6M20 5h2v8" />
+      </>
+    ),
   };
   return (
     <svg

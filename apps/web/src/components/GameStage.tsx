@@ -68,6 +68,16 @@ const GAME_CONTROLS: Record<GameId, string[]> = {
     'Golpear lejos del centro cambia el ángulo de salida.',
     'Cada devolución acelera ligeramente la pelota.',
   ],
+  'head-soccer': [
+    'Muévete con A/D o las flechas izquierda y derecha.',
+    'Salta con W o flecha arriba y remata con Espacio o K.',
+    'El balón debe entrar por debajo del larguero rival.',
+  ],
+  'head-basketball': [
+    'Muévete con A/D y salta con W o flecha arriba.',
+    'Pulsa Espacio o K cerca del balón para lanzar al aro rival.',
+    'La pelota debe cruzar el aro de arriba abajo; cada canasta vale dos.',
+  ],
 };
 
 function modeName(game: GameId, mode: string | undefined): { name: string; rule: string } | null {
