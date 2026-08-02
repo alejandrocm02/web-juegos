@@ -78,6 +78,11 @@ const GAME_CONTROLS: Record<GameId, string[]> = {
     'Pulsa Espacio o K cerca del balón para lanzar al aro rival.',
     'La pelota debe cruzar el aro de arriba abajo; cada canasta vale dos.',
   ],
+  tanks: [
+    'Ajusta el ángulo y la potencia teniendo en cuenta el viento.',
+    'Puedes mover el tanque tres veces antes de disparar.',
+    'El daño es mayor cerca del centro de la explosión.',
+  ],
 };
 
 function modeName(game: GameId, mode: string | undefined): { name: string; rule: string } | null {

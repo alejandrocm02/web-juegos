@@ -14,7 +14,9 @@ import type {
   TableTennisMode,
   HeadSoccerMode,
   HeadBasketballMode,
+  TanksMode,
 } from './games/modes.js';
+import type { TankMapId } from './games/tanks.js';
 
 export type ConnectionState = 'connected' | 'disconnected';
 
@@ -111,6 +113,11 @@ export interface HeadBasketballSettings {
   pointsToWin: 6 | 10 | 14;
 }
 
+export interface TanksSettings {
+  mode: TanksMode;
+  map: TankMapId;
+}
+
 export interface GameSettings {
   quiz: QuizSettings;
   darts: DartsSettings;
@@ -125,6 +132,7 @@ export interface GameSettings {
   'table-tennis': TableTennisSettings;
   'head-soccer': HeadSoccerSettings;
   'head-basketball': HeadBasketballSettings;
+  tanks: TanksSettings;
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -145,6 +153,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   'table-tennis': { mode: 'clasico', pointsToWin: 11 },
   'head-soccer': { mode: 'clasico', goalLimit: 5 },
   'head-basketball': { mode: 'clasico', pointsToWin: 10 },
+  tanks: { mode: 'clasico', map: 'canon-carmesi' },
   golf: {
     mode: 'clasico',
     ballCollisions: true,

@@ -140,6 +140,15 @@ export function GameIcon({
         <path d="M15.2 12h5.6M18 9.2v5.6M20 5h2v8" />
       </>
     ),
+    tanks: (
+      <>
+        <path d="M4 14h14l2 4H5z" />
+        <path d="M8 14V9h7l2 5M11 9l7-4" />
+        <circle cx="8" cy="18" r="1.5" />
+        <circle cx="13" cy="18" r="1.5" />
+        <circle cx="18" cy="5" r="1.5" />
+      </>
+    ),
   };
   return (
     <svg

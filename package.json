@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Plataforma web de minijuegos multijugador en tiempo real con trece juegos",
+  "description": "Plataforma web de minijuegos multijugador en tiempo real con catorce juegos",
   "workspaces": [
     "packages/*",
     "apps/*"

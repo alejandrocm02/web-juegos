@@ -17,6 +17,7 @@ import type {
 import type { SonglessAnswerBreakdown, SonglessPublicTrack } from './games/songless.js';
 import type { ArcadeSportSnapshot } from './games/arcade-sport.js';
 import type { HeadSportSnapshot } from './games/head-sport.js';
+import type { TankSnapshot } from './games/tanks.js';
 
 /* --------------------------------- Quiz ---------------------------------- */
 
@@ -243,6 +244,23 @@ export interface HeadSportPublicState extends HeadSportSnapshot {
   deadline: number;
 }
 
+/* -------------------------------- Tanques -------------------------------- */
+
+export type TanksPhase = 'countdown' | 'aiming' | 'projectile' | 'resolving' | 'finished';
+
+export interface TanksPublicState extends TankSnapshot {
+  game: 'tanks';
+  phase: TanksPhase;
+  mode: string;
+  map: string;
+  order: string[];
+  activePlayerId: string;
+  turnNumber: number;
+  turnDurationMs: number;
+  countdownMs: number;
+  deadline: number;
+}
+
 export type GamePublicState =
   | QuizPublicState
   | DartsPublicState
@@ -254,7 +272,8 @@ export type GamePublicState =
   | BlackjackPublicState
   | SonglessPublicState
   | ArcadeSportPublicState
-  | HeadSportPublicState;
+  | HeadSportPublicState
+  | TanksPublicState;
 
 export interface GameStartedPayload {
   game: GameId;
