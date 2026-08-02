@@ -33,6 +33,8 @@ export const GAME_IDS = [
   'arena',
   'blackjack',
   'songless',
+  'air-hockey',
+  'table-tennis',
 ] as const;
 export type GameId = (typeof GAME_IDS)[number];
 
@@ -57,5 +59,15 @@ export const GAME_META: Record<GameId, { name: string; tagline: string; accent: 
     name: 'Songless',
     tagline: 'Reconoce la melodía fragmento a fragmento',
     accent: '#b16cff',
+  },
+  'air-hockey': {
+    name: 'Air Hockey',
+    tagline: 'Disco, reflejos y goles en equipo',
+    accent: '#22d3ee',
+  },
+  'table-tennis': {
+    name: 'Tenis de mesa',
+    tagline: 'Peloteos rápidos hasta el punto decisivo',
+    accent: '#fb7185',
   },
 };

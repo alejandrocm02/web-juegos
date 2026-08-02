@@ -109,6 +109,21 @@ export function GameIcon({
         <path d="M19 8v8m-2-6 2-2 2 2" />
       </>
     ),
+    'air-hockey': (
+      <>
+        <rect x="3" y="5" width="18" height="14" rx="3" />
+        <path d="M12 5v14M3 9h3v6H3m18-6h-3v6h3" />
+        <circle cx="8" cy="12" r="2.2" />
+        <circle cx="15.5" cy="12" r="1.3" />
+      </>
+    ),
+    'table-tennis': (
+      <>
+        <path d="M4 7h16v10H4zM12 7v10M6 20l2-3m10 3-2-3" />
+        <circle cx="9" cy="11" r="1.2" />
+        <path d="M14.5 10.5h2v4h-2" />
+      </>
+    ),
   };
   return (
     <svg

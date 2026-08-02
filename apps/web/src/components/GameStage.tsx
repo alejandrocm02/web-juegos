@@ -58,6 +58,16 @@ const GAME_CONTROLS: Record<GameId, string[]> = {
     'Elige una respuesta: solo se acepta un intento por ronda.',
     'Acertar con menos notas concede más puntos.',
   ],
+  'air-hockey': [
+    'Mueve tu mazo con el ratón, el dedo, WASD o las flechas.',
+    'Solo puedes moverte dentro de tu mitad de la mesa.',
+    'Protege la portería y busca el ángulo para marcar.',
+  ],
+  'table-tennis': [
+    'Mueve tu pala con el ratón, el dedo, W/S o las flechas.',
+    'Golpear lejos del centro cambia el ángulo de salida.',
+    'Cada devolución acelera ligeramente la pelota.',
+  ],
 };
 
 function modeName(game: GameId, mode: string | undefined): { name: string; rule: string } | null {
@@ -101,10 +111,14 @@ export function GameStage({
 
   // El lobby puede ser largo: cada partida debe abrir con su cabecera visible,
   // aunque el jugador hubiese dejado la pagina desplazada hacia abajo.
-  useEffect(() => window.scrollTo(0, 0), [state.game]);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [state.game]);
 
   // La ayuda se cierra al cambiar de juego para no arrastrar el panel abierto.
-  useEffect(() => setHelpOpen(false), [state.game]);
+  useEffect(() => {
+    setHelpOpen(false);
+  }, [state.game]);
 
   // Momentos destacados: se muestran grandes y se retiran solos.
   useEffect(() => {

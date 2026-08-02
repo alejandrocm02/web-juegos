@@ -15,6 +15,7 @@ import type {
   BlackjackRoundResult,
 } from './games/blackjack.js';
 import type { SonglessAnswerBreakdown, SonglessPublicTrack } from './games/songless.js';
+import type { ArcadeSportSnapshot } from './games/arcade-sport.js';
 
 /* --------------------------------- Quiz ---------------------------------- */
 
@@ -217,6 +218,19 @@ export interface SonglessPublicState {
   deadline: number;
 }
 
+/* --------------------------- Deportes de pala --------------------------- */
+
+export type ArcadeSportPhase = 'countdown' | 'playing' | 'finished';
+
+export interface ArcadeSportPublicState extends ArcadeSportSnapshot {
+  game: 'air-hockey' | 'table-tennis';
+  phase: ArcadeSportPhase;
+  mode: string;
+  targetScore: number;
+  countdownMs: number;
+  deadline: number;
+}
+
 export type GamePublicState =
   | QuizPublicState
   | DartsPublicState
@@ -226,7 +240,8 @@ export type GamePublicState =
   | KartsPublicState
   | ArenaPublicState
   | BlackjackPublicState
-  | SonglessPublicState;
+  | SonglessPublicState
+  | ArcadeSportPublicState;
 
 export interface GameStartedPayload {
   game: GameId;

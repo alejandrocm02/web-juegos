@@ -16,6 +16,8 @@ export const KARTS_MODES = ['rapida', 'contrarreloj', 'eliminatoria'] as const;
 export const ARENA_MODES = ['individual', 'equipos'] as const;
 export const BLACKJACK_MODES = ['clasico', 'rapido', 'alto-riesgo'] as const;
 export const SONGLESS_MODES = ['clasico', 'relampago', 'oido-fino'] as const;
+export const AIR_HOCKEY_MODES = ['clasico', 'turbo', 'gol-de-oro'] as const;
+export const TABLE_TENNIS_MODES = ['clasico', 'rapido', 'vertigo'] as const;
 
 export type QuizMode = (typeof QUIZ_MODES)[number];
 export type DartsMode = (typeof DARTS_MODES)[number];
@@ -26,6 +28,8 @@ export type KartsMode = (typeof KARTS_MODES)[number];
 export type ArenaMode = (typeof ARENA_MODES)[number];
 export type BlackjackMode = (typeof BLACKJACK_MODES)[number];
 export type SonglessMode = (typeof SONGLESS_MODES)[number];
+export type AirHockeyMode = (typeof AIR_HOCKEY_MODES)[number];
+export type TableTennisMode = (typeof TABLE_TENNIS_MODES)[number];
 
 export interface GameModeInfo {
   id: string;
@@ -233,6 +237,52 @@ export const GAME_MODE_CATALOG: Record<GameId, GameModeInfo[]> = {
       name: 'Oído fino',
       summary: 'Solo cuatro notas para decidir',
       rule: 'No hay ampliaciones: acertar el primer fragmento vale hasta 500 puntos.',
+    },
+  ],
+  'air-hockey': [
+    {
+      id: 'clasico',
+      name: 'Clásico',
+      summary: 'Primero en alcanzar el límite de goles',
+      rule: 'Cada jugador controla su propio mazo. El equipo que alcanza el límite de goles gana.',
+      teams: true,
+    },
+    {
+      id: 'turbo',
+      name: 'Turbo',
+      summary: 'Disco y mazos un 25 % más rápidos',
+      rule: 'La mesa acelera todos los movimientos y exige reflejos más rápidos.',
+      teams: true,
+    },
+    {
+      id: 'gol-de-oro',
+      name: 'Gol de oro',
+      summary: 'Un solo gol decide la partida',
+      rule: 'No hay margen de error: el primer equipo que marque gana.',
+      teams: true,
+    },
+  ],
+  'table-tennis': [
+    {
+      id: 'clasico',
+      name: 'Clásico',
+      summary: 'Peloteo a once puntos',
+      rule: 'Devuelve la pelota con tu pala. El primer equipo que alcanza el límite gana.',
+      teams: true,
+    },
+    {
+      id: 'rapido',
+      name: 'Rápido',
+      summary: 'Partida corta a siete puntos',
+      rule: 'La partida se resuelve a siete puntos con saques breves.',
+      teams: true,
+    },
+    {
+      id: 'vertigo',
+      name: 'Vértigo',
+      summary: 'Pelota un 30 % más rápida',
+      rule: 'La pelota acelera desde el saque y gana velocidad en cada devolución.',
+      teams: true,
     },
   ],
 };

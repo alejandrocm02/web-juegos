@@ -9,6 +9,7 @@ import { KartsGame } from './karts-game.js';
 import { ArenaGame } from './arena-game.js';
 import { BlackjackGame } from './blackjack-game.js';
 import { SonglessGame } from './songless-game.js';
+import { ArcadeSportGame } from './arcade-sport-game.js';
 
 export function createGameRunner(
   game: GameId,
@@ -34,6 +35,10 @@ export function createGameRunner(
       return new BlackjackGame(ctx, settings.blackjack);
     case 'songless':
       return new SonglessGame(ctx, settings.songless);
+    case 'air-hockey':
+      return new ArcadeSportGame('air-hockey', ctx, settings['air-hockey']);
+    case 'table-tennis':
+      return new ArcadeSportGame('table-tennis', ctx, settings['table-tennis']);
     default: {
       const never: never = game;
       throw new Error('Juego no soportado: ' + String(never));

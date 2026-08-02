@@ -34,8 +34,12 @@ test('dos navegadores comparten sala, juegan al quiz y reconectan', async ({ bro
   await guest.getByRole('button', { name: 'Estoy listo' }).click();
   await host.getByRole('button', { name: /Iniciar Quiz/ }).click();
 
-  await expect(host.getByText(/Pregunta 1 \//)).toBeVisible({ timeout: 20_000 });
-  await expect(guest.getByText(/Pregunta 1 \//)).toBeVisible({ timeout: 20_000 });
+  await expect(host.locator('.hud-stat').filter({ hasText: 'Ronda' })).toContainText(/1 \/ 10/, {
+    timeout: 20_000,
+  });
+  await expect(guest.locator('.hud-stat').filter({ hasText: 'Ronda' })).toContainText(/1 \/ 10/, {
+    timeout: 20_000,
+  });
 
   // Reconexion: recargar mantiene la sesion gracias al token de localStorage.
   await guest.reload();
@@ -66,9 +70,13 @@ test('el minigolf arranca con 10 niveles y muestra el HUD', async ({ browser }) 
   await guest.getByRole('button', { name: 'Estoy listo' }).click();
   await host.getByRole('button', { name: /Iniciar Minigolf/ }).click();
 
-  await expect(host.getByText(/Hoyo 1\/10/)).toBeVisible({ timeout: 20_000 });
-  await expect(guest.getByText(/Hoyo 1\/10/)).toBeVisible({ timeout: 20_000 });
-  await expect(host.getByText(/Colisiones:/)).toBeVisible();
+  await expect(host.locator('.hud-stat').filter({ hasText: 'Recorrido' })).toContainText('1/10', {
+    timeout: 20_000,
+  });
+  await expect(guest.locator('.hud-stat').filter({ hasText: 'Recorrido' })).toContainText('1/10', {
+    timeout: 20_000,
+  });
+  await expect(host.locator('.hud-stat').filter({ hasText: 'Par' })).toContainText('2');
   await expect(host.getByRole('button', { name: /Reiniciar bola/ })).toBeVisible();
 
   // El primer golpe debe llegar al servidor y confirmarse. Esta comprobación
