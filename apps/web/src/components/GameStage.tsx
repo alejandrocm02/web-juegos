@@ -111,10 +111,14 @@ export function GameStage({
 
   // El lobby puede ser largo: cada partida debe abrir con su cabecera visible,
   // aunque el jugador hubiese dejado la pagina desplazada hacia abajo.
-  useEffect(() => window.scrollTo(0, 0), [state.game]);
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [state.game]);
 
   // La ayuda se cierra al cambiar de juego para no arrastrar el panel abierto.
-  useEffect(() => setHelpOpen(false), [state.game]);
+  useEffect(() => {
+    setHelpOpen(false);
+  }, [state.game]);
 
   // Momentos destacados: se muestran grandes y se retiran solos.
   useEffect(() => {
