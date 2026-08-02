@@ -15,6 +15,7 @@ export const BOWLING_MODES = ['individual', 'corta', 'equipos'] as const;
 export const KARTS_MODES = ['rapida', 'contrarreloj', 'eliminatoria'] as const;
 export const ARENA_MODES = ['individual', 'equipos'] as const;
 export const BLACKJACK_MODES = ['clasico', 'rapido', 'alto-riesgo'] as const;
+export const SONGLESS_MODES = ['clasico', 'relampago', 'oido-fino'] as const;
 
 export type QuizMode = (typeof QUIZ_MODES)[number];
 export type DartsMode = (typeof DARTS_MODES)[number];
@@ -24,6 +25,7 @@ export type BowlingMode = (typeof BOWLING_MODES)[number];
 export type KartsMode = (typeof KARTS_MODES)[number];
 export type ArenaMode = (typeof ARENA_MODES)[number];
 export type BlackjackMode = (typeof BLACKJACK_MODES)[number];
+export type SonglessMode = (typeof SONGLESS_MODES)[number];
 
 export interface GameModeInfo {
   id: string;
@@ -211,6 +213,26 @@ export const GAME_MODE_CATALOG: Record<GameId, GameModeInfo[]> = {
       name: 'Alto riesgo',
       summary: 'El blackjack vale más y el crupier aprieta',
       rule: 'El blackjack natural suma 4 puntos y el crupier pide carta con 17 suave.',
+    },
+  ],
+  songless: [
+    {
+      id: 'clasico',
+      name: 'Clásico',
+      summary: 'Tres fragmentos cada vez más largos',
+      rule: 'Reconocer la melodía con cuatro notas da más puntos que esperar al fragmento completo.',
+    },
+    {
+      id: 'relampago',
+      name: 'Relámpago',
+      summary: 'Cinco rondas con pistas aceleradas',
+      rule: 'Los fragmentos se amplían cada tres segundos y solo se juegan cinco melodías.',
+    },
+    {
+      id: 'oido-fino',
+      name: 'Oído fino',
+      summary: 'Solo cuatro notas para decidir',
+      rule: 'No hay ampliaciones: acertar el primer fragmento vale hasta 500 puntos.',
     },
   ],
 };

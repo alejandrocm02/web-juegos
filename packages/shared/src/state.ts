@@ -14,6 +14,7 @@ import type {
   BlackjackPlayerHand,
   BlackjackRoundResult,
 } from './games/blackjack.js';
+import type { SonglessAnswerBreakdown, SonglessPublicTrack } from './games/songless.js';
 
 /* --------------------------------- Quiz ---------------------------------- */
 
@@ -195,6 +196,27 @@ export interface BlackjackPublicState {
   deadline: number;
 }
 
+/* -------------------------------- Songless ------------------------------- */
+
+export type SonglessPhase = 'countdown' | 'listening' | 'reveal' | 'finished';
+
+export interface SonglessPublicState {
+  game: 'songless';
+  phase: SonglessPhase;
+  mode: string;
+  roundIndex: number;
+  totalRounds: number;
+  clipLevel: number;
+  maxClipLevel: number;
+  track: SonglessPublicTrack | null;
+  answeredPlayerIds: string[];
+  correctIndex: number | null;
+  correctComposer: string | null;
+  breakdown: SonglessAnswerBreakdown[];
+  scoreboard: ScoreRow[];
+  deadline: number;
+}
+
 export type GamePublicState =
   | QuizPublicState
   | DartsPublicState
@@ -203,7 +225,8 @@ export type GamePublicState =
   | BowlingPublicState
   | KartsPublicState
   | ArenaPublicState
-  | BlackjackPublicState;
+  | BlackjackPublicState
+  | SonglessPublicState;
 
 export interface GameStartedPayload {
   game: GameId;

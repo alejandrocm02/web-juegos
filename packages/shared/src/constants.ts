@@ -32,6 +32,7 @@ export const GAME_IDS = [
   'karts',
   'arena',
   'blackjack',
+  'songless',
 ] as const;
 export type GameId = (typeof GAME_IDS)[number];
 
@@ -51,5 +52,10 @@ export const GAME_META: Record<GameId, { name: string; tagline: string; accent: 
     name: 'Blackjack',
     tagline: 'Plántate, pide carta y vence al crupier',
     accent: '#f5c451',
+  },
+  songless: {
+    name: 'Songless',
+    tagline: 'Reconoce la melodía fragmento a fragmento',
+    accent: '#b16cff',
   },
 };
