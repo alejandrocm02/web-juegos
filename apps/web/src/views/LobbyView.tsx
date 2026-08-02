@@ -12,6 +12,8 @@ import {
   type GolfSettings,
   type BlackjackSettings,
   type SonglessSettings,
+  type AirHockeySettings,
+  type TableTennisSettings,
 } from '@arcade/shared';
 import { useState } from 'react';
 import { useApp } from '../store.js';
@@ -642,6 +644,54 @@ function GameSettingsForm({
             value: rounds as 5 | 7 | 10,
           }))}
           onChange={(rounds) => onChange('songless', { ...songless, rounds })}
+        />
+      </Field>
+    );
+  }
+
+  if (game === 'air-hockey') {
+    const hockey: AirHockeySettings = settings['air-hockey'];
+    if (hockey.mode === 'gol-de-oro') {
+      return (
+        <Field label="Marcador">
+          <p className="text-sm text-slate-400">El primer gol decide la partida.</p>
+        </Field>
+      );
+    }
+    return (
+      <Field label="Goles para ganar">
+        <Segmented
+          disabled={disabled}
+          value={hockey.goalLimit}
+          options={[5, 7, 9].map((goalLimit) => ({
+            label: String(goalLimit),
+            value: goalLimit as 5 | 7 | 9,
+          }))}
+          onChange={(goalLimit) => onChange('air-hockey', { ...hockey, goalLimit })}
+        />
+      </Field>
+    );
+  }
+
+  if (game === 'table-tennis') {
+    const tennis: TableTennisSettings = settings['table-tennis'];
+    if (tennis.mode === 'rapido') {
+      return (
+        <Field label="Marcador">
+          <p className="text-sm text-slate-400">El modo rápido se juega siempre a siete puntos.</p>
+        </Field>
+      );
+    }
+    return (
+      <Field label="Puntos para ganar">
+        <Segmented
+          disabled={disabled}
+          value={tennis.pointsToWin}
+          options={[7, 11, 15].map((pointsToWin) => ({
+            label: String(pointsToWin),
+            value: pointsToWin as 7 | 11 | 15,
+          }))}
+          onChange={(pointsToWin) => onChange('table-tennis', { ...tennis, pointsToWin })}
         />
       </Field>
     );

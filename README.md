@@ -1,6 +1,6 @@
 # Parque Arcade
 
-Plataforma web de **minijuegos multijugador en tiempo real** para jugar con amigos, cada uno desde su propio ordenador. Salas privadas con código, entrada como invitado y nueve juegos completos: **Billar**, **Quiz**, **Dardos**, **Minigolf**, **Bolos**, **Karts**, **Battle Royale**, **Blackjack** y **Songless**.
+Plataforma web de **minijuegos multijugador en tiempo real** para jugar con amigos, cada uno desde su propio ordenador. Salas privadas con código, entrada como invitado y once juegos completos: **Billar**, **Quiz**, **Dardos**, **Minigolf**, **Bolos**, **Karts**, **Battle Royale**, **Blackjack**, **Songless**, **Air Hockey** y **Tenis de mesa**.
 
 El servidor es **autoritativo**: valida jugadores, turnos, golpes, posiciones, puntuaciones, temporizadores y ganadores. El navegador solo envía intenciones y dibuja los snapshots que recibe.
 
@@ -94,7 +94,7 @@ arcade-party/
 ├─ apps/
 │  ├─ server/            Express + Socket.IO + Prisma (servidor autoritativo)
 │  │  ├─ src/rooms/      Room, RoomManager, contexto de juego
-│  │  ├─ src/games/      lógica autoritativa de los nueve juegos + puntuaciones
+│  │  ├─ src/games/      lógica autoritativa de los once juegos + puntuaciones
 │  │  ├─ src/socket.ts   Eventos tipados y validados con Zod
 │  │  ├─ src/security.ts Rate limiting y tamaño máximo de mensaje
 │  │  └─ prisma/         Esquema SQLite de estadísticas
@@ -105,7 +105,7 @@ arcade-party/
 ├─ packages/
 │  ├─ shared/            Tipos, esquemas Zod, eventos, reglas, banco de quiz,
 │  │                     los 10 niveles de minigolf y constantes comunes
-│  └─ game-engine/       Física determinista reutilizable (golf, billar, bolos, karts y arena)
+│  └─ game-engine/       Física determinista reutilizable (golf, billar, bolos, karts, arena y deportes)
 ├─ e2e/                  Tests Playwright con dos navegadores
 ├─ Dockerfile            Imagen única: cliente + servidor en un proceso
 ├─ render.yaml           Despliegue de un servicio en Render
@@ -277,6 +277,22 @@ Los cinco niveles marcados tienen una **ruta real de hoyo en uno basada en habil
 - Modos **Clásico**, **Relámpago** (cinco rondas y pistas cada tres segundos) y **Oído fino** (solo cuatro notas, hasta 500 puntos).
 - El catálogo usa composiciones y canciones tradicionales de dominio público. La elección, los plazos y la puntuación se controlan en el servidor.
 
+### Air Hockey (2–5 jugadores)
+
+- Equipos rojo y azul repartidos de forma estable; cada participante controla su propio mazo dentro de su mitad.
+- Control directo con ratón o pantalla táctil y alternativa con WASD o flechas.
+- Modos **Clásico**, **Turbo** (disco y mazos un 28 % más rápidos) y **Gol de oro**.
+- El anfitrión puede configurar partidas a 5, 7 o 9 goles en los modos largos.
+- El servidor limita posiciones, simula colisiones y porterías a 60 Hz y distribuye snapshots a 20 Hz.
+
+### Tenis de mesa (2–5 jugadores)
+
+- Equipos rojo y azul con una pala por participante y peloteo simultáneo.
+- El punto de contacto cambia el ángulo de devolución y cada golpe acelera ligeramente la pelota.
+- Modos **Clásico**, **Rápido** (siempre a siete puntos) y **Vértigo** (pelota un 28 % más rápida).
+- El anfitrión puede fijar el objetivo en 7, 11 o 15 puntos.
+- Comparte el motor de red y movimiento de Air Hockey, pero usa colisiones rectangulares y reglas de mesa propias.
+
 ---
 
 ### Marco visual común de las partidas
@@ -294,11 +310,11 @@ El texto del acento se aclara con `color-mix(... 45%, #ffffff)` porque el rojo y
 ## 6. Pruebas
 
 ```bash
-npm test          # Vitest: 71 tests
+npm test          # Vitest: 226 tests
 npm run test:e2e  # Playwright: dos navegadores compartiendo sala
 ```
 
-Actualmente hay **71 tests Vitest** y 2 flujos E2E. GitHub Actions ejecuta el control completo
+Actualmente hay **226 tests Vitest** y 2 flujos E2E. GitHub Actions ejecuta el control completo
 en cada pull request y cada actualización de `main`, y conserva las trazas de Playwright si falla.
 
 Cobertura de los tests exigidos del minigolf:

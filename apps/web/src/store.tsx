@@ -10,6 +10,7 @@ import {
   type GolfSnapshot,
   type MatchResult,
   type PoolSnapshot,
+  type ArcadeSportSnapshot,
   type RoomSummary,
 } from '@arcade/shared';
 import React, {
@@ -46,7 +47,7 @@ interface AppStateValue {
   golfEvents: GolfFeedEvent[];
   /** Ultimo evento de partida sin interpretar, para los momentos destacados. */
   lastGameEvent: { id: number; payload: unknown } | null;
-  snapshotRef: React.MutableRefObject<GolfSnapshot | PoolSnapshot | null>;
+  snapshotRef: React.MutableRefObject<GolfSnapshot | PoolSnapshot | ArcadeSportSnapshot | null>;
   me: RoomSummary['players'][number] | null;
   isHost: boolean;
   createRoom: (name: string) => void;
@@ -77,7 +78,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [golfEvents, setGolfEvents] = useState<GolfFeedEvent[]>([]);
   const [lastGameEvent, setLastGameEvent] = useState<{ id: number; payload: unknown } | null>(null);
   const eventId = useRef(0);
-  const snapshotRef = useRef<GolfSnapshot | PoolSnapshot | null>(null);
+  const snapshotRef = useRef<GolfSnapshot | PoolSnapshot | ArcadeSportSnapshot | null>(null);
   const pendingName = useRef<string>('');
   const sessionRef = useRef<SessionInfo | null>(null);
   const sessionRecoveryRef = useRef(false);
@@ -153,7 +154,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setGameState(payload.state);
     };
     const onState = (payload: GamePublicState) => setGameState(payload);
-    const onSnapshot = (payload: GolfSnapshot | PoolSnapshot) => {
+    const onSnapshot = (payload: GolfSnapshot | PoolSnapshot | ArcadeSportSnapshot) => {
       snapshotRef.current = payload;
     };
     const onGameEvent = (payload: GolfFeedEvent) => {

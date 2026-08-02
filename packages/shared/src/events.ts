@@ -11,6 +11,8 @@ import {
   POOL_MODES,
   QUIZ_MODES,
   SONGLESS_MODES,
+  AIR_HOCKEY_MODES,
+  TABLE_TENNIS_MODES,
 } from './games/modes.js';
 import { sanitizeName } from './util.js';
 
@@ -97,6 +99,16 @@ export const songlessSettingsSchema = z.object({
   rounds: z.union([z.literal(5), z.literal(7), z.literal(10)]),
 });
 
+export const airHockeySettingsSchema = z.object({
+  mode: z.enum(AIR_HOCKEY_MODES),
+  goalLimit: z.union([z.literal(5), z.literal(7), z.literal(9)]),
+});
+
+export const tableTennisSettingsSchema = z.object({
+  mode: z.enum(TABLE_TENNIS_MODES),
+  pointsToWin: z.union([z.literal(7), z.literal(11), z.literal(15)]),
+});
+
 export const settingsPatchSchema = z.discriminatedUnion('game', [
   z.object({ game: z.literal('quiz'), settings: quizSettingsSchema }),
   z.object({ game: z.literal('darts'), settings: dartsSettingsSchema }),
@@ -107,6 +119,8 @@ export const settingsPatchSchema = z.discriminatedUnion('game', [
   z.object({ game: z.literal('arena'), settings: arenaSettingsSchema }),
   z.object({ game: z.literal('blackjack'), settings: blackjackSettingsSchema }),
   z.object({ game: z.literal('songless'), settings: songlessSettingsSchema }),
+  z.object({ game: z.literal('air-hockey'), settings: airHockeySettingsSchema }),
+  z.object({ game: z.literal('table-tennis'), settings: tableTennisSettingsSchema }),
 ]);
 
 export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
@@ -198,6 +212,14 @@ export const songlessAnswerSchema = z.object({
   answerIndex: z.number().int().min(0).max(3),
 });
 
+export const sportInputSchema = z.object({
+  type: z.literal('sport:input'),
+  game: z.enum(['air-hockey', 'table-tennis']),
+  /** Posición deseada, normalizada para no confiar en dimensiones del cliente. */
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+});
+
 export const golfResetSchema = z.object({ type: z.literal('golf:reset') });
 export const golfSyncSchema = z.object({ type: z.literal('golf:sync') });
 
@@ -209,6 +231,7 @@ export const gameActionSchema = z.discriminatedUnion('type', [
   blackjackHitSchema,
   blackjackStandSchema,
   songlessAnswerSchema,
+  sportInputSchema,
   dartsThrowSchema,
   poolShootSchema,
   golfShootSchema,

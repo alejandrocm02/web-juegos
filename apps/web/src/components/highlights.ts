@@ -23,6 +23,7 @@ interface RawEvent {
   strokes?: unknown;
   value?: unknown;
   result?: unknown;
+  team?: unknown;
 }
 
 function nameOf(players: PublicPlayer[], id: unknown): string | null {
@@ -70,6 +71,12 @@ export function describeGameEvent(
       return null;
     case 'songless-hit':
       return { title: 'Melodía reconocida', detail: who, tone: 'good' };
+    case 'sport-goal':
+      return {
+        title: '¡Punto!',
+        detail: event.team === 'rojo' ? 'Equipo rojo' : 'Equipo azul',
+        tone: 'good',
+      };
     default:
       // El resto de eventos (penalizaciones, reinicios, fin de tiempo) ya se
       // comunican en el HUD de cada juego y no interrumpen la pantalla.

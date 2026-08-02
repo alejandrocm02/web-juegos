@@ -10,6 +10,8 @@ import type {
   TeamId,
   BlackjackMode,
   SonglessMode,
+  AirHockeyMode,
+  TableTennisMode,
 } from './games/modes.js';
 
 export type ConnectionState = 'connected' | 'disconnected';
@@ -87,6 +89,16 @@ export interface SonglessSettings {
   rounds: 5 | 7 | 10;
 }
 
+export interface AirHockeySettings {
+  mode: AirHockeyMode;
+  goalLimit: 5 | 7 | 9;
+}
+
+export interface TableTennisSettings {
+  mode: TableTennisMode;
+  pointsToWin: 7 | 11 | 15;
+}
+
 export interface GameSettings {
   quiz: QuizSettings;
   darts: DartsSettings;
@@ -97,6 +109,8 @@ export interface GameSettings {
   arena: ArenaSettings;
   blackjack: BlackjackSettings;
   songless: SonglessSettings;
+  'air-hockey': AirHockeySettings;
+  'table-tennis': TableTennisSettings;
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -113,6 +127,8 @@ export const DEFAULT_SETTINGS: GameSettings = {
   arena: { mode: 'individual', zonePace: 'normal', pickups: true },
   blackjack: { mode: 'clasico', rounds: 5 },
   songless: { mode: 'clasico', rounds: 7 },
+  'air-hockey': { mode: 'clasico', goalLimit: 7 },
+  'table-tennis': { mode: 'clasico', pointsToWin: 11 },
   golf: {
     mode: 'clasico',
     ballCollisions: true,
