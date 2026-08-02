@@ -34,8 +34,12 @@ test('dos navegadores comparten sala, juegan al quiz y reconectan', async ({ bro
   await guest.getByRole('button', { name: 'Estoy listo' }).click();
   await host.getByRole('button', { name: /Iniciar Quiz/ }).click();
 
-  await expect(host.getByText(/Ronda 1 \/ 10/)).toBeVisible({ timeout: 20_000 });
-  await expect(guest.getByText(/Ronda 1 \/ 10/)).toBeVisible({ timeout: 20_000 });
+  await expect(host.locator('.hud-stat').filter({ hasText: 'Ronda' })).toContainText(/1 \/ 10/, {
+    timeout: 20_000,
+  });
+  await expect(guest.locator('.hud-stat').filter({ hasText: 'Ronda' })).toContainText(/1 \/ 10/, {
+    timeout: 20_000,
+  });
 
   // Reconexion: recargar mantiene la sesion gracias al token de localStorage.
   await guest.reload();
