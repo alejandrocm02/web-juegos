@@ -53,6 +53,11 @@ const GAME_CONTROLS: Record<GameId, string[]> = {
     'Plántate cuando quieras conservar tu total.',
     'Tras jugar todos, el crupier revela su carta oculta y pide hasta 17.',
   ],
+  songless: [
+    'Pulsa reproducir para escuchar el fragmento disponible.',
+    'Elige una respuesta: solo se acepta un intento por ronda.',
+    'Acertar con menos notas concede más puntos.',
+  ],
 };
 
 function modeName(game: GameId, mode: string | undefined): { name: string; rule: string } | null {

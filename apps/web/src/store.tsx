@@ -60,6 +60,7 @@ interface AppStateValue {
   transferHost: (playerId: string) => void;
   backToLobby: () => void;
   sendAction: (action: GameAction) => void;
+  pushToast: (message: string) => void;
   dismissError: () => void;
 }
 
@@ -266,6 +267,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       transferHost: (playerId) => socket.emit(CLIENT_EVENTS.transferHost, { playerId }),
       backToLobby: () => socket.emit(CLIENT_EVENTS.backToLobby),
       sendAction,
+      pushToast,
       dismissError: () => setError(null),
     }),
     [
@@ -280,6 +282,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       lastGameEvent,
       me,
       sendAction,
+      pushToast,
     ],
   );
 

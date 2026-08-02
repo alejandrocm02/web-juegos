@@ -11,6 +11,7 @@ import {
   type KartsSettings,
   type GolfSettings,
   type BlackjackSettings,
+  type SonglessSettings,
 } from '@arcade/shared';
 import { useState } from 'react';
 import { useApp } from '../store.js';
@@ -617,6 +618,30 @@ function GameSettingsForm({
             value: rounds as 3 | 5 | 7,
           }))}
           onChange={(rounds) => onChange('blackjack', { ...blackjack, rounds })}
+        />
+      </Field>
+    );
+  }
+
+  if (game === 'songless') {
+    const songless: SonglessSettings = settings.songless;
+    if (songless.mode === 'relampago') {
+      return (
+        <Field label="Duración">
+          <p className="text-sm text-slate-400">Relámpago juega siempre cinco melodías.</p>
+        </Field>
+      );
+    }
+    return (
+      <Field label="Melodías por partida">
+        <Segmented
+          disabled={disabled}
+          value={songless.rounds}
+          options={[5, 7, 10].map((rounds) => ({
+            label: String(rounds),
+            value: rounds as 5 | 7 | 10,
+          }))}
+          onChange={(rounds) => onChange('songless', { ...songless, rounds })}
         />
       </Field>
     );

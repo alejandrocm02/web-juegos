@@ -68,6 +68,8 @@ export function describeGameEvent(
         return { title: 'Blackjack', detail: who, tone: 'good' };
       }
       return null;
+    case 'songless-hit':
+      return { title: 'Melodía reconocida', detail: who, tone: 'good' };
     default:
       // El resto de eventos (penalizaciones, reinicios, fin de tiempo) ya se
       // comunican en el HUD de cada juego y no interrumpen la pantalla.

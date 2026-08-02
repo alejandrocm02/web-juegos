@@ -101,6 +101,14 @@ export function GameIcon({
         <path d="M13 11h3m-1.5-1.5v3" />
       </>
     ),
+    songless: (
+      <>
+        <path d="M5 15V6l11-2v9" />
+        <circle cx="3.5" cy="16.5" r="2.5" />
+        <circle cx="14.5" cy="14.5" r="2.5" />
+        <path d="M19 8v8m-2-6 2-2 2 2" />
+      </>
+    ),
   };
   return (
     <svg

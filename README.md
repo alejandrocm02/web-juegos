@@ -1,6 +1,6 @@
 # Parque Arcade
 
-Plataforma web de **minijuegos multijugador en tiempo real** para jugar con amigos, cada uno desde su propio ordenador. Salas privadas con código, entrada como invitado y ocho juegos completos: **Billar**, **Quiz**, **Dardos**, **Minigolf**, **Bolos**, **Karts**, **Battle Royale** y **Blackjack**.
+Plataforma web de **minijuegos multijugador en tiempo real** para jugar con amigos, cada uno desde su propio ordenador. Salas privadas con código, entrada como invitado y nueve juegos completos: **Billar**, **Quiz**, **Dardos**, **Minigolf**, **Bolos**, **Karts**, **Battle Royale**, **Blackjack** y **Songless**.
 
 El servidor es **autoritativo**: valida jugadores, turnos, golpes, posiciones, puntuaciones, temporizadores y ganadores. El navegador solo envía intenciones y dibuja los snapshots que recibe.
 
@@ -94,7 +94,7 @@ arcade-party/
 ├─ apps/
 │  ├─ server/            Express + Socket.IO + Prisma (servidor autoritativo)
 │  │  ├─ src/rooms/      Room, RoomManager, contexto de juego
-│  │  ├─ src/games/      lógica autoritativa de los ocho juegos + puntuaciones
+│  │  ├─ src/games/      lógica autoritativa de los nueve juegos + puntuaciones
 │  │  ├─ src/socket.ts   Eventos tipados y validados con Zod
 │  │  ├─ src/security.ts Rate limiting y tamaño máximo de mensaje
 │  │  └─ prisma/         Esquema SQLite de estadísticas
@@ -268,6 +268,14 @@ Los cinco niveles marcados tienen una **ruta real de hoyo en uno basada en habil
 - Modos **Clásico**, **Rápido** (tres rondas) y **Alto riesgo** (blackjack de 4 puntos y el crupier pide con 17 suave).
 - El anfitrión puede configurar 3, 5 o 7 rondas. Un turno agotado se planta automáticamente para que la mesa no quede bloqueada.
 - El mazo, el reparto, las acciones válidas, el crupier y la clasificación se resuelven de forma autoritativa en el servidor.
+
+### Songless (2–5 jugadores)
+
+- Todos escuchan a la vez una melodía conocida interpretada con síntesis WebAudio local, sin grabaciones ni recursos externos.
+- Cada ronda empieza con cuatro notas y amplía el fragmento hasta ocho y dieciséis; acertar antes concede más puntos.
+- Las respuestas son simultáneas y permanecen ocultas hasta que todos contestan o termina el tiempo.
+- Modos **Clásico**, **Relámpago** (cinco rondas y pistas cada tres segundos) y **Oído fino** (solo cuatro notas, hasta 500 puntos).
+- El catálogo usa composiciones y canciones tradicionales de dominio público. La elección, los plazos y la puntuación se controlan en el servidor.
 
 ---
 

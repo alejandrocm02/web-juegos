@@ -11,6 +11,7 @@ import BowlingView from './games/BowlingView.js';
 import KartsView from './games/KartsView.js';
 import ArenaView from './games/ArenaView.js';
 import BlackjackView from './games/BlackjackView.js';
+import SonglessView from './games/SonglessView.js';
 import { ErrorBanner, Toasts } from './components/ui.js';
 import { GameExitBar } from './components/GameExitBar.js';
 import { GameStage } from './components/GameStage.js';
@@ -70,6 +71,9 @@ export default function App() {
         break;
       case 'blackjack':
         content = <BlackjackView state={gameState} />;
+        break;
+      case 'songless':
+        content = <SonglessView state={gameState} />;
         break;
       default:
         content = <EmptyState title="Juego desconocido" description="Vuelve al lobby." />;

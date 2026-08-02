@@ -9,6 +9,7 @@ import type {
   QuizMode,
   TeamId,
   BlackjackMode,
+  SonglessMode,
 } from './games/modes.js';
 
 export type ConnectionState = 'connected' | 'disconnected';
@@ -81,6 +82,11 @@ export interface BlackjackSettings {
   rounds: 3 | 5 | 7;
 }
 
+export interface SonglessSettings {
+  mode: SonglessMode;
+  rounds: 5 | 7 | 10;
+}
+
 export interface GameSettings {
   quiz: QuizSettings;
   darts: DartsSettings;
@@ -90,6 +96,7 @@ export interface GameSettings {
   karts: KartsSettings;
   arena: ArenaSettings;
   blackjack: BlackjackSettings;
+  songless: SonglessSettings;
 }
 
 export const DEFAULT_SETTINGS: GameSettings = {
@@ -105,6 +112,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
   karts: { mode: 'rapida', track: 'ovalo', laps: 3 },
   arena: { mode: 'individual', zonePace: 'normal', pickups: true },
   blackjack: { mode: 'clasico', rounds: 5 },
+  songless: { mode: 'clasico', rounds: 7 },
   golf: {
     mode: 'clasico',
     ballCollisions: true,
