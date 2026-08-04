@@ -406,7 +406,7 @@ npm test          # Vitest: 295 tests
 npm run test:e2e  # Playwright: dos navegadores compartiendo sala
 ```
 
-Actualmente hay **295 tests Vitest** y 5 flujos E2E. GitHub Actions ejecuta el control completo
+Actualmente hay **295 tests Vitest** y 9 flujos E2E (5 multijugador en `e2e/multiplayer.spec.ts` y 4 de modo individual en `e2e/solo.spec.ts`). GitHub Actions ejecuta el control completo
 en cada pull request y cada actualización de `main`, y conserva las trazas de Playwright si falla.
 
 Cobertura de los tests exigidos del minigolf:
@@ -446,6 +446,9 @@ Cobertura del modo individual:
 | Recorrido completo por sockets con marca guardada                  | `apps/server/tests/solo-integration.test.ts` |
 | Nadie puede unirse a una práctica ajena                            | idem                                         |
 | Se rechazan perfiles y configuraciones inválidos                   | idem                                         |
+| Pestaña "Practicar" de punta a punta en navegador real             | `e2e/solo.spec.ts`                           |
+| El lobby de práctica oculta invitación y "Estoy listo"             | idem                                         |
+| La marca sobrevive a recargar la página                            | idem                                         |
 
 Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, configuración bloqueada, transferencia de anfitrión, promoción automática), banco de preguntas, puntuación de la diana y simulación de billar.
 
