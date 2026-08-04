@@ -13,6 +13,9 @@ import {
   type ArcadeSportSnapshot,
   type HeadSportSnapshot,
   type RoomSummary,
+  type SoloConfig,
+  type SoloOutcome,
+  type SoloRecord,
 } from '@arcade/shared';
 import React, {
   createContext,
@@ -24,7 +27,7 @@ import React, {
   useState,
 } from 'react';
 import { socket } from './lib/socket.js';
-import { clearSession, loadSession, saveName, saveSession } from './lib/session.js';
+import { clearSession, loadProfileId, loadSession, saveName, saveSession } from './lib/session.js';
 
 export interface Toast {
   id: number;
@@ -53,7 +56,16 @@ interface AppStateValue {
   >;
   me: RoomSummary['players'][number] | null;
   isHost: boolean;
+  /** true si la sala actual es una práctica en solitario. */
+  isSolo: boolean;
+  /** Marcas personales de este navegador, ya ordenadas por el servidor. */
+  records: SoloRecord[];
+  /** Desenlace de la última práctica terminada. */
+  soloOutcome: SoloOutcome | null;
   createRoom: (name: string) => void;
+  createSoloRoom: (name: string, game: GameId, config: SoloConfig) => void;
+  updateSoloConfig: (config: SoloConfig) => void;
+  refreshRecords: () => void;
   joinRoom: (code: string, name: string) => void;
   leaveRoom: () => void;
   selectGame: (game: GameId) => void;
@@ -80,6 +92,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [golfEvents, setGolfEvents] = useState<GolfFeedEvent[]>([]);
   const [lastGameEvent, setLastGameEvent] = useState<{ id: number; payload: unknown } | null>(null);
+  const [records, setRecords] = useState<SoloRecord[]>([]);
+  const [soloOutcome, setSoloOutcome] = useState<SoloOutcome | null>(null);
   const eventId = useRef(0);
   const snapshotRef = useRef<
     GolfSnapshot | PoolSnapshot | ArcadeSportSnapshot | HeadSportSnapshot | null
@@ -87,6 +101,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const pendingName = useRef<string>('');
   const sessionRef = useRef<SessionInfo | null>(null);
   const sessionRecoveryRef = useRef(false);
+  // El perfil se resuelve una sola vez: crea el identificador si aún no existe.
+  const profileId = useRef<string>('');
+  if (!profileId.current) profileId.current = loadProfileId();
 
   const pushToast = useCallback((message: string) => {
     const id = Date.now() + Math.random();
@@ -111,6 +128,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         sessionRecoveryRef.current = true;
         socket.emit(CLIENT_EVENTS.rejoin, { code: active.code, token: active.token });
       }
+      socket.emit(CLIENT_EVENTS.requestRecords, { profileId: profileId.current });
     };
     const onDisconnect = () => setConnected(false);
 
@@ -141,6 +159,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         snapshotRef.current = null;
         setGameState(null);
         setResult(null);
+        setSoloOutcome(null);
       }
     };
     const onError = (payload: AppError) => {
@@ -153,8 +172,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setRoom(null);
       }
     };
+    const onRecords = (payload: { records: SoloRecord[] }) => setRecords(payload.records ?? []);
+    const onSoloOutcome = (payload: SoloOutcome) => {
+      setSoloOutcome(payload);
+      // La marca guardada cambia, así que la lista local se actualiza en el sitio.
+      setRecords((prev) => {
+        const rest = prev.filter((record) => record.game !== payload.record.game);
+        return [payload.record, ...rest];
+      });
+    };
     const onStarted = (payload: { game: GameId; state: GamePublicState }) => {
       setResult(null);
+      setSoloOutcome(null);
       setGolfEvents([]);
       // Evita interpolar durante unos milisegundos el último snapshot de la
       // partida anterior cuando dos juegos comparten la misma forma de datos.
@@ -211,6 +240,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     socket.on(SERVER_EVENTS.kicked, onKicked);
     socket.on(SERVER_EVENTS.sessionReplaced, onSessionReplaced);
     socket.on(SERVER_EVENTS.toast, onToast);
+    socket.on(SERVER_EVENTS.soloRecords, onRecords);
+    socket.on(SERVER_EVENTS.soloOutcome, onSoloOutcome);
     if (socket.connected) onConnect();
 
     return () => {
@@ -227,6 +258,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       socket.off(SERVER_EVENTS.kicked, onKicked);
       socket.off(SERVER_EVENTS.sessionReplaced, onSessionReplaced);
       socket.off(SERVER_EVENTS.toast, onToast);
+      socket.off(SERVER_EVENTS.soloRecords, onRecords);
+      socket.off(SERVER_EVENTS.soloOutcome, onSoloOutcome);
     };
   }, [pushToast]);
 
@@ -249,11 +282,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       snapshotRef,
       me,
       isHost: Boolean(me?.isHost),
+      isSolo: Boolean(room?.solo),
+      records,
+      soloOutcome,
       createRoom: (name) => {
         pendingName.current = name;
         saveName(name);
         socket.emit(CLIENT_EVENTS.createRoom, { name });
       },
+      createSoloRoom: (name, game, config) => {
+        pendingName.current = name;
+        saveName(name);
+        setSoloOutcome(null);
+        socket.emit(CLIENT_EVENTS.createSoloRoom, {
+          name,
+          profileId: profileId.current,
+          game,
+          config,
+        });
+      },
+      updateSoloConfig: (config) => socket.emit(CLIENT_EVENTS.updateSoloConfig, config),
+      refreshRecords: () =>
+        socket.emit(CLIENT_EVENTS.requestRecords, { profileId: profileId.current }),
       joinRoom: (code, name) => {
         pendingName.current = name;
         saveName(name);
@@ -268,6 +318,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setRoom(null);
         setGameState(null);
         setResult(null);
+        setSoloOutcome(null);
       },
       selectGame: (game) => socket.emit(CLIENT_EVENTS.selectGame, { game }),
       updateSettings: (game, settings) =>
@@ -292,6 +343,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       golfEvents,
       lastGameEvent,
       me,
+      records,
+      soloOutcome,
       sendAction,
       pushToast,
     ],

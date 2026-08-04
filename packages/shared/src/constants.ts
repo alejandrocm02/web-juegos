@@ -2,6 +2,8 @@
 
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 5;
+/** Jugadores humanos necesarios en una sala de práctica en solitario. */
+export const SOLO_MIN_PLAYERS = 1;
 
 export const NAME_MIN_LENGTH = 2;
 export const NAME_MAX_LENGTH = 16;

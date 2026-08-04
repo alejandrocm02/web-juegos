@@ -19,6 +19,13 @@ export interface RoomPlayer {
   socketId: string | null;
   joinedAt: number;
   disconnectedAt: number | null;
+  /**
+   * true si lo controla el servidor.
+   *
+   * Un bot ocupa un asiento normal de la sala: los juegos lo tratan como a
+   * cualquier otro jugador y sus acciones pasan por el mismo runner.
+   */
+  isBot?: boolean;
 }
 
 /** Contexto que la sala expone a cada juego. El juego nunca toca los sockets. */

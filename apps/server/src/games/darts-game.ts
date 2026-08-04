@@ -40,6 +40,8 @@ export class DartsGame implements GameRunner {
   private teams: Record<string, TeamId> = {};
   /** Turnos jugados por cada jugador, para cerrar el modo de puntuacion libre. */
   private turnsPlayed = new Map<string, number>();
+  /** Dardos lanzados por jugador. Es la marca personal del modo individual. */
+  private throwsMade = new Map<string, number>();
   private cricket: CricketBoard | null = null;
 
   constructor(
@@ -67,6 +69,7 @@ export class DartsGame implements GameRunner {
     for (const id of this.order) {
       this.scores.set(id, this.startScore);
       this.turnsPlayed.set(id, 0);
+      this.throwsMade.set(id, 0);
     }
     if (isTeamMode('darts', this.settings.mode)) this.teams = assignTeams(this.order);
     if (this.isCricket) this.cricket = createCricketBoard(this.order);
@@ -111,6 +114,7 @@ export class DartsGame implements GameRunner {
 
   private applyThrow(playerId: string, aimX: number, aimY: number): void {
     if (this.winnerId) return;
+    this.throwsMade.set(playerId, (this.throwsMade.get(playerId) ?? 0) + 1);
     // El servidor aplica su propia desviacion: el cliente solo propone puntería.
     const spread = DART_SPREAD[this.settings.aimAssist];
     const angle = Math.random() * Math.PI * 2;
@@ -285,6 +289,7 @@ export class DartsGame implements GameRunner {
       rows,
       winnerIds: this.winnerId ? [this.winnerId] : winnersFrom(rows),
       finishedAt: Date.now(),
+      extra: { mode: this.settings.mode, throws: Object.fromEntries(this.throwsMade) },
     });
   }
 

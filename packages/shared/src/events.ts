@@ -18,6 +18,7 @@ import {
   TANKS_MODES,
 } from './games/modes.js';
 import { TANK_MAP_IDS } from './games/tanks.js';
+import { BOT_DIFFICULTIES } from './games/solo.js';
 import { sanitizeName } from './util.js';
 
 /* -------------------------------------------------------------------------- */
@@ -153,6 +154,40 @@ export type SettingsPatch = z.infer<typeof settingsPatchSchema>;
 
 export const createRoomSchema = z.object({ name: playerNameSchema });
 export const joinRoomSchema = z.object({ code: roomCodeSchema, name: playerNameSchema });
+
+/**
+ * Identificador anonimo y estable del navegador.
+ *
+ * Solo sirve para asociar las marcas personales del modo individual. No
+ * contiene informacion del usuario: lo genera el cliente al azar y vive en
+ * `localStorage`.
+ */
+export const profileIdSchema = z
+  .string()
+  .trim()
+  .regex(/^[A-Za-z0-9_-]{8,64}$/, 'Identificador de perfil invalido');
+
+export const botDifficultySchema = z.enum(BOT_DIFFICULTIES);
+
+export const soloConfigSchema = z.object({
+  botCount: z
+    .number()
+    .int()
+    .min(0)
+    .max(MAX_PLAYERS - 1),
+  botDifficulty: botDifficultySchema,
+});
+
+export const createSoloRoomSchema = z.object({
+  name: playerNameSchema,
+  profileId: profileIdSchema,
+  game: gameIdSchema,
+  config: soloConfigSchema,
+});
+
+export const updateSoloConfigSchema = soloConfigSchema;
+
+export const recordsQuerySchema = z.object({ profileId: profileIdSchema });
 export const rejoinSchema = z.object({ code: roomCodeSchema, token: z.string().min(10).max(200) });
 export const selectGameSchema = z.object({ game: gameIdSchema });
 export const readySchema = z.object({ ready: z.boolean() });
@@ -305,6 +340,7 @@ export const ERROR_CODES = [
   'NOT_IN_ROOM',
   'NOT_YOUR_TURN',
   'ACTION_REJECTED',
+  'SOLO_ROOM',
   'RATE_LIMITED',
   'SESSION_EXPIRED',
   'INTERNAL',
@@ -323,6 +359,9 @@ export interface AppError {
 
 export const CLIENT_EVENTS = {
   createRoom: 'room:create',
+  createSoloRoom: 'room:create-solo',
+  updateSoloConfig: 'room:solo-config',
+  requestRecords: 'solo:records',
   joinRoom: 'room:join',
   rejoin: 'room:rejoin',
   leaveRoom: 'room:leave',
@@ -348,6 +387,10 @@ export const SERVER_EVENTS = {
   gameOver: 'game:over',
   kicked: 'room:kicked',
   toast: 'app:toast',
+  /** Marca personal calculada al terminar una partida en solitario. */
+  soloOutcome: 'solo:outcome',
+  /** Listado completo de marcas personales del perfil. */
+  soloRecords: 'solo:records',
 } as const;
 
 export const MAX_ROOM_PLAYERS = MAX_PLAYERS;

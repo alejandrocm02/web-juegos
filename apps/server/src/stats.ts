@@ -1,4 +1,4 @@
-import type { GameId, MatchResult } from '@arcade/shared';
+import type { BotDifficulty, GameId, MatchResult, SoloRecord } from '@arcade/shared';
 import { logger } from './logger.js';
 
 export interface StoredMatch {
@@ -11,7 +11,15 @@ export interface StoredMatch {
 export interface StatsRepository {
   saveMatch(match: StoredMatch): Promise<void>;
   leaderboard(): Promise<{ alias: string; wins: number; matches: number }[]>;
+  /** Marca personal de un perfil anonimo en un juego, o null si no tiene. */
+  getRecord(profileId: string, game: GameId): Promise<SoloRecord | null>;
+  saveRecord(profileId: string, record: SoloRecord): Promise<void>;
+  listRecords(profileId: string): Promise<SoloRecord[]>;
   ready: boolean;
+}
+
+function recordKey(profileId: string, game: GameId): string {
+  return profileId + '::' + game;
 }
 
 /**
@@ -21,10 +29,25 @@ export interface StatsRepository {
 class MemoryStats implements StatsRepository {
   ready = true;
   private matches: StoredMatch[] = [];
+  private records = new Map<string, SoloRecord>();
 
   async saveMatch(match: StoredMatch): Promise<void> {
     this.matches.push(match);
     if (this.matches.length > 500) this.matches.shift();
+  }
+
+  async getRecord(profileId: string, game: GameId): Promise<SoloRecord | null> {
+    return this.records.get(recordKey(profileId, game)) ?? null;
+  }
+
+  async saveRecord(profileId: string, record: SoloRecord): Promise<void> {
+    this.records.set(recordKey(profileId, record.game), { ...record });
+  }
+
+  async listRecords(profileId: string): Promise<SoloRecord[]> {
+    return [...this.records.entries()]
+      .filter(([key]) => key.startsWith(profileId + '::'))
+      .map(([, record]) => ({ ...record }));
   }
 
   async leaderboard(): Promise<{ alias: string; wins: number; matches: number }[]> {
@@ -92,6 +115,58 @@ class PrismaStats implements StatsRepository {
       .sort((a, b) => b.wins - a.wins)
       .slice(0, 20);
   }
+
+  async getRecord(profileId: string, game: GameId): Promise<SoloRecord | null> {
+    const row = (await this.prisma.soloRecord.findUnique({
+      where: { profileId_game: { profileId, game } },
+    })) as PrismaSoloRecord | null;
+    return row ? toSoloRecord(row) : null;
+  }
+
+  async saveRecord(profileId: string, record: SoloRecord): Promise<void> {
+    const data = {
+      value: Math.round(record.value),
+      detail: record.detail.slice(0, 120),
+      difficulty: record.difficulty,
+      plays: record.plays,
+      wins: record.wins,
+      updatedAt: new Date(record.updatedAt),
+    };
+    await this.prisma.soloRecord.upsert({
+      where: { profileId_game: { profileId, game: record.game } },
+      create: { profileId, game: record.game, ...data },
+      update: data,
+    });
+  }
+
+  async listRecords(profileId: string): Promise<SoloRecord[]> {
+    const rows = (await this.prisma.soloRecord.findMany({
+      where: { profileId },
+    })) as PrismaSoloRecord[];
+    return rows.map(toSoloRecord);
+  }
+}
+
+interface PrismaSoloRecord {
+  game: string;
+  value: number;
+  detail: string;
+  difficulty: string | null;
+  plays: number;
+  wins: number;
+  updatedAt: Date;
+}
+
+function toSoloRecord(row: PrismaSoloRecord): SoloRecord {
+  return {
+    game: row.game as GameId,
+    value: row.value,
+    detail: row.detail,
+    difficulty: (row.difficulty as BotDifficulty | null) ?? null,
+    plays: row.plays,
+    wins: row.wins,
+    updatedAt: row.updatedAt.getTime(),
+  };
 }
 
 let repository: StatsRepository = new MemoryStats();
@@ -102,9 +177,13 @@ export async function initStats(): Promise<StatsRepository> {
     const PrismaClient = (mod as { PrismaClient?: new () => unknown }).PrismaClient;
     if (!PrismaClient) throw new Error('PrismaClient no disponible');
     const client = new PrismaClient();
-    // Comprobacion rapida: si la tabla no existe caemos al almacen en memoria.
+    // Comprobacion rapida: si alguna tabla no existe caemos al almacen en
+    // memoria. Se comprueban las dos, porque una base de datos creada antes de
+    // añadir el modo individual tiene `MatchRecord` pero no `SoloRecord`.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await (client as any).matchRecord.count();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await (client as any).soloRecord.count();
     repository = new PrismaStats(client);
     logger.info('Persistencia SQLite lista (Prisma)');
   } catch (error) {

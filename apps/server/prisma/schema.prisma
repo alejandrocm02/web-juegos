@@ -19,6 +19,26 @@ model MatchRecord {
   results    PlayerResult[]
 }
 
+/// Marca personal del modo individual.
+///
+/// `profileId` es un identificador aleatorio que genera el navegador y guarda
+/// en localStorage. No se asocia a ninguna cuenta ni contiene datos personales:
+/// solo permite que las marcas sobrevivan entre sesiones en el mismo equipo.
+model SoloRecord {
+  id         String   @id @default(cuid())
+  profileId  String
+  game       String
+  value      Int
+  detail     String   @default("")
+  difficulty String?
+  plays      Int      @default(0)
+  wins       Int      @default(0)
+  updatedAt  DateTime @default(now())
+
+  @@unique([profileId, game])
+  @@index([profileId])
+}
+
 model PlayerResult {
   id           String      @id @default(cuid())
   match        MatchRecord @relation(fields: [matchId], references: [id], onDelete: Cascade)

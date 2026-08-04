@@ -1,14 +1,30 @@
-import { GAME_META, GAME_IDS, NAME_MAX_LENGTH, NAME_MIN_LENGTH } from '@arcade/shared';
+import {
+  GAME_META,
+  GAME_IDS,
+  NAME_MAX_LENGTH,
+  NAME_MIN_LENGTH,
+  botRangeFor,
+  defaultSoloConfig,
+} from '@arcade/shared';
 import { useEffect, useState } from 'react';
 import { useApp } from '../store.js';
 import { loadName } from '../lib/session.js';
 import { ErrorBanner, GameIcon } from '../components/ui.js';
+import { SoloSetup, type SoloSetupValue } from './SoloSetup.js';
+import { RecordsPanel } from './RecordsPanel.js';
+
+type HomeMode = 'create' | 'join' | 'solo';
 
 export default function HomeView() {
-  const { createRoom, joinRoom, error, dismissError, connected } = useApp();
+  const { createRoom, createSoloRoom, joinRoom, error, dismissError, connected, records } =
+    useApp();
   const [name, setName] = useState(loadName());
   const [code, setCode] = useState('');
-  const [mode, setMode] = useState<'create' | 'join'>('create');
+  const [mode, setMode] = useState<HomeMode>('create');
+  const [solo, setSolo] = useState<SoloSetupValue>({
+    game: 'karts',
+    config: defaultSoloConfig('karts'),
+  });
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -26,8 +42,22 @@ export default function HomeView() {
     event.preventDefault();
     if (!nameValid) return;
     if (mode === 'create') createRoom(name.trim());
-    else if (codeValid) joinRoom(code.trim().toUpperCase(), name.trim());
+    else if (mode === 'solo') {
+      const range = botRangeFor(solo.game);
+      createSoloRoom(name.trim(), solo.game, {
+        ...solo.config,
+        // Última red de seguridad: el servidor vuelve a acotarlo de todos modos.
+        botCount: Math.min(range.max, Math.max(range.min, solo.config.botCount)),
+      });
+    } else if (codeValid) joinRoom(code.trim().toUpperCase(), name.trim());
   };
+
+  const submitLabel =
+    mode === 'create'
+      ? 'Crear sala privada'
+      : mode === 'solo'
+        ? 'Empezar a practicar'
+        : 'Entrar en la sala';
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-7xl px-4 pb-12 pt-5 sm:px-6 lg:px-8">
@@ -56,10 +86,11 @@ export default function HomeView() {
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-7 text-slate-400 sm:text-lg">
             Reúne de 2 a 5 amigos en una sala privada y competid en {GAME_IDS.length} juegos en
-            tiempo real. Un enlace, cero cuentas y toda la tensión de una recreativa.
+            tiempo real. Un enlace, cero cuentas y toda la tensión de una recreativa. ¿Estás solo?
+            Practica cualquiera de los {GAME_IDS.length} contra rivales del servidor.
           </p>
           <div className="mt-8 flex flex-wrap gap-x-6 gap-y-3 text-sm text-slate-300">
-            {['Salas privadas', 'Multijugador en vivo', 'Móvil y escritorio'].map((item) => (
+            {['Salas privadas', 'Multijugador en vivo', 'Modo individual'].map((item) => (
               <span key={item} className="flex items-center gap-2">
                 <span className="flex h-5 w-5 items-center justify-center rounded-full bg-neon-lime/10 text-[10px] text-neon-lime">
                   ✓
@@ -76,36 +107,36 @@ export default function HomeView() {
             <p className="eyebrow">Empieza una partida</p>
             <h2 className="mt-1 font-display text-2xl font-bold tracking-tight">Entra al parque</h2>
             <p className="mb-6 mt-1 text-sm text-slate-500">
-              Estaréis jugando en menos de un minuto.
+              {mode === 'solo'
+                ? 'Entrena a tu ritmo y bate tus propias marcas.'
+                : 'Estaréis jugando en menos de un minuto.'}
             </p>
           </div>
           <ErrorBanner error={error} onDismiss={dismissError} />
 
           <div className="mb-5 flex rounded-xl border border-white/10 bg-black/20 p-1">
-            <button
-              type="button"
-              onClick={() => setMode('create')}
-              className={
-                'flex-1 rounded-lg px-3 py-2.5 text-sm font-bold transition ' +
-                (mode === 'create'
-                  ? 'bg-white/[0.1] text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-300')
-              }
-            >
-              Crear sala
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode('join')}
-              className={
-                'flex-1 rounded-lg px-3 py-2.5 text-sm font-bold transition ' +
-                (mode === 'join'
-                  ? 'bg-white/[0.1] text-white shadow-sm'
-                  : 'text-slate-500 hover:text-slate-300')
-              }
-            >
-              Unirse
-            </button>
+            {(
+              [
+                ['create', 'Crear sala'],
+                ['join', 'Unirse'],
+                ['solo', 'Practicar'],
+              ] as [HomeMode, string][]
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setMode(id)}
+                aria-pressed={mode === id}
+                className={
+                  'flex-1 rounded-lg px-2 py-2.5 text-sm font-bold transition ' +
+                  (mode === id
+                    ? 'bg-white/[0.1] text-white shadow-sm'
+                    : 'text-slate-500 hover:text-slate-300')
+                }
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
           <label className="label" htmlFor="name">
@@ -142,12 +173,18 @@ export default function HomeView() {
             </div>
           )}
 
+          {mode === 'solo' && (
+            <div className="mt-5">
+              <SoloSetup value={solo} records={records} onChange={setSolo} />
+            </div>
+          )}
+
           <button
             type="submit"
             className="btn-primary mt-6 w-full py-3"
             disabled={!connected || !nameValid || (mode === 'join' && !codeValid)}
           >
-            {mode === 'create' ? 'Crear sala privada' : 'Entrar en la sala'}
+            {submitLabel}
           </button>
 
           <p className="mt-4 text-center text-[11px] leading-5 text-slate-600">
@@ -155,6 +192,24 @@ export default function HomeView() {
           </p>
         </form>
       </section>
+
+      {records.length > 0 && (
+        <section aria-labelledby="records-heading" className="mb-14">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="eyebrow">Modo individual</p>
+              <h2 id="records-heading" className="mt-1 font-display text-2xl font-bold sm:text-3xl">
+                Tus marcas personales
+              </h2>
+            </div>
+            <p className="max-w-md text-sm text-slate-500">
+              Guardadas en este navegador con un identificador anónimo. Ni cuentas ni datos
+              personales.
+            </p>
+          </div>
+          <RecordsPanel records={records} className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3" />
+        </section>
+      )}
 
       <section aria-labelledby="games-heading">
         <div className="mb-5 flex flex-wrap items-end justify-between gap-3">

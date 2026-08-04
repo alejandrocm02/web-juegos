@@ -7,9 +7,10 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Server } from 'socket.io';
-import { GAME_META, GOLF_LEVELS } from '@arcade/shared';
+import { GAME_META, GOLF_LEVELS, recordsQuerySchema } from '@arcade/shared';
 import { env } from './env.js';
 import { logger } from './logger.js';
+import { listSoloRecords } from './records.js';
 import { registerSocketHandlers } from './socket.js';
 import { getStats, initStats } from './stats.js';
 
@@ -50,6 +51,17 @@ export async function createApp() {
         aceRoute: level.aceRoute,
       })),
     });
+  });
+
+  // Marcas personales del modo individual. El identificador de perfil es
+  // anonimo y lo genera el propio navegador, asi que no expone nada del usuario.
+  app.get('/api/records', async (req, res) => {
+    const parsed = recordsQuerySchema.safeParse({ profileId: req.query.profileId });
+    if (!parsed.success) {
+      res.status(400).json({ error: 'Identificador de perfil invalido', records: [] });
+      return;
+    }
+    res.json({ records: await listSoloRecords(parsed.data.profileId) });
   });
 
   app.get('/api/leaderboard', async (_req, res) => {

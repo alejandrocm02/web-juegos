@@ -1,10 +1,10 @@
-import { GAME_META } from '@arcade/shared';
+import { GAME_META, SOLO_RECORD_META, formatSoloRecord } from '@arcade/shared';
 import { useApp } from '../store.js';
 import { GameIcon, Panel, Scoreboard } from '../components/ui.js';
 import { EmptyState } from './StatusViews.js';
 
 export default function ResultsView() {
-  const { result, isHost, backToLobby, room } = useApp();
+  const { result, isHost, backToLobby, room, isSolo, soloOutcome } = useApp();
   if (!result || !room) {
     return (
       <EmptyState
@@ -50,6 +50,47 @@ export default function ResultsView() {
         </div>
 
         <div className="px-5 py-6 sm:px-8 sm:py-8">
+          {isSolo && soloOutcome && (
+            <div
+              className={
+                'mb-5 rounded-2xl border px-4 py-4 ' +
+                (soloOutcome.improved
+                  ? 'border-neon-lime/30 bg-neon-lime/[0.07]'
+                  : 'border-white/[0.08] bg-white/[0.03]')
+              }
+            >
+              <p className="font-display text-sm font-black uppercase tracking-[0.14em]">
+                {soloOutcome.improved
+                  ? soloOutcome.previousValue === null
+                    ? 'Primera marca registrada'
+                    : '¡Nuevo récord personal!'
+                  : 'Marca de esta partida'}
+              </p>
+              <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm text-slate-300">
+                <span className="text-slate-500">{SOLO_RECORD_META[soloOutcome.game].label}:</span>
+                <span
+                  className="font-display text-xl font-black"
+                  style={{ color: GAME_META[soloOutcome.game].accent }}
+                >
+                  {formatSoloRecord(soloOutcome.game, soloOutcome.value)}
+                </span>
+                <span className="text-slate-500">{soloOutcome.detail}</span>
+              </p>
+              {!soloOutcome.improved && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Tu mejor marca sigue siendo{' '}
+                  {formatSoloRecord(soloOutcome.game, soloOutcome.record.value)}.{' '}
+                  {SOLO_RECORD_META[soloOutcome.game].goal}
+                </p>
+              )}
+              <p className="mt-2 text-[11px] text-slate-600">
+                {soloOutcome.record.plays}{' '}
+                {soloOutcome.record.plays === 1 ? 'partida jugada' : 'partidas jugadas'} ·{' '}
+                {soloOutcome.record.wins} {soloOutcome.record.wins === 1 ? 'victoria' : 'victorias'}
+              </p>
+            </div>
+          )}
+
           <Scoreboard rows={result.rows} unit={unit} />
 
           {result.game === 'golf' && result.extra ? (
@@ -67,7 +108,7 @@ export default function ResultsView() {
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3 border-t border-white/[0.07] pt-6">
             {isHost ? (
               <button className="btn-primary min-w-48" onClick={backToLobby}>
-                Preparar revancha
+                {isSolo ? 'Volver a intentarlo' : 'Preparar revancha'}
               </button>
             ) : (
               <p className="text-sm text-slate-400">

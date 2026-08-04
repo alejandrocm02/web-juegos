@@ -1,22 +1,25 @@
 import type { Server, Socket } from 'socket.io';
 import {
   CLIENT_EVENTS,
-  MIN_PLAYERS,
   SERVER_EVENTS,
   createRoomSchema,
+  createSoloRoomSchema,
   gameActionSchema,
   joinRoomSchema,
   readySchema,
+  recordsQuerySchema,
   rejoinSchema,
   selectGameSchema,
   settingsPatchSchema,
   targetPlayerSchema,
+  updateSoloConfigSchema,
   type AppError,
   type ErrorCode,
 } from '@arcade/shared';
 import type { ZodSchema } from 'zod';
 import { logger } from './logger.js';
 import { RoomManager } from './rooms/manager.js';
+import { listSoloRecords } from './records.js';
 import { SocketRateLimiter, payloadTooLarge } from './security.js';
 
 interface SocketSession {
@@ -95,6 +98,16 @@ export function registerSocketHandlers(io: Server): RoomManager {
     manager.get(current.roomCode)?.removePlayer(current.playerId);
   }
 
+  async function sendRecords(socket: Socket, profileId: string): Promise<void> {
+    try {
+      const records = await listSoloRecords(profileId);
+      socket.emit(SERVER_EVENTS.soloRecords, { records });
+    } catch (error) {
+      logger.warn('No se pudieron enviar las marcas personales', String(error));
+      socket.emit(SERVER_EVENTS.soloRecords, { records: [] });
+    }
+  }
+
   function revokePreviousSocket(roomCode: string, socketId: string | null): void {
     if (!socketId) return;
     sessions.delete(socketId);
@@ -122,10 +135,54 @@ export function registerSocketHandlers(io: Server): RoomManager {
       });
     });
 
+    socket.on(CLIENT_EVENTS.createSoloRoom, (payload) => {
+      guard(socket, createSoloRoomSchema, payload, ({ name, profileId, game, config }) => {
+        leaveCurrentSession(socket);
+        const room = manager.create({ solo: { game, profileId, config } });
+        const player = room.addPlayer(name, socket.id);
+        // En práctica no hay a quién esperar: el único jugador entra listo.
+        room.setReady(player.id, true);
+        room.prepareSolo();
+        joinChannel(socket, room.code, player.id);
+        socket.emit(SERVER_EVENTS.session, {
+          playerId: player.id,
+          token: player.token,
+          code: room.code,
+        });
+        room.broadcastRoom();
+        void sendRecords(socket, profileId);
+      });
+    });
+
+    socket.on(CLIENT_EVENTS.updateSoloConfig, (payload) => {
+      guard(socket, updateSoloConfigSchema, payload, (config) => {
+        const context = sessionOf(socket);
+        if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
+        if (!context.room.solo) {
+          return fail(socket, 'SOLO_ROOM', 'Esta opción solo existe en las salas de práctica.');
+        }
+        if (!context.player.isHost) {
+          return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede cambiar la configuración.');
+        }
+        if (!context.room.updateSoloConfig(config)) {
+          fail(socket, 'ALREADY_STARTED', 'La configuración está bloqueada.');
+        }
+      });
+    });
+
+    socket.on(CLIENT_EVENTS.requestRecords, (payload) => {
+      guard(socket, recordsQuerySchema, payload, ({ profileId }) => {
+        void sendRecords(socket, profileId);
+      });
+    });
+
     socket.on(CLIENT_EVENTS.joinRoom, (payload) => {
       guard(socket, joinRoomSchema, payload, ({ code, name }) => {
         const room = manager.get(code);
         if (!room) return fail(socket, 'ROOM_NOT_FOUND', 'No existe ninguna sala con ese código.');
+        if (room.solo) {
+          return fail(socket, 'SOLO_ROOM', 'Esa sala es una partida de práctica en solitario.');
+        }
         if (room.isFull) return fail(socket, 'ROOM_FULL', 'La sala está completa.');
         if (room.currentPhase !== 'lobby') {
           return fail(socket, 'ROOM_IN_PROGRESS', 'La partida ya ha empezado en esa sala.');
@@ -167,6 +224,9 @@ export function registerSocketHandlers(io: Server): RoomManager {
         if (state) socket.emit(SERVER_EVENTS.gameState, state);
         const result = room.getLastResult();
         if (result) socket.emit(SERVER_EVENTS.gameOver, { result });
+        const outcome = room.getLastSoloOutcome();
+        if (outcome) socket.emit(SERVER_EVENTS.soloOutcome, outcome);
+        if (room.soloProfileId) void sendRecords(socket, room.soloProfileId);
       });
     });
 
@@ -222,11 +282,11 @@ export function registerSocketHandlers(io: Server): RoomManager {
       if (!result.ok) {
         const connectedPlayers = context.room
           .publicPlayers()
-          .filter((player) => player.connection === 'connected').length;
+          .filter((player) => player.connection === 'connected' && !player.isBot).length;
         const code: ErrorCode =
           context.room.currentPhase !== 'lobby'
             ? 'ALREADY_STARTED'
-            : connectedPlayers < MIN_PLAYERS
+            : connectedPlayers < context.room.minPlayers
               ? 'NOT_ENOUGH_PLAYERS'
               : 'ACTION_REJECTED';
         fail(socket, code, result.reason ?? 'No se puede iniciar la partida.');
@@ -239,6 +299,13 @@ export function registerSocketHandlers(io: Server): RoomManager {
         if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
         if (!context.player.isHost) {
           return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede expulsar jugadores.');
+        }
+        if (context.room.solo) {
+          return fail(
+            socket,
+            'SOLO_ROOM',
+            'En una sala de práctica los rivales se ajustan desde la configuración.',
+          );
         }
         if (playerId === context.player.id) return;
         const target = context.room.getPlayer(playerId);
@@ -259,6 +326,9 @@ export function registerSocketHandlers(io: Server): RoomManager {
       guard(socket, targetPlayerSchema, payload, ({ playerId }) => {
         const context = sessionOf(socket);
         if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
+        if (context.room.solo) {
+          return fail(socket, 'SOLO_ROOM', 'No hay a quién ceder el anfitrión en una práctica.');
+        }
         if (!context.room.transferHost(context.player.id, playerId)) {
           fail(socket, 'NOT_HOST', 'No puedes transferir el rol de anfitrión.');
         }

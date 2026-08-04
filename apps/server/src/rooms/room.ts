@@ -1,11 +1,18 @@
 import {
+  BOT_NAMES,
   DEFAULT_SETTINGS,
   GAME_META,
   MAX_PLAYERS,
   MIN_PLAYERS,
   PLAYER_COLORS,
   PLAYER_ICONS,
+  SERVER_EVENTS,
+  SOLO_MIN_PLAYERS,
+  clampBotCount,
+  coerceSoloMode,
+  defaultSoloConfig,
   normalizeName,
+  soloUsesBots,
   type GameAction,
   type GameId,
   type GamePublicState,
@@ -14,6 +21,8 @@ import {
   type PublicPlayer,
   type RoomPhase,
   type RoomSummary,
+  type SoloConfig,
+  type SoloOutcome,
 } from '@arcade/shared';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { env } from '../env.js';
@@ -21,6 +30,8 @@ import { logger } from '../logger.js';
 import type { GameContext, GameRunner, RoomPlayer } from './types.js';
 import { createGameRunner } from '../games/factory.js';
 import { getStats } from '../stats.js';
+import { BotDirector, type BotSeat } from '../bots/index.js';
+import { describeOutcome, recordSoloMatch } from '../records.js';
 
 export type RoomBroadcast = (event: string, payload: unknown) => void;
 export type RoomDirect = (socketId: string, event: string, payload: unknown) => void;
@@ -30,22 +41,57 @@ export interface RoomDeps {
   direct: RoomDirect;
 }
 
+/** Datos que solo existen en una sala de práctica en solitario. */
+export interface SoloRoomOptions {
+  game: GameId;
+  /** Identificador anónimo del navegador, usado para las marcas personales. */
+  profileId: string;
+  config: SoloConfig;
+}
+
+export interface RoomOptions {
+  solo?: SoloRoomOptions;
+}
+
 export class Room {
   readonly code: string;
   readonly createdAt = Date.now();
+  /** true si la sala es de práctica: un humano y, si hace falta, bots. */
+  readonly solo: boolean;
+  private readonly profileId: string | null;
+  private soloConfig: SoloConfig;
   private players = new Map<string, RoomPlayer>();
   private phase: RoomPhase = 'lobby';
   private selectedGame: GameId = 'quiz';
   private settings: GameSettings = structuredClone(DEFAULT_SETTINGS);
   private runner: GameRunner | null = null;
+  private botDirector: BotDirector | null = null;
   private lastResult: MatchResult | null = null;
+  private lastSoloOutcome: SoloOutcome | null = null;
   emptySince: number | null = Date.now();
 
   constructor(
     code: string,
     private readonly deps: RoomDeps,
+    options: RoomOptions = {},
   ) {
     this.code = code;
+    this.solo = Boolean(options.solo);
+    this.profileId = options.solo?.profileId ?? null;
+    if (options.solo) {
+      this.selectedGame = options.solo.game;
+      this.soloConfig = {
+        botCount: clampBotCount(options.solo.game, options.solo.config.botCount),
+        botDifficulty: options.solo.config.botDifficulty,
+      };
+    } else {
+      this.soloConfig = defaultSoloConfig(this.selectedGame);
+    }
+  }
+
+  /** Jugadores necesarios para arrancar. En práctica basta con uno. */
+  get minPlayers(): number {
+    return this.solo ? SOLO_MIN_PLAYERS : MIN_PLAYERS;
   }
 
   /* ----------------------------- Consultas ------------------------------ */
@@ -54,8 +100,17 @@ export class Room {
     return this.players.size;
   }
 
+  /** Jugadores reales. Los bots no cuentan para vaciar ni cerrar la sala. */
+  private humans(): RoomPlayer[] {
+    return [...this.players.values()].filter((player) => !player.isBot);
+  }
+
+  private bots(): RoomPlayer[] {
+    return [...this.players.values()].filter((player) => player.isBot);
+  }
+
   get isEmpty(): boolean {
-    return this.players.size === 0;
+    return this.humans().length === 0;
   }
 
   get currentPhase(): RoomPhase {
@@ -86,6 +141,15 @@ export class Room {
     return host?.id ?? '';
   }
 
+  /** Perfil anónimo del jugador de una sala de práctica. */
+  get soloProfileId(): string | null {
+    return this.profileId;
+  }
+
+  get currentSoloConfig(): SoloConfig {
+    return { ...this.soloConfig };
+  }
+
   publicPlayers(): PublicPlayer[] {
     return [...this.players.values()]
       .sort((a, b) => a.joinedAt - b.joinedAt)
@@ -98,6 +162,7 @@ export class Room {
         ready: p.ready,
         connection: p.connection,
         joinedAt: p.joinedAt,
+        ...(p.isBot ? { isBot: true as const } : {}),
       }));
   }
 
@@ -110,10 +175,13 @@ export class Room {
       players: this.publicPlayers(),
       hostId: this.hostId,
       settings: this.settings,
-      inviteUrl: env.PUBLIC_WEB_URL.replace(/\/$/, '') + '/?code=' + this.code,
+      // Una sala de práctica no se comparte: no se publica enlace de invitación.
+      inviteUrl: this.solo ? '' : env.PUBLIC_WEB_URL.replace(/\/$/, '') + '/?code=' + this.code,
       maxPlayers: MAX_PLAYERS,
-      minPlayers: MIN_PLAYERS,
+      minPlayers: this.minPlayers,
       createdAt: this.createdAt,
+      solo: this.solo,
+      soloConfig: this.currentSoloConfig,
     };
   }
 
@@ -123,6 +191,17 @@ export class Room {
 
   getLastResult(): MatchResult | null {
     return this.lastResult;
+  }
+
+  /**
+   * Marca de la última práctica terminada.
+   *
+   * Se conserva para poder reenviarla al reconectar: el evento puntual se
+   * emite justo al acabar y un navegador que recargue en ese instante lo
+   * perdería.
+   */
+  getLastSoloOutcome(): SoloOutcome | null {
+    return this.lastSoloOutcome;
   }
 
   /* ------------------------------ Jugadores ----------------------------- */
@@ -159,6 +238,53 @@ export class Room {
     return this.players.size >= MAX_PLAYERS;
   }
 
+  /**
+   * Ajusta el número de bots al configurado para el juego elegido.
+   *
+   * Se llama al crear la sala, al cambiar de juego y al tocar la dificultad.
+   * Nunca durante una partida: la configuración queda bloqueada al empezar.
+   */
+  private syncBots(): void {
+    if (!this.solo || this.phase !== 'lobby') return;
+    const wanted = soloUsesBots(this.selectedGame)
+      ? clampBotCount(this.selectedGame, this.soloConfig.botCount)
+      : 0;
+    this.soloConfig.botCount = wanted;
+
+    const current = this.bots();
+    for (let index = current.length; index > wanted; index -= 1) {
+      const victim = current[index - 1];
+      if (victim) this.players.delete(victim.id);
+    }
+    for (let index = current.length; index < wanted; index += 1) {
+      if (this.players.size >= MAX_PLAYERS) break;
+      this.addBot();
+    }
+    this.coerceSoloMode();
+  }
+
+  private addBot(): void {
+    const { color, icon } = this.nextColor();
+    const used = new Set(this.bots().map((bot) => bot.name));
+    const name = BOT_NAMES.find((candidate) => !used.has(candidate)) ?? 'Bot';
+    const bot: RoomPlayer = {
+      id: randomUUID(),
+      token: randomBytes(24).toString('hex'),
+      name,
+      color,
+      icon,
+      isHost: false,
+      // Un bot siempre está listo: no debe bloquear el inicio de la partida.
+      ready: true,
+      connection: 'connected',
+      socketId: null,
+      joinedAt: Date.now() + this.players.size,
+      disconnectedAt: null,
+      isBot: true,
+    };
+    this.players.set(bot.id, bot);
+  }
+
   attachSocket(playerId: string, socketId: string): void {
     const player = this.players.get(playerId);
     if (!player) return;
@@ -186,10 +312,8 @@ export class Room {
     player.connection = 'disconnected';
     player.socketId = null;
     player.disconnectedAt = Date.now();
-    if (
-      this.players.size > 0 &&
-      [...this.players.values()].every((p) => p.connection === 'disconnected')
-    ) {
+    const humans = this.humans();
+    if (humans.length > 0 && humans.every((p) => p.connection === 'disconnected')) {
       this.emptySince = Date.now();
     }
     this.broadcastRoom();
@@ -200,15 +324,27 @@ export class Room {
     if (!player) return;
     this.players.delete(playerId);
     this.runner?.onPlayerLeft(playerId);
+    this.botDirector?.removeSeat(playerId);
     if (player.isHost) this.promoteNextHost();
-    if (this.players.size === 0) this.emptySince = Date.now();
+    if (this.isEmpty) {
+      this.emptySince = Date.now();
+      // Sin humanos la práctica no tiene sentido: se retiran los bots.
+      if (this.solo) this.stopSolo();
+    }
     logger.info('Jugador sale de la sala', { room: this.code, id: playerId });
     this.ensureViableGame();
     this.broadcastRoom();
   }
 
+  /** Detiene la IA y libera los asientos de los bots. */
+  private stopSolo(): void {
+    this.botDirector?.stop();
+    this.botDirector = null;
+    for (const bot of this.bots()) this.players.delete(bot.id);
+  }
+
   private promoteNextHost(): void {
-    const ordered = [...this.players.values()].sort((a, b) => a.joinedAt - b.joinedAt);
+    const ordered = this.humans().sort((a, b) => a.joinedAt - b.joinedAt);
     const next = ordered.find((player) => player.connection === 'connected') ?? ordered[0];
     if (next) next.isHost = true;
   }
@@ -216,7 +352,8 @@ export class Room {
   transferHost(fromId: string, toId: string): boolean {
     const from = this.players.get(fromId);
     const to = this.players.get(toId);
-    if (!from?.isHost || !to || to.connection !== 'connected') return false;
+    // Un bot no puede ser anfitrión: no hay nadie al otro lado que configure.
+    if (!from?.isHost || !to || to.isBot || to.connection !== 'connected') return false;
     from.isHost = false;
     to.isHost = true;
     this.broadcastRoom();
@@ -225,9 +362,11 @@ export class Room {
 
   /** Si quedan menos jugadores de los necesarios, se cancela la partida. */
   private ensureViableGame(): void {
-    if (this.phase === 'playing' && this.players.size < MIN_PLAYERS) {
+    if (this.phase === 'playing' && this.players.size < this.minPlayers) {
       this.runner?.dispose();
       this.runner = null;
+      this.botDirector?.stop();
+      this.botDirector = null;
       this.phase = 'lobby';
       this.resetReady();
       this.deps.broadcast('app:toast', {
@@ -246,31 +385,68 @@ export class Room {
   }
 
   private resetReady(): void {
-    for (const player of this.players.values()) player.ready = false;
+    for (const player of this.players.values()) player.ready = Boolean(player.isBot);
   }
 
   selectGame(game: GameId): void {
     if (this.phase !== 'lobby') return;
     this.selectedGame = game;
     this.resetReady();
+    if (this.solo) {
+      // Cada juego admite un número distinto de rivales: se reajusta al cambiar.
+      this.soloConfig.botCount = clampBotCount(game, this.soloConfig.botCount);
+      this.syncBots();
+    }
     this.broadcastRoom();
+  }
+
+  /** Cambia rivales y dificultad de una sala de práctica. */
+  updateSoloConfig(config: SoloConfig): boolean {
+    if (!this.solo || this.phase !== 'lobby') return false;
+    this.soloConfig = {
+      botCount: clampBotCount(this.selectedGame, config.botCount),
+      botDifficulty: config.botDifficulty,
+    };
+    this.syncBots();
+    this.broadcastRoom();
+    return true;
+  }
+
+  /** Coloca los bots iniciales. Se llama justo después de entrar el humano. */
+  prepareSolo(): void {
+    if (!this.solo) return;
+    this.syncBots();
   }
 
   updateSettings<K extends GameId>(game: K, settings: GameSettings[K]): void {
     if (this.phase !== 'lobby') return;
     this.settings = { ...this.settings, [game]: settings };
+    if (this.solo) this.coerceSoloMode(game);
     this.broadcastRoom();
+  }
+
+  /**
+   * Ajusta el modo del juego elegido a uno jugable en solitario.
+   *
+   * Sin rivales, los modos por equipos y la bola 8 no tienen sentido. En vez de
+   * dejar que la partida arranque rota, se sustituye por el primer modo válido.
+   */
+  private coerceSoloMode(game: GameId = this.selectedGame): void {
+    if (!this.solo) return;
+    const current = this.settings[game] as { mode: string };
+    const participants = 1 + this.bots().length;
+    const next = coerceSoloMode(game, current.mode, participants);
+    if (next === current.mode) return;
+    this.settings = { ...this.settings, [game]: { ...current, mode: next } };
   }
 
   canStart(): { ok: boolean; reason?: string } {
     if (this.phase !== 'lobby') return { ok: false, reason: 'La partida ya ha comenzado' };
-    const connected = [...this.players.values()].filter(
-      (player) => player.connection === 'connected',
-    );
-    if (connected.length < MIN_PLAYERS) {
+    const connected = this.humans().filter((player) => player.connection === 'connected');
+    if (connected.length < this.minPlayers) {
       return {
         ok: false,
-        reason: 'Se necesitan al menos ' + MIN_PLAYERS + ' jugadores conectados',
+        reason: 'Se necesitan al menos ' + this.minPlayers + ' jugadores conectados',
       };
     }
     if (connected.some((player) => !player.ready)) {
@@ -285,6 +461,7 @@ export class Room {
 
     this.phase = 'playing';
     this.lastResult = null;
+    this.lastSoloOutcome = null;
     const context: GameContext = {
       players: () => [...this.players.values()].sort((a, b) => a.joinedAt - b.joinedAt),
       broadcastState: (state) => this.deps.broadcast('game:state', state),
@@ -308,8 +485,34 @@ export class Room {
       state: this.runner.publicState(),
     });
     this.runner.start();
-    logger.info('Partida iniciada', { room: this.code, game: this.selectedGame });
+    this.startBots();
+    logger.info('Partida iniciada', {
+      room: this.code,
+      game: this.selectedGame,
+      solo: this.solo,
+      bots: this.bots().length,
+    });
     return { ok: true };
+  }
+
+  /** Pone en marcha la IA de los bots que participan en la partida. */
+  private startBots(): void {
+    this.botDirector?.stop();
+    this.botDirector = null;
+    const seats: BotSeat[] = this.bots().map((bot) => ({
+      playerId: bot.id,
+      difficulty: this.soloConfig.botDifficulty,
+    }));
+    if (seats.length === 0) return;
+
+    this.botDirector = BotDirector.forGame(this.selectedGame, seats, {
+      state: () => (this.phase === 'playing' ? (this.runner?.publicState() ?? null) : null),
+      dispatch: (playerId, action) => {
+        // Misma puerta de entrada que un humano: el runner valida turno y acción.
+        if (this.phase === 'playing') this.runner?.handleAction(playerId, action);
+      },
+    });
+    this.botDirector?.start();
   }
 
   handleAction(playerId: string, action: GameAction): void {
@@ -320,8 +523,11 @@ export class Room {
   private finishGame(result: MatchResult, extras?: Record<string, unknown>): void {
     this.phase = 'results';
     this.lastResult = result;
+    this.botDirector?.stop();
+    this.botDirector = null;
     this.deps.broadcast('game:over', { result });
     this.broadcastRoom();
+    this.saveSoloRecord(result);
     const golfExtras = extras?.golf as
       Record<string, { strokes: number; holesInOne: number }> | undefined;
     void getStats()
@@ -334,18 +540,53 @@ export class Room {
     });
   }
 
+  /**
+   * Calcula y guarda la marca personal de una partida en solitario.
+   *
+   * Es deliberadamente asíncrono y aislado: si la base de datos falla, la
+   * partida ya ha terminado correctamente y el jugador no se entera.
+   */
+  private saveSoloRecord(result: MatchResult): void {
+    if (!this.solo || !this.profileId) return;
+    const human = this.humans()[0];
+    if (!human) return;
+    const usesBots = soloUsesBots(result.game) && this.bots().length > 0;
+
+    void recordSoloMatch({
+      profileId: this.profileId,
+      playerId: human.id,
+      result,
+      difficulty: usesBots ? this.soloConfig.botDifficulty : null,
+    })
+      .then((outcome) => {
+        if (!outcome) return;
+        this.lastSoloOutcome = outcome;
+        this.deps.broadcast(SERVER_EVENTS.soloOutcome, outcome);
+        if (outcome.improved)
+          this.deps.broadcast('app:toast', { message: describeOutcome(outcome) });
+      })
+      .catch((error) => logger.warn('No se pudo registrar la marca personal', String(error)));
+  }
+
   backToLobby(): void {
     this.runner?.dispose();
     this.runner = null;
+    this.botDirector?.stop();
+    this.botDirector = null;
     this.phase = 'lobby';
     this.lastResult = null;
+    this.lastSoloOutcome = null;
     this.resetReady();
+    // Los bots se recolocan por si cambió el juego o la configuración.
+    this.syncBots();
     this.broadcastRoom();
   }
 
   dispose(): void {
     this.runner?.dispose();
     this.runner = null;
+    this.botDirector?.stop();
+    this.botDirector = null;
   }
 
   broadcastRoom(): void {

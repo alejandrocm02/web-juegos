@@ -210,7 +210,11 @@ export class ArenaGame implements GameRunner {
       rows,
       winnerIds: rows.filter((row) => row.rank === 1).map((row) => row.playerId),
       finishedAt: Date.now(),
-      extra: { mode: this.settings.mode, survivors },
+      extra: {
+        mode: this.settings.mode,
+        survivors,
+        kills: Object.fromEntries(fighters.map((entry) => [entry.playerId, entry.kills ?? 0])),
+      },
     });
   }
 

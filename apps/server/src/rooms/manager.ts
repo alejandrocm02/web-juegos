@@ -2,7 +2,7 @@ import { ROOM_CODE_ALPHABET, ROOM_CODE_LENGTH } from '@arcade/shared';
 import { randomInt } from 'node:crypto';
 import { env } from '../env.js';
 import { logger } from '../logger.js';
-import { Room, type RoomDeps } from './room.js';
+import { Room, type RoomDeps, type RoomOptions } from './room.js';
 
 export class RoomManager {
   private rooms = new Map<string, Room>();
@@ -32,11 +32,11 @@ export class RoomManager {
     throw new Error('No se pudo generar un codigo de sala unico');
   }
 
-  create(): Room {
+  create(options: RoomOptions = {}): Room {
     const code = this.generateCode();
-    const room = new Room(code, this.depsFactory(code));
+    const room = new Room(code, this.depsFactory(code), options);
     this.rooms.set(code, room);
-    logger.info('Sala creada', { code });
+    logger.info('Sala creada', { code, solo: room.solo });
     return room;
   }
 

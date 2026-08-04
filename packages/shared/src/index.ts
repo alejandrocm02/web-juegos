@@ -17,4 +17,5 @@ export * from './games/arcade-sport.js';
 export * from './games/head-sport.js';
 export * from './games/tanks.js';
 export * from './games/modes.js';
+export * from './games/solo.js';
 export * from './state.js';

@@ -2,6 +2,8 @@
 
 Plataforma web de **minijuegos multijugador en tiempo real** para jugar con amigos, cada uno desde su propio ordenador. Salas privadas con código, entrada como invitado y catorce juegos completos: **Billar**, **Quiz**, **Dardos**, **Minigolf**, **Bolos**, **Karts**, **Battle Royale**, **Blackjack**, **Songless**, **Air Hockey**, **Tenis de mesa**, **Head Soccer**, **Head Basketball** y **Tanques**.
 
+También incluye **modo individual**: los catorce juegos se pueden practicar en solitario, con rivales controlados por el servidor en los juegos de duelo y marcas personales guardadas en todos. Ver [§6](#6-modo-individual).
+
 El servidor es **autoritativo**: valida jugadores, turnos, golpes, posiciones, puntuaciones, temporizadores y ganadores. El navegador solo envía intenciones y dibuja los snapshots que recibe.
 
 ---
@@ -145,20 +147,23 @@ Todos los payloads de cliente a servidor se validan con Zod (`packages/shared/sr
 
 ### Cliente → servidor
 
-| Evento                 | Payload              | Reglas                                                                            |
-| ---------------------- | -------------------- | --------------------------------------------------------------------------------- |
-| `room:create`          | `{ name }`           | Nombre saneado, 2–16 caracteres                                                   |
-| `room:join`            | `{ code, name }`     | Sala existente, con hueco, en lobby y sin nombre duplicado                        |
-| `room:rejoin`          | `{ code, token }`    | Token anónimo guardado en `localStorage`                                          |
-| `room:leave`           | —                    | Libera la plaza y promociona anfitrión si hace falta                              |
-| `room:select-game`     | `{ game }`           | Solo anfitrión, solo en lobby                                                     |
-| `room:update-settings` | `{ game, settings }` | Solo anfitrión, solo en lobby                                                     |
-| `room:ready`           | `{ ready }`          | Cualquier jugador                                                                 |
-| `room:start`           | —                    | Solo anfitrión, con 2–5 conectados y todos preparados                             |
-| `room:kick`            | `{ playerId }`       | Solo anfitrión, no a sí mismo                                                     |
-| `room:transfer-host`   | `{ playerId }`       | Solo el anfitrión actual                                                          |
-| `room:back-to-lobby`   | —                    | Solo anfitrión                                                                    |
-| `game:action`          | unión discriminada   | Acciones tipadas de los catorce juegos: respuestas, tiros, movimiento y controles |
+| Evento                 | Payload                             | Reglas                                                                              |
+| ---------------------- | ----------------------------------- | ----------------------------------------------------------------------------------- |
+| `room:create`          | `{ name }`                          | Nombre saneado, 2–16 caracteres                                                     |
+| `room:create-solo`     | `{ name, profileId, game, config }` | Sala de práctica: un humano, bots opcionales                                        |
+| `room:solo-config`     | `{ botCount, botDifficulty }`       | Solo en salas de práctica, solo en lobby                                            |
+| `solo:records`         | `{ profileId }`                     | Devuelve las marcas personales del perfil anónimo                                   |
+| `room:join`            | `{ code, name }`                    | Sala existente, con hueco, en lobby y sin nombre duplicado. Rechaza las de práctica |
+| `room:rejoin`          | `{ code, token }`                   | Token anónimo guardado en `localStorage`                                            |
+| `room:leave`           | —                                   | Libera la plaza y promociona anfitrión si hace falta                                |
+| `room:select-game`     | `{ game }`                          | Solo anfitrión, solo en lobby                                                       |
+| `room:update-settings` | `{ game, settings }`                | Solo anfitrión, solo en lobby                                                       |
+| `room:ready`           | `{ ready }`                         | Cualquier jugador                                                                   |
+| `room:start`           | —                                   | Solo anfitrión, con 2–5 conectados y todos preparados                               |
+| `room:kick`            | `{ playerId }`                      | Solo anfitrión, no a sí mismo                                                       |
+| `room:transfer-host`   | `{ playerId }`                      | Solo el anfitrión actual                                                            |
+| `room:back-to-lobby`   | —                                   | Solo anfitrión                                                                      |
+| `game:action`          | unión discriminada                  | Acciones tipadas de los catorce juegos: respuestas, tiros, movimiento y controles   |
 
 ### Servidor → cliente
 
@@ -172,8 +177,12 @@ Todos los payloads de cliente a servidor se validan con Zod (`packages/shared/sr
 | `game:event`    | Sucesos del minigolf: `ace`, `holed`, `out`, `penalty`, `reset`, `maxStrokes`, `timeUp`            |
 | `game:over`     | Clasificación final y ganadores                                                                    |
 | `room:kicked`   | Has sido expulsado                                                                                 |
+| `solo:outcome`  | Marca de la práctica recién terminada y si mejora el récord anterior                               |
+| `solo:records`  | Listado completo de marcas personales del perfil                                                   |
 | `app:error`     | `{ code, message }` con códigos tipados                                                            |
 | `app:toast`     | Aviso puntual (individual o a toda la sala)                                                        |
+
+También hay una ruta HTTP equivalente para las marcas: `GET /api/records?profileId=<id>`.
 
 ---
 
@@ -329,14 +338,75 @@ Todas las vistas de juego se montan dentro de `apps/web/src/components/GameStage
 
 El texto del acento se aclara con `color-mix(... 45%, #ffffff)` porque el rojo y el azul puros no llegan a 4.5:1 sobre negro.
 
-## 6. Pruebas
+---
+
+## 6. Modo individual
+
+Los catorce juegos se pueden practicar en solitario desde la pestaña **Practicar** de la pantalla de inicio.
+
+### Cómo está construido
+
+Una sala de práctica **es una sala normal** creada con `room:create-solo`. Solo cambian tres cosas:
+
+- `minPlayers` baja a 1, así que un único jugador puede empezar.
+- No se publica enlace de invitación y `room:join` la rechaza con el código `SOLO_ROOM`.
+- El servidor puede sentar **bots** en los asientos libres.
+
+Reutilizar la sala en lugar de escribir un modo aparte es deliberado: las reglas, la física, la validación de turnos y el cálculo de puntuaciones son exactamente los mismos que en multijugador. No hay una segunda implementación que pueda divergir.
+
+### Rivales controlados por el servidor
+
+Un bot es un `RoomPlayer` con `isBot: true`. Ocupa plaza, tiene color e icono propios y **el juego no sabe que no es humano**: sus acciones entran por `runner.handleAction()`, la misma puerta que las de un navegador, y pasan por la misma validación.
+
+Quien las genera es el `BotDirector` (`apps/server/src/bots/`), que late a 20 Hz, lee el estado público de la partida y deja decidir a la IA correspondiente:
+
+| Juego                         | Estrategia de la IA                                                                                                                                          |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Karts                         | Apunta al centro de la siguiente puerta del circuito; con más destreza mira una puerta más allá y corta la curva                                             |
+| Battle Royale                 | Prioriza no morir en la tormenta, recoge botiquín si le pilla de paso y persigue al rival más cercano                                                        |
+| Air Hockey / Tenis de mesa    | Predice dónde cruzará la bola su línea de defensa, rebotes en banda incluidos                                                                                |
+| Head Soccer / Head Basketball | Se coloca detrás del balón; salto y remate se disparan por flanco, como exige el simulador                                                                   |
+| Tanques                       | Simula el disparo con las mismas ecuaciones del servidor y busca en una rejilla de ángulo y potencia el tiro que menos falla, esquivando su propia cobertura |
+
+Tres dificultades (`facil`, `normal`, `dificil`) que ajustan destreza, ruido en las decisiones y tiempo de reacción. Un fallo de una IA se registra y se ignora: nunca tumba la partida del jugador.
+
+Los siete juegos por turnos o de preguntas (billar, quiz, dardos, minigolf, bolos, blackjack, songless) se juegan **sin rivales**: ahí lo que se persigue es la marca propia. Los modos que necesitan contrincante (los de equipos y la bola 8) se ocultan del selector y el servidor los sustituye por el primer modo válido.
+
+### Marcas personales
+
+Al terminar, el servidor calcula la marca de la partida, la compara con la mejor guardada y emite `solo:outcome`. Cada juego mide lo que tiene sentido medir:
+
+| Juego                                                   | Marca              | Mejor es |
+| ------------------------------------------------------- | ------------------ | -------- |
+| Quiz, Songless, Blackjack, Bolos, Billar                | Puntuación         | Más      |
+| Air Hockey, Tenis de mesa, Head Soccer, Head Basketball | Puntos a favor     | Más      |
+| Battle Royale, Tanques                                  | Eliminaciones      | Más      |
+| Minigolf                                                | Golpes totales     | Menos    |
+| Karts                                                   | Mejor vuelta       | Menos    |
+| Dardos                                                  | Dardos para cerrar | Menos    |
+
+En dardos solo cuenta si llegas exactamente a cero, y en karts solo si completas una vuelta válida: una partida abandonada no deja marca.
+
+Se guardan en la tabla `SoloRecord` de SQLite, indexadas por un **identificador de perfil anónimo** que el navegador genera al azar la primera vez y conserva en `localStorage`. No hay cuentas, ni correo, ni nada que identifique a la persona: si se borra el almacenamiento, simplemente se empieza de cero.
+
+### Flujo
+
+1. Pestaña **Practicar** → nombre, juego y (si aplica) dificultad y número de rivales.
+2. Se abre el lobby de práctica, donde se puede cambiar el juego, el modo, la configuración y los rivales.
+3. La partida se juega igual que en multijugador.
+4. La pantalla final muestra la clasificación y, encima, si la marca ha mejorado el récord.
+5. Las marcas se listan en el inicio y en el lateral del lobby.
+
+---
+
+## 7. Pruebas
 
 ```bash
-npm test          # Vitest: 250 tests
+npm test          # Vitest: 295 tests
 npm run test:e2e  # Playwright: dos navegadores compartiendo sala
 ```
 
-Actualmente hay **250 tests Vitest** y 5 flujos E2E. GitHub Actions ejecuta el control completo
+Actualmente hay **295 tests Vitest** y 5 flujos E2E. GitHub Actions ejecuta el control completo
 en cada pull request y cada actualización de `main`, y conserva las trazas de Playwright si falla.
 
 Cobertura de los tests exigidos del minigolf:
@@ -358,11 +428,30 @@ Cobertura de los tests exigidos del minigolf:
 | Sincronización entre dos navegadores                   | `apps/server/tests/integration.test.ts` + `e2e/multiplayer.spec.ts` |
 | Los niveles 1, 2, 4, 6 y 10 tienen ruta de hoyo en uno | `golf.test.ts`                                                      |
 
+Cobertura del modo individual:
+
+| Comprobación                                                       | Dónde                                        |
+| ------------------------------------------------------------------ | -------------------------------------------- |
+| Una sala de práctica arranca con un solo jugador                   | `apps/server/tests/solo-room.test.ts`        |
+| Una sala normal sigue exigiendo dos                                | idem                                         |
+| Los bots se sientan, se retiran y se reajustan al cambiar de juego | idem                                         |
+| Nunca se supera el aforo de cinco                                  | idem                                         |
+| La configuración se bloquea al empezar                             | idem                                         |
+| Los modos por equipos y la bola 8 se sustituyen al jugar solo      | idem                                         |
+| Un bot no puede ser anfitrión                                      | idem                                         |
+| Cálculo de la marca de cada juego y dirección de la mejora         | idem                                         |
+| Cada IA solo actúa sobre su juego y dentro de los límites válidos  | `apps/server/tests/bots.test.ts`             |
+| El artillero acierta en difícil y esquiva su propia cobertura      | idem                                         |
+| El salto del cabezón se dispara por flanco                         | idem                                         |
+| Recorrido completo por sockets con marca guardada                  | `apps/server/tests/solo-integration.test.ts` |
+| Nadie puede unirse a una práctica ajena                            | idem                                         |
+| Se rechazan perfiles y configuraciones inválidos                   | idem                                         |
+
 Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, configuración bloqueada, transferencia de anfitrión, promoción automática), banco de preguntas, puntuación de la diana y simulación de billar.
 
 ---
 
-## 7. Seguridad y robustez
+## 8. Seguridad y robustez
 
 - **Validación Zod** de todos los eventos entrantes; los payloads inválidos responden con `app:error` y nunca tocan el estado.
 - **Rate limiting** por socket (60 mensajes / 5 s configurable) y límite de tamaño de mensaje (4 KB; el buffer de Socket.IO está limitado a 100 KB).
@@ -376,16 +465,17 @@ Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, config
 - **Manejo centralizado de errores** en Express y en cada handler de socket, con logs legibles y niveles configurables.
 - Sin secretos en el cliente: todas las variables sensibles viven en el servidor.
 
-## 8. Persistencia
+## 9. Persistencia
 
 - Salas y partidas en curso: **en memoria**.
 - SQLite vía Prisma para resultados y estadísticas: partidas ganadas, golpes totales y hoyos en uno.
+- Marcas personales del modo individual en la tabla `SoloRecord`, indexadas por un identificador de perfil anónimo generado por el navegador. Si vienes de una base de datos anterior al modo individual, ejecuta `npm run db:push` para crear la tabla; mientras no exista, el servidor cae al almacén en memoria y avisa por consola.
 - Limpieza automática de salas vacías (`ROOM_EMPTY_TTL_SECONDS`) y expulsión de desconectados sin vuelta (`RECONNECT_GRACE_SECONDS`).
 - Token anónimo en `localStorage` para reconectar tras recargar. No se almacena ningún dato personal: el alias es el único texto que introduce el jugador.
 
 ---
 
-## 9. Limitaciones conocidas
+## 10. Limitaciones conocidas
 
 - Sin cuentas de usuario ni chat de voz o texto: el diseño es "abre el enlace y juega".
 - Las salas viven en memoria y en un único proceso: al reiniciar el servidor se pierden las partidas en curso, y no hay escalado horizontal (haría falta un adaptador Redis para Socket.IO).
@@ -394,6 +484,8 @@ Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, config
 - El minigolf usa vista cenital 2.5D: los saltos se simulan con altura, no con una física 3D completa.
 - La reproducción de sonidos del hoyo en uno se limita a un efecto sintetizado por el navegador (WebAudio), sin recursos externos.
 - El rediseño profundo cubre el marco común (cabecera, modo, ayuda, avisos y momentos destacados) y el tablero del billar en bola 8 (rayadas con franja, negra en negro, panel de grupos). Los escenarios de karts, arena y bolos siguen con su arte original de la fase anterior: no se han rehecho sus fondos.
+- Los bots del modo individual son deterministas por diseño dentro de cada dificultad: no aprenden ni se adaptan al rival entre partidas.
+- Las marcas personales viven en el navegador (identificador anónimo en `localStorage`) y en el SQLite del servidor. No se sincronizan entre dispositivos ni sobreviven a borrar los datos del navegador.
 - Playwright necesita descargar Chromium la primera vez (`npx playwright install chromium`).
 - Si `npm audit` sigue avisando tras actualizar, borra `node_modules` y `package-lock.json` y reinstala: un `npm install` incremental conserva resoluciones antiguas del lockfile. Una instalación limpia da cero avisos.
 - El repositorio fija `overrides: { "brace-expansion": "^5.0.8" }` para que `npm audit` quede a cero: la cadena `eslint → minimatch@3 → brace-expansion@1` arrastraba un aviso de denegación de servicio que solo afectaba a la herramienta de desarrollo.
@@ -401,6 +493,6 @@ Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, config
 
 ---
 
-## 10. Créditos
+## 11. Créditos
 
 Todo el contenido —niveles, nombres, geometría, textos, banco de preguntas y estilo visual— es original de este proyecto. No se han copiado mapas, texturas, sonidos ni nombres de ningún juego comercial.

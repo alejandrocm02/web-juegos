@@ -202,7 +202,11 @@ export class TanksGame implements GameRunner {
       rows,
       winnerIds,
       finishedAt: Date.now(),
-      extra: { mode: this.settings.mode, map: this.settings.map },
+      extra: {
+        mode: this.settings.mode,
+        map: this.settings.map,
+        kills: Object.fromEntries([...tanks.values()].map((tank) => [tank.playerId, tank.kills])),
+      },
     });
   }
 

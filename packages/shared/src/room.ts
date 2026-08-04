@@ -17,6 +17,7 @@ import type {
   TanksMode,
 } from './games/modes.js';
 import type { TankMapId } from './games/tanks.js';
+import type { SoloConfig } from './games/solo.js';
 
 export type ConnectionState = 'connected' | 'disconnected';
 
@@ -31,6 +32,8 @@ export interface PublicPlayer {
   joinedAt: number;
   /** Solo se rellena en los modos por equipos. */
   team?: TeamId;
+  /** true si lo controla el servidor en una sala de práctica. */
+  isBot?: boolean;
 }
 
 export type RoomPhase = 'lobby' | 'playing' | 'results';
@@ -182,6 +185,15 @@ export interface RoomSummary {
   maxPlayers: number;
   minPlayers: number;
   createdAt: number;
+  /**
+   * true en las salas de práctica en solitario.
+   *
+   * El cliente lo usa para ocultar invitación, expulsiones y traspaso de
+   * anfitrión, que no tienen sentido cuando solo hay una persona.
+   */
+  solo: boolean;
+  /** Configuración de rivales del servidor. Solo se usa si `solo` es true. */
+  soloConfig: SoloConfig;
 }
 
 export interface ScoreRow {

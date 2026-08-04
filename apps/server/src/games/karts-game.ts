@@ -202,7 +202,16 @@ export class KartsGame implements GameRunner {
       rows,
       winnerIds: winnersFrom(rows),
       finishedAt: Date.now(),
-      extra: { mode: this.settings.mode, track: this.settings.track, laps: this.world.totalLaps },
+      extra: {
+        mode: this.settings.mode,
+        track: this.settings.track,
+        laps: this.world.totalLaps,
+        bestLaps: Object.fromEntries(
+          standings
+            .filter((kart) => kart.bestLapMs !== null)
+            .map((kart) => [kart.playerId, kart.bestLapMs as number]),
+        ),
+      },
     });
   }
 

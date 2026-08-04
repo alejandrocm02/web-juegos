@@ -2,8 +2,12 @@ import {
   GAME_IDS,
   GAME_META,
   GAME_MODE_CATALOG,
-  MIN_PLAYERS,
   QUIZ_CATEGORIES,
+  BOT_DIFFICULTIES,
+  BOT_DIFFICULTY_META,
+  botRangeFor,
+  soloSupportsMode,
+  soloUsesBots,
   type GameId,
   KART_TRACKS,
   type ArenaSettings,
@@ -25,14 +29,18 @@ import { ErrorBanner, GameIcon, PlayerIconGlyph, Panel } from '../components/ui.
 import { BackButton } from '../components/navigation.js';
 import { quizCategoryLabel } from '../lib/format.js';
 import { EmptyState } from './StatusViews.js';
+import { RecordsPanel } from './RecordsPanel.js';
 
 export default function LobbyView() {
   const {
     room,
     me,
     isHost,
+    isSolo,
+    records,
     selectGame,
     updateSettings,
+    updateSoloConfig,
     setReady,
     startGame,
     kickPlayer,
@@ -62,10 +70,16 @@ export default function LobbyView() {
     }
   };
 
-  const connectedPlayers = room.players.filter((player) => player.connection === 'connected');
+  // Los bots no cuentan como jugadores conectados: nunca bloquean el inicio.
+  const humanPlayers = room.players.filter((player) => !player.isBot);
+  const connectedPlayers = humanPlayers.filter((player) => player.connection === 'connected');
+  const botPlayers = room.players.filter((player) => player.isBot);
   const allReady = connectedPlayers.every((player) => player.ready);
-  const canStart = connectedPlayers.length >= MIN_PLAYERS && allReady;
+  const canStart = connectedPlayers.length >= room.minPlayers && allReady;
   const currentMode = room.settings[room.selectedGame].mode;
+  const botRange = botRangeFor(room.selectedGame);
+  // Con rivales del servidor la sala cuenta como partida normal a efectos de modos.
+  const participants = isSolo ? 1 + botPlayers.length : room.players.length;
 
   /** Cambia el modo conservando el resto de opciones del juego. */
   const applyMode = (game: GameId, mode: string) => {
@@ -97,27 +111,35 @@ export default function LobbyView() {
               <GameIcon game={room.selectedGame} />
             </span>
             <div>
-              <p className="eyebrow">Sala privada · {GAME_META[room.selectedGame].name}</p>
+              <p className="eyebrow">
+                {isSolo ? 'Práctica en solitario' : 'Sala privada'} ·{' '}
+                {GAME_META[room.selectedGame].name}
+              </p>
               <h1 className="mt-1 font-display text-3xl font-black tracking-[0.24em] sm:text-4xl">
-                {room.code}
+                {isSolo ? 'ENTRENAMIENTO' : room.code}
               </h1>
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className="btn-secondary" onClick={() => copy(room.code, 'codigo')}>
-              {copied === 'codigo' ? '✓ Código copiado' : 'Copiar código'}
-            </button>
-            <button className="btn-secondary" onClick={() => copy(inviteUrl, 'enlace')}>
-              {copied === 'enlace' ? '✓ Enlace copiado' : 'Invitar amigos'}
-            </button>
+            {!isSolo && (
+              <>
+                <button className="btn-secondary" onClick={() => copy(room.code, 'codigo')}>
+                  {copied === 'codigo' ? '✓ Código copiado' : 'Copiar código'}
+                </button>
+                <button className="btn-secondary" onClick={() => copy(inviteUrl, 'enlace')}>
+                  {copied === 'enlace' ? '✓ Enlace copiado' : 'Invitar amigos'}
+                </button>
+              </>
+            )}
             <BackButton
               className="btn-danger"
               action={{
-                label: 'Salir de la sala',
+                label: isSolo ? 'Salir del entrenamiento' : 'Salir de la sala',
                 confirm: {
-                  title: 'Salir de la sala',
-                  description:
-                    room.players.length > 1
+                  title: isSolo ? 'Salir del entrenamiento' : 'Salir de la sala',
+                  description: isSolo
+                    ? 'Se cerrará la práctica. Tus marcas personales se conservan.'
+                    : humanPlayers.length > 1
                       ? 'Los demás jugadores seguirán en la sala. Si eres el anfitrión, el rol pasará a otro jugador.'
                       : 'La sala quedará vacía y se eliminará en unos minutos.',
                   confirmLabel: 'Salir',
@@ -131,9 +153,19 @@ export default function LobbyView() {
 
       <div className="grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
         <Panel
-          title="Tu equipo"
+          title={isSolo ? 'Tu partida' : 'Tu equipo'}
           subtitle={
-            connectedPlayers.length + ' conectados · ' + room.players.length + '/' + room.maxPlayers
+            isSolo
+              ? botPlayers.length === 0
+                ? 'Sin rivales · solo tu marca'
+                : botPlayers.length +
+                  (botPlayers.length === 1 ? ' rival' : ' rivales') +
+                  ' del servidor'
+              : connectedPlayers.length +
+                ' conectados · ' +
+                room.players.length +
+                '/' +
+                room.maxPlayers
           }
           className="h-fit lg:sticky lg:top-6"
         >
@@ -170,7 +202,13 @@ export default function LobbyView() {
                             (player.connection === 'connected' ? 'bg-neon-lime' : 'bg-amber-400')
                           }
                         />
-                        {player.isHost ? 'Anfitrión' : player.ready ? 'Preparado' : 'En espera'}
+                        {player.isBot
+                          ? 'Rival del servidor'
+                          : player.isHost
+                            ? 'Anfitrión'
+                            : player.ready
+                              ? 'Preparado'
+                              : 'En espera'}
                       </span>
                     </span>
                   </span>
@@ -182,10 +220,10 @@ export default function LobbyView() {
                         : 'bg-white/5 text-slate-600')
                     }
                   >
-                    {player.ready ? 'Listo' : 'Espera'}
+                    {player.isBot ? 'Bot' : player.ready ? 'Listo' : 'Espera'}
                   </span>
                 </div>
-                {isHost && player.id !== me.id && (
+                {isHost && !isSolo && player.id !== me.id && (
                   <div className="mt-2.5 flex gap-2 border-t border-white/[0.05] pt-2.5">
                     <button
                       className="btn-secondary min-h-8 flex-1 px-2 py-1 text-[10px]"
@@ -207,22 +245,75 @@ export default function LobbyView() {
             ))}
           </ul>
 
+          {isSolo && soloUsesBots(room.selectedGame) && (
+            <div className="mt-5 space-y-3 border-t border-white/[0.07] pt-5">
+              <div>
+                <span className="label mb-2 block">Dificultad</span>
+                <div className="flex rounded-xl border border-white/10 bg-black/20 p-1">
+                  {BOT_DIFFICULTIES.map((difficulty) => (
+                    <button
+                      key={difficulty}
+                      type="button"
+                      aria-pressed={room.soloConfig.botDifficulty === difficulty}
+                      onClick={() =>
+                        updateSoloConfig({ ...room.soloConfig, botDifficulty: difficulty })
+                      }
+                      className={
+                        'flex-1 rounded-lg px-2 py-2 text-xs font-bold transition ' +
+                        (room.soloConfig.botDifficulty === difficulty
+                          ? 'bg-white/[0.1] text-white shadow-sm'
+                          : 'text-slate-500 hover:text-slate-300')
+                      }
+                    >
+                      {BOT_DIFFICULTY_META[difficulty].name}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-[11px] leading-4 text-slate-500">
+                  {BOT_DIFFICULTY_META[room.soloConfig.botDifficulty].description}
+                </p>
+              </div>
+              <div>
+                <label className="label mb-2 block" htmlFor="lobby-bot-count">
+                  Rivales: {room.soloConfig.botCount}
+                </label>
+                <input
+                  id="lobby-bot-count"
+                  type="range"
+                  min={botRange.min}
+                  max={botRange.max}
+                  step={1}
+                  value={room.soloConfig.botCount}
+                  onChange={(event) =>
+                    updateSoloConfig({
+                      ...room.soloConfig,
+                      botCount: Number(event.target.value),
+                    })
+                  }
+                  className="w-full accent-neon-cyan"
+                />
+              </div>
+            </div>
+          )}
+
           <div className="mt-5 space-y-2 border-t border-white/[0.07] pt-5">
-            <button
-              className={me.ready ? 'btn-secondary w-full' : 'btn-primary w-full'}
-              onClick={() => setReady(!me.ready)}
-            >
-              {me.ready ? 'Cancelar preparado' : 'Estoy listo'}
-            </button>
-            {isHost && (
-              <button className="btn-primary w-full" onClick={startGame} disabled={!canStart}>
-                Iniciar {GAME_META[room.selectedGame].name}
+            {!isSolo && (
+              <button
+                className={me.ready ? 'btn-secondary w-full' : 'btn-primary w-full'}
+                onClick={() => setReady(!me.ready)}
+              >
+                {me.ready ? 'Cancelar preparado' : 'Estoy listo'}
               </button>
             )}
-            {connectedPlayers.length < MIN_PLAYERS ? (
+            {isHost && (
+              <button className="btn-primary w-full" onClick={startGame} disabled={!canStart}>
+                {isSolo ? 'Empezar' : 'Iniciar'} {GAME_META[room.selectedGame].name}
+              </button>
+            )}
+            {connectedPlayers.length < room.minPlayers ? (
               <p className="text-center text-xs leading-5 text-amber-300">
-                Faltan {MIN_PLAYERS - connectedPlayers.length}{' '}
-                {MIN_PLAYERS - connectedPlayers.length === 1
+                Faltan {room.minPlayers - connectedPlayers.length}{' '}
+                {room.minPlayers - connectedPlayers.length === 1
                   ? 'jugador conectado'
                   : 'jugadores conectados'}
                 .
@@ -233,6 +324,13 @@ export default function LobbyView() {
               </p>
             ) : null}
           </div>
+
+          {isSolo && records.length > 0 && (
+            <div className="mt-5 border-t border-white/[0.07] pt-5">
+              <p className="label mb-2">Tus marcas</p>
+              <RecordsPanel records={records} highlight={room.selectedGame} />
+            </div>
+          )}
         </Panel>
 
         <div className="space-y-6">
@@ -295,6 +393,7 @@ export default function LobbyView() {
               game={room.selectedGame}
               value={currentMode}
               disabled={!isHost}
+              participants={participants}
               onChange={(mode) => applyMode(room.selectedGame, mode)}
             />
 
@@ -357,14 +456,21 @@ function ModeSelector({
   game,
   value,
   disabled,
+  participants,
   onChange,
 }: {
   game: GameId;
   value: string;
   disabled: boolean;
+  /** Participantes reales de la partida, humanos y bots incluidos. */
+  participants: number;
   onChange: (mode: string) => void;
 }) {
-  const modes = GAME_MODE_CATALOG[game];
+  // Con un solo participante se ocultan los modos que necesitan rival: no
+  // tendrian sentido y el servidor los rechazaria de todas formas.
+  const modes = GAME_MODE_CATALOG[game].filter((mode) =>
+    soloSupportsMode(game, mode.id, participants),
+  );
   const active = modes.find((mode) => mode.id === value) ?? modes[0];
 
   return (
