@@ -342,6 +342,7 @@ export const ERROR_CODES = [
   'ACTION_REJECTED',
   'SOLO_ROOM',
   'RATE_LIMITED',
+  'SERVER_BUSY',
   'SESSION_EXPIRED',
   'INTERNAL',
 ] as const;

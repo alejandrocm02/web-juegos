@@ -3,12 +3,31 @@ import { randomInt } from 'node:crypto';
 import { env } from '../env.js';
 import { logger } from '../logger.js';
 import { Room, type RoomDeps, type RoomOptions } from './room.js';
+import { MAX_ROOMS } from '../security.js';
+
+/** Se lanza cuando el proceso ya sostiene todas las salas que admite. */
+export class RoomCapacityError extends Error {
+  constructor() {
+    super('El servidor esta al completo. Intentalo dentro de un momento.');
+    this.name = 'RoomCapacityError';
+  }
+}
 
 export class RoomManager {
   private rooms = new Map<string, Room>();
   private sweeper: NodeJS.Timeout | null = null;
+  /** Aviso de sala retirada, para que quien lleve cuotas pueda descontarla. */
+  onRoomRemoved: ((room: Room) => void) | null = null;
 
-  constructor(private readonly depsFactory: (code: string) => RoomDeps) {}
+  constructor(
+    private readonly depsFactory: (code: string) => RoomDeps,
+    private readonly maxRooms: number = MAX_ROOMS,
+  ) {}
+
+  /** true si todavia cabe una sala mas en el proceso. */
+  get hasCapacity(): boolean {
+    return this.rooms.size < this.maxRooms;
+  }
 
   startSweeper(): void {
     if (this.sweeper) return;
@@ -33,6 +52,9 @@ export class RoomManager {
   }
 
   create(options: RoomOptions = {}): Room {
+    // El techo se comprueba aqui y no solo en el handler, para que ninguna via
+    // futura de creacion pueda saltarselo por descuido.
+    if (!this.hasCapacity) throw new RoomCapacityError();
     const code = this.generateCode();
     const room = new Room(code, this.depsFactory(code), options);
     this.rooms.set(code, room);
@@ -49,6 +71,7 @@ export class RoomManager {
     if (!room) return;
     room.dispose();
     this.rooms.delete(code);
+    this.onRoomRemoved?.(room);
     logger.info('Sala eliminada', { code });
   }
 
