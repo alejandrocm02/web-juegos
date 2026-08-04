@@ -39,6 +39,12 @@ COPY --from=build /app/apps/server/prisma ./apps/server/prisma
 COPY --from=build /app/apps/server/scripts ./apps/server/scripts
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 
+# El proceso publico no necesita privilegios: la imagen base trae el usuario
+# `node` (uid 1000). Solo el directorio de Prisma debe ser escribible, porque
+# el arranque sincroniza el esquema SQLite ahi.
+RUN chown -R node:node /app/apps/server/prisma
+USER node
+
 EXPOSE 3001
 # Sincroniza el esquema SQLite si hay disco disponible y arranca el servidor.
 CMD ["sh", "-c", "node apps/server/scripts/run-prisma.mjs db push --skip-generate || echo 'Sin SQLite: se usaran estadisticas en memoria'; node apps/server/dist/index.js"]
