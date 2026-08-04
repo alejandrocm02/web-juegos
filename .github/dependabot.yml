@@ -1,0 +1,41 @@
+# Actualizaciones automáticas de dependencias.
+# El repo es un monorepo con npm workspaces: un solo ecosistema en la raíz
+# cubre todos los paquetes, porque comparten el mismo package-lock.json.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: deps
+    groups:
+      # Un solo PR para todo el tooling de desarrollo: casi nunca rompe nada
+      # y revisar quince PRs sueltos a la semana es como no revisar ninguno.
+      herramientas:
+        patterns:
+          - '@types/*'
+          - 'eslint*'
+          - '@eslint/*'
+          - 'typescript-eslint'
+          - 'prettier*'
+          - 'vitest'
+          - '@playwright/test'
+          - 'concurrently'
+      produccion:
+        patterns:
+          - 'express*'
+          - 'socket.io*'
+          - 'helmet'
+          - 'zod'
+          - 'react*'
+        update-types:
+          - minor
+          - patch
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
