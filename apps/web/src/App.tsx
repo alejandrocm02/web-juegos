@@ -1,20 +1,22 @@
-import { useEffect } from 'react';
+import { Suspense, useEffect } from 'react';
 import { useApp } from './store.js';
 import HomeView from './views/HomeView.js';
 import LobbyView from './views/LobbyView.js';
 import ResultsView from './views/ResultsView.js';
-import QuizView from './games/QuizView.js';
-import DartsView from './games/DartsView.js';
-import PoolView from './games/PoolView.js';
-import GolfView from './games/GolfView.js';
-import BowlingView from './games/BowlingView.js';
-import KartsView from './games/KartsView.js';
-import ArenaView from './games/ArenaView.js';
-import BlackjackView from './games/BlackjackView.js';
-import SonglessView from './games/SonglessView.js';
-import ArcadeSportView from './games/ArcadeSportView.js';
-import HeadSportView from './games/HeadSportView.js';
-import TanksView from './games/TanksView.js';
+import {
+  ArcadeSportView,
+  ArenaView,
+  BlackjackView,
+  BowlingView,
+  DartsView,
+  GolfView,
+  HeadSportView,
+  KartsView,
+  PoolView,
+  QuizView,
+  SonglessView,
+  TanksView,
+} from './games/registry.js';
 import { ErrorBanner, Toasts } from './components/ui.js';
 import { GameExitBar } from './components/GameExitBar.js';
 import { GameStage } from './components/GameStage.js';
@@ -112,7 +114,27 @@ export default function App() {
         </div>
       )}
       {inGame && <GameExitBar />}
-      {inGame && gameState ? <GameStage state={gameState}>{content}</GameStage> : content}
+      {inGame && gameState ? (
+        <GameStage state={gameState}>
+          {/*
+            Solo las vistas de juego se cargan bajo demanda. El respaldo vive
+            dentro de GameStage para que la cabecera (turno, modo y ayuda) ya
+            este en pantalla mientras llega el fragmento.
+          */}
+          <Suspense
+            fallback={
+              <EmptyState
+                title="Cargando el juego…"
+                description="Descargando lo necesario para esta partida. Tarda un instante la primera vez."
+              />
+            }
+          >
+            {content}
+          </Suspense>
+        </GameStage>
+      ) : (
+        content
+      )}
       <Toasts toasts={toasts} />
     </>
   );

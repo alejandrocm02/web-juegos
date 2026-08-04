@@ -23,7 +23,8 @@ import {
   type TanksSettings,
   TANK_MAPS,
 } from '@arcade/shared';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { prefetchGame } from '../games/registry.js';
 import { useApp } from '../store.js';
 import { ErrorBanner, GameIcon, PlayerIconGlyph, Panel } from '../components/ui.js';
 import { BackButton } from '../components/navigation.js';
@@ -70,6 +71,13 @@ export default function LobbyView() {
     }
   };
 
+  // El fragmento del juego elegido se descarga mientras la sala sigue en el
+  // lobby, para que al pulsar empezar la vista ya este en cache y no haya
+  // espera en el peor momento posible.
+  useEffect(() => {
+    prefetchGame(room.selectedGame);
+  }, [room.selectedGame]);
+
   // Los bots no cuentan como jugadores conectados: nunca bloquean el inicio.
   const humanPlayers = room.players.filter((player) => !player.isBot);
   const connectedPlayers = humanPlayers.filter((player) => player.connection === 'connected');
@@ -86,8 +94,10 @@ export default function LobbyView() {
     const current = room.settings[game];
     updateSettings(game, { ...current, mode } as never);
   };
+  // El enlace se construye siempre en el navegador: asi funciona igual en
+  // local, en red local y en produccion sin configurar ninguna variable.
   const inviteUrl =
-    typeof window !== 'undefined' ? window.location.origin + '/?code=' + room.code : room.inviteUrl;
+    typeof window !== 'undefined' ? window.location.origin + '/?code=' + room.code : '';
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
