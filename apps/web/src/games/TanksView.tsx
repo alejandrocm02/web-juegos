@@ -9,6 +9,7 @@ import {
 } from '@arcade/shared';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
+import { syncCanvasResolution } from '../lib/canvas.js';
 import { useApp } from '../store.js';
 
 export default function TanksView({ state }: { state: TanksPublicState }) {
@@ -86,6 +87,9 @@ export default function TanksView({ state }: { state: TanksPublicState }) {
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext('2d');
       if (canvas && ctx) {
+        // El buffer se ajusta a la densidad de pantalla en cada fotograma: es
+        // idempotente y cubre el caso de arrastrar la ventana a otro monitor.
+        syncCanvasResolution(canvas, ctx, TANK_FIELD.width, TANK_FIELD.height);
         drawBattlefield(
           ctx,
           state,

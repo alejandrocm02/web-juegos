@@ -10,6 +10,7 @@ import {
 } from '@arcade/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
+import { syncCanvasResolution } from '../lib/canvas.js';
 import { useApp } from '../store.js';
 
 interface RenderState {
@@ -148,6 +149,9 @@ export default function ArcadeSportView({ state }: { state: ArcadeSportPublicSta
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext('2d');
       if (canvas && ctx) {
+        // El buffer se ajusta a la densidad de pantalla en cada fotograma: es
+        // idempotente y cubre el caso de arrastrar la ventana a otro monitor.
+        syncCanvasResolution(canvas, ctx, SPORT_FIELD.width, SPORT_FIELD.height);
         const possible = snapshotRef.current;
         const live = possible && 'paddles' in possible ? (possible as ArcadeSportSnapshot) : null;
         const snapshot = live?.teams ? live : state;

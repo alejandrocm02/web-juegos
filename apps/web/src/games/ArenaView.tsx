@@ -8,6 +8,7 @@ import {
   type ArenaSnapshot,
 } from '@arcade/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { syncCanvasResolution, type Viewport } from '../lib/canvas.js';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 
@@ -116,13 +117,16 @@ export default function ArenaView({ state }: { state: ArenaPublicState }) {
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext('2d');
       if (canvas && ctx) {
+        // El buffer se ajusta a la densidad de pantalla en cada fotograma: es
+        // idempotente y cubre el caso de arrastrar la ventana a otro monitor.
+        const view = syncCanvasResolution(canvas, ctx, VIEW, VIEW);
         const snapshot = snapshotRef.current as ArenaSnapshot | null;
         const live = snapshot && 'fighters' in snapshot && 'zone' in snapshot ? snapshot : null;
         const fighters = live?.fighters ?? state.fighters;
         interpolate(renderRef.current, fighters, dt);
         draw(
           ctx,
-          canvas,
+          view,
           fighters,
           renderRef.current,
           live?.zone ?? state.zone,
@@ -418,7 +422,7 @@ function interpolate(
 
 function draw(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  view: Viewport,
   fighters: ArenaFighterState[],
   render: Map<string, { x: number; y: number; facing: number }>,
   zone: ArenaPublicState['zone'],
@@ -426,9 +430,9 @@ function draw(
   players: { id: string; name: string; color: string }[],
   myId?: string,
 ): void {
-  const scale = canvas.width / ARENA.width;
+  const scale = view.width / ARENA.width;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, view.width, view.height);
   ctx.save();
   ctx.scale(scale, scale);
 

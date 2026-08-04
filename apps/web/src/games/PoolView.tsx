@@ -9,10 +9,15 @@ import {
   type PoolSnapshot,
 } from '@arcade/shared';
 import { useEffect, useRef, useState } from 'react';
+import { syncCanvasResolution, type Viewport } from '../lib/canvas.js';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 
 const MAX_DRAG = 190;
+
+/** Tamano logico de la mesa en pantalla. El buffer real se escala por densidad. */
+const VIEW_W = 1016;
+const VIEW_H = 508;
 
 export default function PoolView({ state }: { state: PoolPublicState }) {
   const { sendAction, session, room, snapshotRef } = useApp();
@@ -42,12 +47,15 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext('2d');
       if (canvas && ctx) {
+        // El buffer se ajusta a la densidad de pantalla en cada fotograma: es
+        // idempotente y cubre el caso de arrastrar la ventana a otro monitor.
+        const view = syncCanvasResolution(canvas, ctx, VIEW_W, VIEW_H);
         const snapshot = snapshotRef.current as PoolSnapshot | null;
         const balls =
           snapshot && 'balls' in snapshot && Array.isArray(snapshot.balls) && 'settled' in snapshot
             ? (snapshot.balls as PoolBallState[])
             : state.balls;
-        draw(ctx, canvas, balls, dragRef.current, isMyTurn, eightBall);
+        draw(ctx, view, balls, dragRef.current, isMyTurn, eightBall);
       }
       frame = requestAnimationFrame(render);
     };
@@ -153,8 +161,8 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
         <div className="game-board-frame pool-table-frame relative">
           <canvas
             ref={canvasRef}
-            width={1016}
-            height={508}
+            width={VIEW_W}
+            height={VIEW_H}
             className={'w-full touch-none rounded-[1.1rem] ' + (isMyTurn ? 'cursor-crosshair' : '')}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
@@ -266,15 +274,15 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
 
 function draw(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  view: Viewport,
   balls: PoolBallState[],
   drag: { x: number; y: number } | null,
   isMyTurn: boolean,
   eightBall: boolean,
 ): void {
-  const scale = canvas.width / POOL_TABLE.width;
+  const scale = view.width / POOL_TABLE.width;
   ctx.save();
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, view.width, view.height);
   ctx.scale(scale, scale);
 
   const cloth = ctx.createRadialGradient(

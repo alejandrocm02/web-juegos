@@ -5,6 +5,7 @@ import {
   type GolfBallState,
   type GolfLevel,
 } from '@arcade/shared';
+import { resetToViewport, type Viewport } from '../lib/canvas.js';
 
 /** Longitud de arrastre (en unidades del mundo) que equivale a potencia maxima. */
 export const MAX_DRAG = 170;
@@ -51,47 +52,47 @@ interface CoursePalette {
 /**
  * Dibuja un fotograma completo del minigolf.
  *
- * El borrado ocurre aqui una unica vez: si cada capa limpiara el canvas por su
+ * El borrado ocurre aqui una unica vez: si cada capa limpiara el view por su
  * cuenta, la ultima en dibujarse borraria a las anteriores y el nivel no se
  * veria (justo lo que ocurria antes de extraer este modulo).
  */
 export function drawGolfFrame(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  view: Viewport,
   frame: GolfFrame,
 ): void {
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  resetToViewport(ctx, view);
+  ctx.clearRect(0, 0, view.width, view.height);
   const palette = paletteFor(frame.level.id);
-  const backdrop = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  const backdrop = ctx.createLinearGradient(0, 0, view.width, view.height);
   backdrop.addColorStop(0, palette.skyA);
   backdrop.addColorStop(0.58, palette.skyB);
   backdrop.addColorStop(1, '#03050a');
   ctx.fillStyle = backdrop;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  drawScreenAtmosphere(ctx, canvas, frame.level.id, palette);
+  ctx.fillRect(0, 0, view.width, view.height);
+  drawScreenAtmosphere(ctx, view, frame.level.id, palette);
 
-  drawLevel(ctx, canvas, frame.level, frame.camera, frame.time, palette);
-  drawBalls(ctx, canvas, frame.balls, frame.camera, frame.colorOf, frame.myId);
-  if (frame.aim) drawAim(ctx, canvas, frame.camera, frame.aim.ball, frame.aim.drag);
+  drawLevel(ctx, view, frame.level, frame.camera, frame.time, palette);
+  drawBalls(ctx, view, frame.balls, frame.camera, frame.colorOf, frame.myId);
+  if (frame.aim) drawAim(ctx, view, frame.camera, frame.aim.ball, frame.aim.drag);
 }
 
-function applyCamera(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, camera: Camera) {
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.translate(canvas.width / 2, canvas.height / 2);
+function applyCamera(ctx: CanvasRenderingContext2D, view: Viewport, camera: Camera) {
+  resetToViewport(ctx, view);
+  ctx.translate(view.width / 2, view.height / 2);
   ctx.scale(camera.zoom, camera.zoom);
   ctx.translate(-camera.x, -camera.y);
 }
 
 function drawLevel(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  view: Viewport,
   level: GolfLevel,
   camera: Camera,
   time: number,
   palette: CoursePalette,
 ): void {
-  applyCamera(ctx, canvas, camera);
+  applyCamera(ctx, view, camera);
   drawWorldScenery(ctx, level, time, palette);
 
   for (const pad of level.pads) {
@@ -256,26 +257,26 @@ function drawLevel(
 
 function drawScreenAtmosphere(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  view: Viewport,
   levelId: number,
   palette: CoursePalette,
 ): void {
   ctx.fillStyle = palette.ground;
   ctx.globalAlpha = 0.16;
-  for (let y = 14; y < canvas.height; y += 34) {
-    for (let x = (y / 34) % 2 === 0 ? 14 : 31; x < canvas.width; x += 42) {
+  for (let y = 14; y < view.height; y += 34) {
+    for (let x = (y / 34) % 2 === 0 ? 14 : 31; x < view.width; x += 42) {
       const size = 1 + ((x * 7 + y * 11 + levelId) % 3);
       ctx.fillRect(x, y, size, size);
     }
   }
   ctx.globalAlpha = 1;
 
-  const glow = ctx.createLinearGradient(0, 0, canvas.width, 0);
+  const glow = ctx.createLinearGradient(0, 0, view.width, 0);
   glow.addColorStop(0, 'rgba(255,255,255,0)');
   glow.addColorStop(0.5, palette.accent + '18');
   glow.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = glow;
-  ctx.fillRect(0, 0, canvas.width, 4);
+  ctx.fillRect(0, 0, view.width, 4);
 }
 
 function drawWorldScenery(
@@ -448,13 +449,13 @@ function drawSurfaceTexture(
 
 function drawBalls(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  view: Viewport,
   balls: RenderBall[],
   camera: Camera,
   colorOf: Map<string, PlayerLook>,
   myId?: string,
 ): void {
-  applyCamera(ctx, canvas, camera);
+  applyCamera(ctx, view, camera);
   for (const ball of balls) {
     if (ball.holed) continue;
     const info = colorOf.get(ball.playerId);
@@ -508,12 +509,12 @@ function drawBalls(
 
 function drawAim(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  view: Viewport,
   camera: Camera,
   ball: RenderBall,
   drag: { x: number; y: number },
 ): void {
-  applyCamera(ctx, canvas, camera);
+  applyCamera(ctx, view, camera);
   const dx = ball.rx - drag.x;
   const dy = ball.ry - drag.y;
   const distance = Math.min(MAX_DRAG, Math.hypot(dx, dy));
