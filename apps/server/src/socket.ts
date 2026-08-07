@@ -38,12 +38,6 @@ export function registerSocketHandlers(io: Server): RoomManager {
   const quota = new IpQuota();
   const sessions = new Map<string, SocketSession>();
 
-  // Al retirar una sala (barredor o salida del ultimo jugador) se devuelve el
-  // hueco a quien la creo. Sin esto la cuota por IP se agotaria para siempre.
-  manager.onRoomRemoved = (room) => {
-    if (room.ownerIp) quota.removeRoom(room.ownerIp);
-  };
-
   /** Direccion del cliente, ya normalizada por Socket.IO detras del proxy. */
   function ipOf(socket: Socket): string {
     return socket.handshake.address || 'desconocida';
@@ -107,27 +101,26 @@ export function registerSocketHandlers(io: Server): RoomManager {
   }
 
   /**
-   * Reserva sitio para una sala nueva.
+   * Comprueba que hay sitio para una sala mas.
    *
-   * Comprueba el techo global del proceso y la cuota por IP antes de construir
-   * nada: crear salas es la operacion mas cara del servidor (cada partida en
-   * curso mantiene un bucle a 60 Hz) y era la unica sin limite propio.
+   * Crear salas es la operacion mas cara del servidor (una partida en curso
+   * mantiene un bucle a 60 Hz) y era la unica sin limite propio. Se mira el
+   * techo del proceso y, despues, cuantas salas *con gente dentro* tiene ya esa
+   * IP: las vacias no cuentan, porque solo estan esperando a que alguien vuelva.
+   *
+   * Importa llamarlo despues de abandonar la sala anterior; si no, la sala que
+   * el jugador acaba de dejar todavia contaria como suya.
    */
-  function reserveRoom(socket: Socket): boolean {
+  function canOpenRoom(socket: Socket): boolean {
     if (!manager.hasCapacity) {
       fail(socket, 'SERVER_BUSY', 'El servidor está al completo. Inténtalo dentro de un momento.');
       return false;
     }
-    if (!quota.addRoom(ipOf(socket))) {
-      fail(socket, 'SERVER_BUSY', 'Has abierto demasiadas salas a la vez. Cierra alguna primero.');
+    if (!manager.hasCapacityForIp(ipOf(socket))) {
+      fail(socket, 'SERVER_BUSY', 'Tienes demasiadas partidas abiertas a la vez. Cierra alguna.');
       return false;
     }
     return true;
-  }
-
-  /** Deshace la reserva cuando la sala no llega a crearse. */
-  function releaseRoom(socket: Socket): void {
-    quota.removeRoom(ipOf(socket));
   }
 
   function sessionOf(socket: Socket) {
@@ -189,13 +182,13 @@ export function registerSocketHandlers(io: Server): RoomManager {
 
     socket.on(CLIENT_EVENTS.createRoom, (payload) => {
       guard(socket, createRoomSchema, payload, ({ name }) => {
-        if (!reserveRoom(socket)) return;
+        // Primero se suelta la sala anterior: si no, contaria contra la cuota.
         leaveCurrentSession(socket);
+        if (!canOpenRoom(socket)) return;
         let room;
         try {
           room = manager.create({ ownerIp: ipOf(socket) });
         } catch (error) {
-          releaseRoom(socket);
           if (error instanceof RoomCapacityError) return fail(socket, 'SERVER_BUSY', error.message);
           throw error;
         }
@@ -212,13 +205,12 @@ export function registerSocketHandlers(io: Server): RoomManager {
 
     socket.on(CLIENT_EVENTS.createSoloRoom, (payload) => {
       guard(socket, createSoloRoomSchema, payload, ({ name, profileId, game, config }) => {
-        if (!reserveRoom(socket)) return;
         leaveCurrentSession(socket);
+        if (!canOpenRoom(socket)) return;
         let room;
         try {
           room = manager.create({ solo: { game, profileId, config }, ownerIp: ipOf(socket) });
         } catch (error) {
-          releaseRoom(socket);
           if (error instanceof RoomCapacityError) return fail(socket, 'SERVER_BUSY', error.message);
           throw error;
         }

@@ -482,7 +482,10 @@ Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, config
 
 - **Validación Zod** de todos los eventos entrantes; los payloads inválidos responden con `app:error` y nunca tocan el estado.
 - **Rate limiting** por socket (60 mensajes / 5 s configurable) y límite de tamaño de mensaje (4 KB; el buffer de Socket.IO está limitado a 100 KB). Se aplica a **todos** los eventos, incluidos los que no llevan payload (`room:leave`, `room:start`, `room:back-to-lobby`).
-- **Techo de recursos**: máximo de salas simultáneas por proceso (`MAX_ROOMS`), de sockets por IP (`MAX_SOCKETS_PER_IP`) y de salas activas por IP (`MAX_ROOMS_PER_IP`). Crear salas es la operación más cara del servidor —una partida en curso mantiene un bucle a 60 Hz— y era la única sin límite propio. Al superarlos se responde `SERVER_BUSY`.
+- **Techo de recursos**: máximo de salas simultáneas por proceso (`MAX_ROOMS`), de sockets por IP (`MAX_SOCKETS_PER_IP`) y de salas **con gente dentro** por IP (`MAX_ROOMS_PER_IP`). Crear salas es la operación más cara del servidor —una partida en curso mantiene un bucle a 60 Hz— y era la única sin límite propio. Al superarlos se responde `SERVER_BUSY`.
+
+  Que el cupo por IP cuente salas _en uso_ y no salas _existentes_ no es un detalle: una sala vacía sobrevive `ROOM_EMPTY_TTL_SECONDS` por si alguien vuelve, así que contarlas castigaría a quien encadena partidas. Y como todo un NAT doméstico o de oficina comparte una sola IP pública, los márgenes son deliberadamente amplios: un límite ajustado no para a un atacante, que dispone de muchas IPs, y en cambio deja fuera al grupo de amigos para el que existe el juego.
+
 - **Política de seguridad de contenido (CSP)** explícita: `default-src 'self'`, sin `object-src` ni `frame-ancestors`. El cliente no carga nada de terceros.
 - **El contenedor no corre como root**: la imagen final cambia al usuario `node`.
 - **Rate limiting HTTP** (120 peticiones/minuto) y cabeceras de seguridad con Helmet.

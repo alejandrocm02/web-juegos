@@ -119,6 +119,18 @@ export class Room {
     return this.humans().length === 0;
   }
 
+  /**
+   * true si ahora mismo hay alguien conectado en la sala.
+   *
+   * No es lo mismo que `!isEmpty`: al cerrar la pestana el jugador no se
+   * borra, se marca como desconectado y conserva su plaza durante
+   * RECONNECT_GRACE_SECONDS por si vuelve. Para las cuotas lo que cuenta es si
+   * la sala se esta usando de verdad, no si queda alguien apuntado en ella.
+   */
+  get hasPlayersOnline(): boolean {
+    return this.emptySince === null;
+  }
+
   get currentPhase(): RoomPhase {
     return this.phase;
   }
