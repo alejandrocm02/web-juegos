@@ -405,7 +405,7 @@ Se guardan en la tabla `SoloRecord` de SQLite, indexadas por un **identificador 
 ## 7. Pruebas
 
 ```bash
-npm test          # Vitest: 295 tests
+npm test          # Vitest: 331 tests
 npm run test:e2e  # Playwright: dos navegadores compartiendo sala
 ```
 
@@ -452,6 +452,27 @@ Cobertura del modo individual:
 | Pestaña "Practicar" de punta a punta en navegador real             | `e2e/solo.spec.ts`                           |
 | El lobby de práctica oculta invitación y "Estoy listo"             | idem                                         |
 | La marca sobrevive a recargar la página                            | idem                                         |
+
+### Tests de componentes
+
+Las vistas de React se prueban con Vitest sobre jsdom y Testing Library. El
+store real abre un socket al importarse, así que las pruebas lo sustituyen por
+un valor controlado (`apps/web/tests/helpers/fixtures.ts`) y comprueban lo que
+ve el jugador, no el estado interno.
+
+| Comprobación                                                 | Dónde                               |
+| ------------------------------------------------------------ | ----------------------------------- |
+| Permisos del anfitrión (cambiar juego, iniciar, expulsar)    | `apps/web/tests/LobbyView.test.tsx` |
+| Condiciones para empezar: mínimo de jugadores y todos listos | idem                                |
+| Los bots no bloquean el inicio                               | idem                                |
+| Una sala de práctica no ofrece invitación                    | idem                                |
+| La desconexión se dice con palabras, no solo con color       | idem                                |
+| Enrutado por fase: inicio, lobby, partida y resultados       | `apps/web/tests/App.test.tsx`       |
+| Las vistas de juego perezosas montan la correcta             | idem                                |
+| Air Hockey y tenis de mesa comparten vista                   | idem                                |
+
+Un fichero pide jsdom con el docblock `// @vitest-environment jsdom`; el resto
+de las suites siguen ejecutándose en Node, que es más rápido.
 
 Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, configuración bloqueada, transferencia de anfitrión, promoción automática), banco de preguntas, puntuación de la diana y simulación de billar.
 

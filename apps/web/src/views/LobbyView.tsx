@@ -191,19 +191,29 @@ export default function LobbyView() {
                         )}
                       </span>
                       <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-slate-500">
+                        {/*
+                          El punto es decorativo: la conexion tambien se dice
+                          con palabras. Fiarlo todo al color deja fuera a quien
+                          no lo distingue y a los lectores de pantalla, que es
+                          el mismo criterio que ya se sigue en el minigolf
+                          dando a cada jugador color e icono propios.
+                        */}
                         <span
+                          aria-hidden="true"
                           className={
                             'h-1.5 w-1.5 rounded-full ' +
                             (player.connection === 'connected' ? 'bg-neon-lime' : 'bg-amber-400')
                           }
                         />
-                        {player.isBot
-                          ? 'Rival del servidor'
-                          : player.isHost
-                            ? 'Anfitrión'
-                            : player.ready
-                              ? 'Preparado'
-                              : 'En espera'}
+                        {player.connection !== 'connected'
+                          ? 'Desconectado'
+                          : player.isBot
+                            ? 'Rival del servidor'
+                            : player.isHost
+                              ? 'Anfitrión'
+                              : player.ready
+                                ? 'Preparado'
+                                : 'En espera'}
                       </span>
                     </span>
                   </span>
