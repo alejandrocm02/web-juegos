@@ -7,6 +7,7 @@ import {
   type ArcadeSportSnapshot,
   type PublicPlayer,
   type TeamId,
+  clamp,
 } from '@arcade/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
@@ -464,8 +465,4 @@ function normalizedSideX(x: number, team: TeamId): number {
   return team === 'rojo'
     ? clamp(x / (SPORT_FIELD.width / 2), 0, 1)
     : clamp((x - SPORT_FIELD.width / 2) / (SPORT_FIELD.width / 2), 0, 1);
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
 }

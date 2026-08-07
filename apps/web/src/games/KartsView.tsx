@@ -4,6 +4,7 @@ import {
   type KartsPublicState,
   type KartsSnapshot,
   type KartState,
+  clamp,
 } from '@arcade/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { syncCanvasResolution, type Viewport } from '../lib/canvas.js';
@@ -491,8 +492,4 @@ function draw(
       ctx.globalAlpha = 1;
     }
   }
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return value < min ? min : value > max ? max : value;
 }
