@@ -400,11 +400,14 @@ function drawLane(
   ctx.lineWidth = 1;
   ctx.stroke();
   ctx.fillStyle = 'rgba(3, 7, 18, 0.8)';
-  for (const [dx, dy] of [
+  // Tupla explicita en vez de number[]: asi el desestructurado no produce
+  // `number | undefined` y no hace falta afirmar nada.
+  const fingerHoles: ReadonlyArray<readonly [number, number]> = [
     [-0.22, -0.18],
     [0.18, -0.28],
     [0.05, 0.08],
-  ]) {
+  ];
+  for (const [dx, dy] of fingerHoles) {
     ctx.beginPath();
     ctx.arc(ballX + dx * ballRadius, ballY + dy * ballRadius, ballRadius * 0.11, 0, Math.PI * 2);
     ctx.fill();
