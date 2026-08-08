@@ -9,13 +9,14 @@ import {
   type PoolSnapshot,
 } from '@arcade/shared';
 import { useEffect, useRef, useState } from 'react';
-import { useApp } from '../store.js';
+import { useMatch, useRoom } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 
 const MAX_DRAG = 190;
 
 export default function PoolView({ state }: { state: PoolPublicState }) {
-  const { sendAction, session, room, snapshotRef } = useApp();
+  const { session, room } = useRoom();
+  const { sendAction, snapshotRef } = useMatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);

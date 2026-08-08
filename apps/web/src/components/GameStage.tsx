@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { GAME_META, GAME_MODE_CATALOG, type GameId, type GamePublicState } from '@arcade/shared';
-import { useApp } from '../store.js';
+import { useMatch, useRoom } from '../store.js';
 import { GameIcon, PlayerIconGlyph } from './ui.js';
 import { describeGameEvent, type Highlight } from './highlights.js';
 
@@ -105,7 +105,8 @@ export function GameStage({
   state: GamePublicState;
   children: React.ReactNode;
 }) {
-  const { room, session, lastGameEvent } = useApp();
+  const { room, session } = useRoom();
+  const { lastGameEvent } = useMatch();
   const [helpOpen, setHelpOpen] = useState(false);
   const [highlight, setHighlight] = useState<Highlight | null>(null);
   const meta = GAME_META[state.game];

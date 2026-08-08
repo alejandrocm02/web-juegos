@@ -10,7 +10,7 @@ import {
 } from '@arcade/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
-import { useApp } from '../store.js';
+import { useMatch, useRoom } from '../store.js';
 
 interface RenderState {
   ball: { x: number; y: number; spin: number };
@@ -24,7 +24,8 @@ interface Controls {
 }
 
 export default function HeadSportView({ state }: { state: HeadSportPublicState }) {
-  const { room, session, sendAction, snapshotRef } = useApp();
+  const { room, session } = useRoom();
+  const { sendAction, snapshotRef } = useMatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keysRef = useRef(new Set<string>());
   const controlsRef = useRef<Controls>({ moveX: 0, jump: false, kick: false });

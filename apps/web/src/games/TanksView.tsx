@@ -9,10 +9,11 @@ import {
 } from '@arcade/shared';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
-import { useApp } from '../store.js';
+import { useMatch, useRoom } from '../store.js';
 
 export default function TanksView({ state }: { state: TanksPublicState }) {
-  const { room, session, sendAction } = useApp();
+  const { room, session } = useRoom();
+  const { sendAction } = useMatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [angleDeg, setAngleDeg] = useState(45);
   const [power, setPower] = useState(68);

@@ -1,6 +1,6 @@
 import type { GolfBallState, GolfPublicState, GolfSnapshot } from '@arcade/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useApp } from '../store.js';
+import { useMatch, useRoom } from '../store.js';
 import { Panel, PlayerIconGlyph, Scoreboard } from '../components/ui.js';
 import { playAceSound, playHoledSound, playOutSound } from '../lib/sound.js';
 import { relativeToPar } from '../lib/format.js';
@@ -17,7 +17,8 @@ const VIEW_W = 960;
 const VIEW_H = 560;
 
 export default function GolfView({ state }: { state: GolfPublicState }) {
-  const { sendAction, session, room, snapshotRef, golfEvents } = useApp();
+  const { session, room } = useRoom();
+  const { sendAction, snapshotRef, golfEvents } = useMatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderBalls = useRef<Map<string, RenderBall>>(new Map());
   const cameraRef = useRef({ x: state.level.start.x, y: state.level.start.y, zoom: 1 });

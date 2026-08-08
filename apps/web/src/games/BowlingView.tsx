@@ -5,14 +5,15 @@ import {
   type BowlingSnapshot,
 } from '@arcade/shared';
 import { useEffect, useRef, useState } from 'react';
-import { useApp } from '../store.js';
+import { useMatch, useRoom } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 
 const VIEW_W = 360;
 const VIEW_H = 620;
 
 export default function BowlingView({ state }: { state: BowlingPublicState }) {
-  const { sendAction, session, room, snapshotRef } = useApp();
+  const { session, room } = useRoom();
+  const { sendAction, snapshotRef } = useMatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [aim, setAim] = useState(0);
   const [spin, setSpin] = useState(0);

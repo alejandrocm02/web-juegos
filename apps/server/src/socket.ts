@@ -2,6 +2,8 @@ import type { Server, Socket } from 'socket.io';
 import {
   CLIENT_EVENTS,
   SERVER_EVENTS,
+  chatMessageSchema,
+  chatReactionSchema,
   createRoomSchema,
   createSoloRoomSchema,
   gameActionSchema,
@@ -12,6 +14,7 @@ import {
   selectGameSchema,
   settingsPatchSchema,
   targetPlayerSchema,
+  tournamentModeSchema,
   updateSoloConfigSchema,
   type AppError,
   type ErrorCode,
@@ -26,6 +29,10 @@ interface SocketSession {
   roomCode: string;
   playerId: string;
 }
+
+/** Aviso cuando el proceso ya sostiene todas las salas que admite. */
+const ROOMS_FULL_MESSAGE =
+  'El servidor está al completo ahora mismo. Inténtalo de nuevo en unos minutos.';
 
 export function registerSocketHandlers(io: Server): RoomManager {
   const manager = new RoomManager((code) => ({
@@ -46,16 +53,37 @@ export function registerSocketHandlers(io: Server): RoomManager {
     socket.emit(SERVER_EVENTS.error, error);
   }
 
+  /** Consume una unidad del limitador y avisa al cliente si se ha pasado. */
+  function withinRate(socket: Socket): boolean {
+    if (limiter.allow(socket.id)) return true;
+    fail(socket, 'RATE_LIMITED', 'Estás enviando demasiadas acciones. Espera un momento.');
+    return false;
+  }
+
+  /**
+   * Equivalente a `guard` para eventos sin payload.
+   *
+   * `room:start`, `room:back-to-lobby` y `room:leave` no llevan datos, pero
+   * arrancan o destruyen partidas enteras: sin limitador, alternarlos en bucle
+   * satura el bucle de eventos y afecta a todas las salas del proceso.
+   */
+  function throttle(socket: Socket, handler: () => void): void {
+    if (!withinRate(socket)) return;
+    try {
+      handler();
+    } catch (error) {
+      logger.error('Error tratando un evento de socket', String(error));
+      fail(socket, 'INTERNAL', 'Se ha producido un error inesperado.');
+    }
+  }
+
   function guard<T>(
     socket: Socket,
     schema: ZodSchema<T>,
     payload: unknown,
     handler: (value: T) => void,
   ): void {
-    if (!limiter.allow(socket.id)) {
-      fail(socket, 'RATE_LIMITED', 'Estás enviando demasiadas acciones. Espera un momento.');
-      return;
-    }
+    if (!withinRate(socket)) return;
     if (payloadTooLarge(payload)) {
       fail(socket, 'INVALID_PAYLOAD', 'Mensaje demasiado grande.');
       return;
@@ -122,6 +150,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
 
     socket.on(CLIENT_EVENTS.createRoom, (payload) => {
       guard(socket, createRoomSchema, payload, ({ name }) => {
+        if (manager.isAtCapacity) return fail(socket, 'ACTION_REJECTED', ROOMS_FULL_MESSAGE);
         leaveCurrentSession(socket);
         const room = manager.create();
         const player = room.addPlayer(name, socket.id);
@@ -137,6 +166,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
 
     socket.on(CLIENT_EVENTS.createSoloRoom, (payload) => {
       guard(socket, createSoloRoomSchema, payload, ({ name, profileId, game, config }) => {
+        if (manager.isAtCapacity) return fail(socket, 'ACTION_REJECTED', ROOMS_FULL_MESSAGE);
         leaveCurrentSession(socket);
         const room = manager.create({ solo: { game, profileId, config } });
         const player = room.addPlayer(name, socket.id);
@@ -198,6 +228,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
           token: player.token,
           code: room.code,
         });
+        socket.emit(SERVER_EVENTS.chatHistory, { messages: room.chatHistory() });
         room.broadcastRoom();
       });
     });
@@ -219,6 +250,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
           token: player.token,
           code: room.code,
         });
+        socket.emit(SERVER_EVENTS.chatHistory, { messages: room.chatHistory() });
         room.broadcastRoom();
         const state = room.currentGameState();
         if (state) socket.emit(SERVER_EVENTS.gameState, state);
@@ -226,17 +258,22 @@ export function registerSocketHandlers(io: Server): RoomManager {
         if (result) socket.emit(SERVER_EVENTS.gameOver, { result });
         const outcome = room.getLastSoloOutcome();
         if (outcome) socket.emit(SERVER_EVENTS.soloOutcome, outcome);
+        // Quien se reconecta a mitad de torneo recupera la general acumulada.
+        const tournament = room.tournamentState();
+        if (tournament) socket.emit(SERVER_EVENTS.tournament, tournament);
         if (room.soloProfileId) void sendRecords(socket, room.soloProfileId);
       });
     });
 
     socket.on(CLIENT_EVENTS.leaveRoom, () => {
-      const context = sessionOf(socket);
-      if (!context) return;
-      const { room, player } = context;
-      void socket.leave(roomChannel(room.code));
-      sessions.delete(socket.id);
-      room.removePlayer(player.id);
+      throttle(socket, () => {
+        const context = sessionOf(socket);
+        if (!context) return;
+        const { room, player } = context;
+        void socket.leave(roomChannel(room.code));
+        sessions.delete(socket.id);
+        room.removePlayer(player.id);
+      });
     });
 
     socket.on(CLIENT_EVENTS.selectGame, (payload) => {
@@ -264,6 +301,46 @@ export function registerSocketHandlers(io: Server): RoomManager {
       });
     });
 
+    socket.on(CLIENT_EVENTS.updateTournament, (payload) => {
+      guard(socket, tournamentModeSchema, payload, (config) => {
+        const context = sessionOf(socket);
+        if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
+        if (!context.player.isHost) {
+          return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede montar el torneo.');
+        }
+        const result = context.room.configureTournament(config);
+        if (!result.ok) {
+          fail(
+            socket,
+            context.room.solo ? 'SOLO_ROOM' : 'ALREADY_STARTED',
+            result.reason ?? 'No se puede cambiar el torneo ahora.',
+          );
+        }
+      });
+    });
+
+    socket.on(CLIENT_EVENTS.sendChat, (payload) => {
+      guard(socket, chatMessageSchema, payload, ({ text }) => {
+        const context = sessionOf(socket);
+        if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
+        if (context.room.solo) {
+          return fail(socket, 'SOLO_ROOM', 'En una práctica no hay con quién hablar.');
+        }
+        const result = context.room.postChatMessage(context.player.id, text);
+        if (!result.ok) fail(socket, 'RATE_LIMITED', result.reason ?? 'Espera un momento.');
+      });
+    });
+
+    socket.on(CLIENT_EVENTS.sendReaction, (payload) => {
+      guard(socket, chatReactionSchema, payload, ({ reaction }) => {
+        const context = sessionOf(socket);
+        if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
+        if (context.room.solo) return;
+        const result = context.room.postReaction(context.player.id, reaction);
+        if (!result.ok) fail(socket, 'RATE_LIMITED', result.reason ?? 'Espera un momento.');
+      });
+    });
+
     socket.on(CLIENT_EVENTS.setReady, (payload) => {
       guard(socket, readySchema, payload, ({ ready }) => {
         const context = sessionOf(socket);
@@ -273,24 +350,26 @@ export function registerSocketHandlers(io: Server): RoomManager {
     });
 
     socket.on(CLIENT_EVENTS.startGame, () => {
-      const context = sessionOf(socket);
-      if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
-      if (!context.player.isHost) {
-        return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede iniciar la partida.');
-      }
-      const result = context.room.startGame();
-      if (!result.ok) {
-        const connectedPlayers = context.room
-          .publicPlayers()
-          .filter((player) => player.connection === 'connected' && !player.isBot).length;
-        const code: ErrorCode =
-          context.room.currentPhase !== 'lobby'
-            ? 'ALREADY_STARTED'
-            : connectedPlayers < context.room.minPlayers
-              ? 'NOT_ENOUGH_PLAYERS'
-              : 'ACTION_REJECTED';
-        fail(socket, code, result.reason ?? 'No se puede iniciar la partida.');
-      }
+      throttle(socket, () => {
+        const context = sessionOf(socket);
+        if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
+        if (!context.player.isHost) {
+          return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede iniciar la partida.');
+        }
+        const result = context.room.startGame();
+        if (!result.ok) {
+          const connectedPlayers = context.room
+            .publicPlayers()
+            .filter((player) => player.connection === 'connected' && !player.isBot).length;
+          const code: ErrorCode =
+            context.room.currentPhase !== 'lobby'
+              ? 'ALREADY_STARTED'
+              : connectedPlayers < context.room.minPlayers
+                ? 'NOT_ENOUGH_PLAYERS'
+                : 'ACTION_REJECTED';
+          fail(socket, code, result.reason ?? 'No se puede iniciar la partida.');
+        }
+      });
     });
 
     socket.on(CLIENT_EVENTS.kickPlayer, (payload) => {
@@ -336,12 +415,14 @@ export function registerSocketHandlers(io: Server): RoomManager {
     });
 
     socket.on(CLIENT_EVENTS.backToLobby, () => {
-      const context = sessionOf(socket);
-      if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
-      if (!context.player.isHost) {
-        return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede volver al lobby.');
-      }
-      context.room.backToLobby();
+      throttle(socket, () => {
+        const context = sessionOf(socket);
+        if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
+        if (!context.player.isHost) {
+          return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede volver al lobby.');
+        }
+        context.room.backToLobby();
+      });
     });
 
     socket.on(CLIENT_EVENTS.gameAction, (payload) => {

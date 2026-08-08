@@ -1,5 +1,6 @@
+import { memo } from 'react';
 import { GAME_META } from '@arcade/shared';
-import { useApp } from '../store.js';
+import { useMatch, useRoom } from '../store.js';
 import { BackButton, type ExitAction } from './navigation.js';
 
 /**
@@ -8,8 +9,9 @@ import { BackButton, type ExitAction } from './navigation.js';
  * El anfitrion devuelve a todo el mundo al lobby; el resto abandona la sala.
  * En ambos casos se confirma antes, porque la accion afecta a los demas.
  */
-export function GameExitBar() {
-  const { room, isHost, backToLobby, leaveRoom, gameState } = useApp();
+function GameExitBarInner() {
+  const { room, isHost, backToLobby, leaveRoom } = useRoom();
+  const { gameState } = useMatch();
   if (!room) return null;
 
   const others = room.players.length - 1;
@@ -53,3 +55,9 @@ export function GameExitBar() {
     </div>
   );
 }
+
+/**
+ * La barra no depende del estado de la partida, solo de la sala y del turno de
+ * salida. Memoizarla evita repintarla en cada snapshot de fisica.
+ */
+export const GameExitBar = memo(GameExitBarInner);

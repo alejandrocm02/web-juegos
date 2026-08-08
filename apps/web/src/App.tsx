@@ -1,27 +1,38 @@
-import { useEffect } from 'react';
-import { useApp } from './store.js';
+import { Suspense, lazy, useEffect } from 'react';
+import { useMatch, useRoom } from './store.js';
 import HomeView from './views/HomeView.js';
 import LobbyView from './views/LobbyView.js';
 import ResultsView from './views/ResultsView.js';
-import QuizView from './games/QuizView.js';
-import DartsView from './games/DartsView.js';
-import PoolView from './games/PoolView.js';
-import GolfView from './games/GolfView.js';
-import BowlingView from './games/BowlingView.js';
-import KartsView from './games/KartsView.js';
-import ArenaView from './games/ArenaView.js';
-import BlackjackView from './games/BlackjackView.js';
-import SonglessView from './games/SonglessView.js';
-import ArcadeSportView from './games/ArcadeSportView.js';
-import HeadSportView from './games/HeadSportView.js';
-import TanksView from './games/TanksView.js';
-import { ErrorBanner, Toasts } from './components/ui.js';
+import { FloatingErrorBanner, ToastStack } from './components/Notices.js';
+import { ReactionOverlay } from './components/Chat.js';
 import { GameExitBar } from './components/GameExitBar.js';
 import { GameStage } from './components/GameStage.js';
 import { DisconnectedOverlay, EmptyState } from './views/StatusViews.js';
 
+/**
+ * Cada juego se descarga cuando hace falta, no al abrir la web.
+ *
+ * Con los catorce importados de golpe, quien solo quiere jugar al quiz se
+ * bajaba tambien la fisica de karts, el renderizador de golf y la arena. El
+ * `game:started` llega antes que el primer fotograma jugable, asi que la
+ * descarga del trozo se solapa con la cuenta atras y no se nota.
+ */
+const QuizView = lazy(() => import('./games/QuizView.js'));
+const DartsView = lazy(() => import('./games/DartsView.js'));
+const PoolView = lazy(() => import('./games/PoolView.js'));
+const GolfView = lazy(() => import('./games/GolfView.js'));
+const BowlingView = lazy(() => import('./games/BowlingView.js'));
+const KartsView = lazy(() => import('./games/KartsView.js'));
+const ArenaView = lazy(() => import('./games/ArenaView.js'));
+const BlackjackView = lazy(() => import('./games/BlackjackView.js'));
+const SonglessView = lazy(() => import('./games/SonglessView.js'));
+const ArcadeSportView = lazy(() => import('./games/ArcadeSportView.js'));
+const HeadSportView = lazy(() => import('./games/HeadSportView.js'));
+const TanksView = lazy(() => import('./games/TanksView.js'));
+
 export default function App() {
-  const { room, gameState, result, connected, toasts, session, me, error, dismissError } = useApp();
+  const { room, connected, session, me } = useRoom();
+  const { gameState, result } = useMatch();
 
   useEffect(() => {
     document.title = room ? 'Sala ' + room.code + ' | Parque Arcade' : 'Parque Arcade';
@@ -106,14 +117,26 @@ export default function App() {
   return (
     <>
       <DisconnectedOverlay visible={!connected} />
-      {inGame && error && (
-        <div className="fixed left-1/2 top-20 z-[60] w-[min(92vw,42rem)] -translate-x-1/2">
-          <ErrorBanner error={error} onDismiss={dismissError} />
-        </div>
-      )}
+      {inGame && <FloatingErrorBanner />}
       {inGame && <GameExitBar />}
-      {inGame && gameState ? <GameStage state={gameState}>{content}</GameStage> : content}
-      <Toasts toasts={toasts} />
+      {inGame && !room?.solo && <ReactionOverlay />}
+      {inGame && gameState ? (
+        <GameStage state={gameState}>
+          <Suspense
+            fallback={
+              <EmptyState
+                title="Cargando el juego…"
+                description="Preparando el tablero. Tardará solo un instante."
+              />
+            }
+          >
+            {content}
+          </Suspense>
+        </GameStage>
+      ) : (
+        content
+      )}
+      <ToastStack />
     </>
   );
 }

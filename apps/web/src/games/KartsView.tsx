@@ -6,7 +6,7 @@ import {
   type KartState,
 } from '@arcade/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useApp } from '../store.js';
+import { useMatch, useRoom } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 
 const VIEW_W = 1000;
@@ -21,7 +21,8 @@ interface DriveInput {
 const NEUTRAL: DriveInput = { throttle: 0, steer: 0, braking: false };
 
 export default function KartsView({ state }: { state: KartsPublicState }) {
-  const { sendAction, session, room, snapshotRef } = useApp();
+  const { session, room } = useRoom();
+  const { sendAction, snapshotRef } = useMatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keysRef = useRef(new Set<string>());
   const touchRef = useRef<DriveInput>({ ...NEUTRAL });

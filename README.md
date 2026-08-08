@@ -56,15 +56,22 @@ docker compose up --build
 El `Dockerfile` construye todo el monorepo y arranca **un único servicio** que sirve el cliente compilado y los WebSockets desde el mismo origen. No hay CORS entre partes ni un segundo despliegue que mantener.
 
 1. Sube el repositorio a GitHub.
-2. En Render: **New → Blueprint**, elige el repositorio. Render lee `render.yaml` y crea el servicio con el plan gratuito.
-3. Espera al primer build (unos minutos) y comparte la URL que te da Render.
+2. Crea una base de datos PostgreSQL gratuita en [Neon](https://neon.com) o [Supabase](https://supabase.com) y copia su cadena de conexión.
+3. En Render: **New → Blueprint**, elige el repositorio. Render lee `render.yaml` y crea el servicio con el plan gratuito. Te pedirá el valor de `DATABASE_URL`: pega ahí la cadena del paso 2.
+4. Espera al primer build (unos minutos) y comparte la URL que te da Render.
+
+**Por qué Postgres y no el SQLite de siempre.** El disco del plan gratuito de Render es efímero: se borra cada vez que el servicio se duerme y despierta. Con SQLite la aplicación funciona, pero las marcas personales del modo individual y las estadísticas desaparecen solas, que es justo lo contrario de lo que se espera de un récord. Una base externa gratuita lo resuelve sin coste.
+
+El Postgres gratuito **del propio Render** no sirve para esto: caduca a los 30 días, con 14 más de gracia antes de borrar los datos ([changelog](https://render.com/changelog/free-postgresql-instances-now-expire-after-30-days-previously-90)). Las capas gratuitas de Neon y Supabase no caducan por tiempo.
+
+Si prefieres seguir con SQLite y asumir que los récords son de usar y tirar, pon `DATABASE_URL=file:./dev.db` y todo funciona igual.
 
 No hace falta configurar `CORS_ORIGINS` ni `PUBLIC_WEB_URL`: el enlace de invitación se construye en el navegador a partir del dominio real, así que funciona igual en local, en red local y en producción.
 
 Dos avisos sobre el plan gratuito de Render:
 
 - El servicio se duerme tras unos 15 minutos sin visitas y la primera carga tarda cerca de un minuto en despertar. Abre la URL antes de convocar a la gente.
-- El disco es efímero: al reiniciar se pierde `dev.db` con las estadísticas históricas. Las partidas en curso no se ven afectadas porque siempre viven en memoria.
+- El disco es efímero. Con `DATABASE_URL` apuntando a un Postgres externo esto deja de importar; con SQLite se pierden las estadísticas y las marcas en cada reinicio. Las partidas en curso nunca se ven afectadas porque siempre viven en memoria.
 
 ---
 
@@ -81,6 +88,7 @@ Dos avisos sobre el plan gratuito de Render:
 | `npm run lint` / `npm run lint:fix`       | ESLint sobre todo el repositorio                              |
 | `npm run format` / `npm run format:check` | Prettier                                                      |
 | `npm test`                                | Tests unitarios y de integración (Vitest)                     |
+| `npm run test:coverage`                   | Lo mismo midiendo cobertura, con umbrales mínimos             |
 | `npm run test:e2e`                        | Tests de extremo a extremo con dos navegadores (Playwright)   |
 | `npm run db:push` / `npm run db:generate` | Prisma sobre SQLite (usan el `.env` de la raíz)               |
 | `npm run check`                           | lint + tipos + tests + build + E2E                            |
@@ -158,6 +166,9 @@ Todos los payloads de cliente a servidor se validan con Zod (`packages/shared/sr
 | `room:leave`           | —                                   | Libera la plaza y promociona anfitrión si hace falta                                |
 | `room:select-game`     | `{ game }`                          | Solo anfitrión, solo en lobby                                                       |
 | `room:update-settings` | `{ game, settings }`                | Solo anfitrión, solo en lobby                                                       |
+| `room:tournament`      | `{ enabled }` o `{ enabled, settings }` | Solo anfitrión, solo en lobby, 3–5 pruebas distintas                            |
+| `chat:send`            | `{ text }`                          | Saneado y máximo 160 caracteres, con enfriamiento de 700 ms                          |
+| `chat:react`           | `{ reaction }`                      | Solo emojis del catálogo, con enfriamiento de 1,2 s                                  |
 | `room:ready`           | `{ ready }`                         | Cualquier jugador                                                                   |
 | `room:start`           | —                                   | Solo anfitrión, con 2–5 conectados y todos preparados                               |
 | `room:kick`            | `{ playerId }`                      | Solo anfitrión, no a sí mismo                                                       |
@@ -181,8 +192,14 @@ Todos los payloads de cliente a servidor se validan con Zod (`packages/shared/sr
 | `solo:records`  | Listado completo de marcas personales del perfil                                                   |
 | `app:error`     | `{ code, message }` con códigos tipados                                                            |
 | `app:toast`     | Aviso puntual (individual o a toda la sala)                                                        |
+| `tournament:state` | Clasificación general del torneo tras cada prueba                                               |
+| `chat:history`  | Hilo completo al entrar o reconectar                                                               |
+| `chat:message`  | Mensaje nuevo de la sala                                                                           |
+| `chat:reaction` | Reacción efímera: se muestra unos segundos y no se guarda                                          |
 
-También hay una ruta HTTP equivalente para las marcas: `GET /api/records?profileId=<id>`.
+También hay rutas HTTP: `GET /api/records?profileId=<id>` para las marcas y `GET /api/metrics`
+con un resumen en texto plano del proceso (salas vivas, partidas en curso, jugadores conectados y
+memoria) para saber de un vistazo si el servidor está sufriendo.
 
 ---
 
@@ -212,7 +229,9 @@ También hay una ruta HTTP equivalente para las marcas: `GET /api/records?profil
 - Respuestas simultáneas y ocultas hasta que todos contestan o expira el tiempo.
 - 100 puntos por acierto + hasta 50 de bonificación por rapidez.
 - Clasificación después de cada pregunta y clasificación final.
-- Banco local de **46 preguntas en español** en siete categorías: cultura general, ciencia, historia, geografía, cine, música y tecnología.
+- Banco local de **151 preguntas en español** en siete categorías (21–22 por categoría): cultura general, ciencia, historia, geografía, cine, música y tecnología.
+- **Las cuatro respuestas se barajan en cada partida.** Con el orden fijo, a la tercera partida se memoriza la posición del botón en lugar de la respuesta.
+- El filtro de categorías se **respeta siempre**: si con las categorías marcadas no hay preguntas suficientes, la partida se acorta y se avisa, en vez de colar en silencio preguntas de categorías que nadie ha pedido. El lobby muestra cuántas hay disponibles antes de empezar.
 
 ### Dardos (301)
 
@@ -340,7 +359,46 @@ El texto del acento se aclara con `color-mix(... 45%, #ffffff)` porque el rojo y
 
 ---
 
-## 6. Modo individual
+## 6. Modo torneo, chat y modo individual
+
+### Modo torneo
+
+En una sala normal, el anfitrión puede encadenar **de tres a cinco pruebas** con una clasificación
+acumulada. No es un juego más: es un orquestador por encima de la sala que va lanzando partidas
+normales y sumando puntos entre una y otra, así que ningún juego se entera de que está dentro de un
+torneo.
+
+- Reparto por prueba: **10 · 7 · 5 · 3 · 1** puntos según la posición. La curva es suave a propósito:
+  una mala ronda no deja a nadie fuera y la última prueba sigue decidiendo.
+- Los empatados cobran lo mismo (dos primeros se llevan diez puntos cada uno). Es más generoso que
+  repartir, pero mucho más fácil de entender en pantalla.
+- Desempate de la general: **pruebas ganadas**. Si persiste, se muestra empate compartido.
+- Mientras dura el torneo, el juego seleccionado lo decide el orden de las pruebas: nadie puede
+  cambiarlo a mitad, ni siquiera el anfitrión.
+- Entre prueba y prueba, la pantalla de resultados muestra la clasificación de esa prueba **y** la
+  general, con la siguiente prueba anunciada.
+- La clasificación viaja dentro de `room:state`, así que quien recargue a mitad de torneo la
+  recupera sin pedir nada.
+
+Hay dos presets (**Clásico**, cinco pruebas; **Relámpago**, tres) o selección libre.
+
+### Chat y reacciones
+
+Dos canales para dos momentos distintos:
+
+- **Chat de texto** en el lobby, donde hay tiempo de escribir. Máximo 160 caracteres, se conservan
+  los 30 últimos mensajes y quien entra o se reconecta recibe el hilo completo. Enfriamiento de
+  700 ms por jugador.
+- **Seis reacciones** con emoji, disponibles también durante la partida, donde nadie va a soltar el
+  ratón para teclear. Son efímeras: aparecen unos segundos flotando sobre el tablero y no se
+  guardan. Enfriamiento de 1,2 s.
+
+El catálogo de reacciones es cerrado en lugar de aceptar cualquier emoji: así el servidor valida
+contra una lista, no hay que sanear texto arbitrario y la interfaz dibuja seis botones fijos.
+
+En las salas de práctica no hay chat: no hay con quién hablar.
+
+### Modo individual
 
 Los catorce juegos se pueden practicar en solitario desde la pestaña **Practicar** de la pantalla de inicio.
 
@@ -402,12 +460,38 @@ Se guardan en la tabla `SoloRecord` de SQLite, indexadas por un **identificador 
 ## 7. Pruebas
 
 ```bash
-npm test          # Vitest: 295 tests
-npm run test:e2e  # Playwright: dos navegadores compartiendo sala
+npm test             # Vitest: 346 tests
+npm run test:coverage # Los mismos, midiendo cobertura
+npm run test:e2e     # Playwright: dos navegadores compartiendo sala
 ```
 
-Actualmente hay **295 tests Vitest** y 9 flujos E2E (5 multijugador en `e2e/multiplayer.spec.ts` y 4 de modo individual en `e2e/solo.spec.ts`). GitHub Actions ejecuta el control completo
-en cada pull request y cada actualización de `main`, y conserva las trazas de Playwright si falla.
+Actualmente hay **346 tests Vitest** en 41 ficheros y 9 flujos E2E (5 multijugador en
+`e2e/multiplayer.spec.ts` y 4 de modo individual en `e2e/solo.spec.ts`). GitHub Actions ejecuta el
+control completo en cada pull request y cada actualización de `main`, mide la cobertura y conserva
+las trazas de Playwright si falla.
+
+### Cobertura
+
+`npm run test:coverage` mide la lógica que se puede probar sin navegador: servidor, reglas
+compartidas y simulaciones. Las vistas de React quedan fuera a propósito —se cubren con Playwright,
+y contarlas aquí daría un porcentaje engañoso.
+
+| Métrica     | Actual | Umbral mínimo |
+| ----------- | ------ | ------------- |
+| Líneas      | 83%    | 80%           |
+| Sentencias  | 83%    | 80%           |
+| Funciones   | 83%    | 80%           |
+| Ramas       | 79%    | 75%           |
+
+El umbral es de **no retroceso**: se sube cuando se añaden pruebas y no se baja para que pase una
+entrega. Si la cobertura cae por debajo, `test:coverage` falla y el informe HTML queda en `coverage/`
+y como artefacto de CI para ver qué se ha dejado de probar.
+
+### Pruebas de abuso
+
+`apps/server/tests/socket-abuse.test.ts` comprueba que el servidor aguanta a un cliente hostil:
+ráfagas de eventos sin payload, mensajes desproporcionados, acciones fuera de sala, potencias
+imposibles, nombres vacíos o duplicados, y el tope de salas del proceso.
 
 Cobertura de los tests exigidos del minigolf:
 
@@ -457,8 +541,10 @@ Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, config
 ## 8. Seguridad y robustez
 
 - **Validación Zod** de todos los eventos entrantes; los payloads inválidos responden con `app:error` y nunca tocan el estado.
-- **Rate limiting** por socket (60 mensajes / 5 s configurable) y límite de tamaño de mensaje (4 KB; el buffer de Socket.IO está limitado a 100 KB).
-- **Rate limiting HTTP** (120 peticiones/minuto) y cabeceras de seguridad con Helmet.
+- **Rate limiting** por socket (60 mensajes / 5 s configurable) y límite de tamaño de mensaje (4 KB; el buffer de Socket.IO está limitado a 100 KB). Los eventos sin payload (`room:start`, `room:back-to-lobby`, `room:leave`) pasan por el mismo limitador: arrancan o destruyen partidas enteras y alternarlos en bucle saturaría el proceso.
+- **Rate limiting HTTP** (120 peticiones/minuto) aplicado solo a `/api`, excluyendo `/api/health` y los ficheros estáticos, para que recargar la página desde varios equipos tras el mismo NAT no consuma el presupuesto.
+- **Tope de salas** (`MAX_ROOMS`, 500 por defecto): al alcanzarlo se rechazan las nuevas con un aviso claro en vez de agotar la memoria y tirar las partidas en curso.
+- **Cabeceras de seguridad con Helmet**, incluida una **Content-Security-Policy** estricta en producción (`default-src 'self'`, sin `object-src`, sin `frame-ancestors`). El cliente no carga nada de terceros, así que la política no necesita excepciones más allá de los estilos en línea de Tailwind y del WebSocket de Socket.IO. En desarrollo se desactiva porque Vite sirve desde otro origen con HMR.
 - **CORS por entorno**: abierto en desarrollo, lista blanca de `CORS_ORIGINS` en producción.
 - **Nombres** saneados (sin caracteres de control), longitud máxima y detección de duplicados ignorando acentos y mayúsculas.
 - **Identificadores internos** (`randomUUID`) independientes del nombre; el token de reconexión son 24 bytes aleatorios.
@@ -471,8 +557,23 @@ Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, config
 ## 9. Persistencia
 
 - Salas y partidas en curso: **en memoria**.
-- SQLite vía Prisma para resultados y estadísticas: partidas ganadas, golpes totales y hoyos en uno.
+- Prisma para resultados y estadísticas: partidas ganadas, golpes totales y hoyos en uno.
 - Marcas personales del modo individual en la tabla `SoloRecord`, indexadas por un identificador de perfil anónimo generado por el navegador. Si vienes de una base de datos anterior al modo individual, ejecuta `npm run db:push` para crear la tabla; mientras no exista, el servidor cae al almacén en memoria y avisa por consola.
+
+### El proveedor lo decide `DATABASE_URL`
+
+Prisma no admite `env()` en el campo `provider`: tiene que ser un literal en el esquema. Para no mantener dos esquemas en paralelo (que acabarían divergiendo), hay **uno solo** —`apps/server/prisma/schema.prisma`— y `scripts/prisma-schema.mjs` escribe una copia con el proveedor sustituido justo antes de invocar la CLI:
+
+| `DATABASE_URL`          | Proveedor    | Cuándo                                              |
+| ----------------------- | ------------ | --------------------------------------------------- |
+| `file:./dev.db`         | `sqlite`     | Desarrollo local. Sin servicios externos.           |
+| `postgresql://…`        | `postgresql` | Producción. Sobrevive a los reinicios del servicio. |
+| Ausente o no reconocida | `sqlite`     | Valor por defecto seguro.                           |
+
+La copia derivada (`schema.runtime.prisma`) se escribe en el mismo directorio que el original a propósito: así una ruta relativa como `file:./dev.db` sigue resolviendo al mismo sitio. Está en `.gitignore`.
+
+Como el proveedor solo se conoce al arrancar, el `CMD` del Dockerfile regenera el cliente de Prisma en el arranque del contenedor en lugar de en la construcción de la imagen. Si algo falla, el servidor arranca igual y cae al almacén en memoria: se pierden las estadísticas históricas, pero las partidas funcionan.
+
 - Limpieza automática de salas vacías (`ROOM_EMPTY_TTL_SECONDS`) y expulsión de desconectados sin vuelta (`RECONNECT_GRACE_SECONDS`).
 - Token anónimo en `localStorage` para reconectar tras recargar. No se almacena ningún dato personal: el alias es el único texto que introduce el jugador.
 
@@ -488,7 +589,8 @@ Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, config
 - La reproducción de sonidos del hoyo en uno se limita a un efecto sintetizado por el navegador (WebAudio), sin recursos externos.
 - El rediseño profundo cubre el marco común (cabecera, modo, ayuda, avisos y momentos destacados) y el tablero del billar en bola 8 (rayadas con franja, negra en negro, panel de grupos). Los escenarios de karts, arena y bolos siguen con su arte original de la fase anterior: no se han rehecho sus fondos.
 - Los bots del modo individual son deterministas por diseño dentro de cada dificultad: no aprenden ni se adaptan al rival entre partidas.
-- Las marcas personales viven en el navegador (identificador anónimo en `localStorage`) y en el SQLite del servidor. No se sincronizan entre dispositivos ni sobreviven a borrar los datos del navegador.
+- Las marcas personales viven en el navegador (identificador anónimo en `localStorage`) y en la base de datos del servidor. No se sincronizan entre dispositivos ni sobreviven a borrar los datos del navegador.
+- La regeneración del cliente de Prisma en el arranque del contenedor añade unos segundos al primer despliegue, a cambio de que la misma imagen sirva para SQLite y PostgreSQL sin reconstruirla.
 - Playwright necesita descargar Chromium la primera vez (`npx playwright install chromium`).
 - Si `npm audit` sigue avisando tras actualizar, borra `node_modules` y `package-lock.json` y reinstala: un `npm install` incremental conserva resoluciones antiguas del lockfile. Una instalación limpia da cero avisos.
 - El repositorio fija `overrides: { "brace-expansion": "^5.0.8" }` para que `npm audit` quede a cero: la cadena `eslint → minimatch@3 → brace-expansion@1` arrastraba un aviso de denegación de servicio que solo afectaba a la herramienta de desarrollo.

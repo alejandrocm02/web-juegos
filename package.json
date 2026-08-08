@@ -27,6 +27,7 @@
     "format:check": "prettier --check \"**/*.{ts,tsx,json,md,css}\"",
     "test": "npm run build:packages && vitest run",
     "test:watch": "vitest",
+    "test:coverage": "npm run build:packages && vitest run --coverage",
     "test:e2e": "npm run build:packages && npm run build -w @arcade/server && playwright test",
     "db:generate": "npm run db:generate -w @arcade/server",
     "db:push": "npm run db:push -w @arcade/server",
@@ -36,6 +37,7 @@
     "@eslint/js": "^9.14.0",
     "@playwright/test": "^1.48.2",
     "@types/node": "^22.9.0",
+    "@vitest/coverage-v8": "^3.2.7",
     "concurrently": "^9.1.0",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^9.1.0",
@@ -46,7 +48,13 @@
     "vite": "^7.3.6",
     "vitest": "^3.2.7"
   },
+  "_comentario_overrides": "brace-expansion 5 cambio su API: dejo de exportar la funcion directamente y ahora solo expone { expand }. Forzarlo en todo el arbol rompe a los dos consumidores que tenemos: minimatch 3 (que hace require('brace-expansion')()) y minimatch 9/10 (que hace .default()). Por eso el override va dirigido a cada rama con la version que respeta su contrato. Queda un aviso de npm audit en esta dependencia, solo de desarrollo: no viaja al servidor ni al cliente.",
   "overrides": {
-    "brace-expansion": "^5.0.8"
+    "minimatch@3": {
+      "brace-expansion": "^2.0.2"
+    },
+    "minimatch@>=9": {
+      "brace-expansion": "^4.0.1"
+    }
   }
 }

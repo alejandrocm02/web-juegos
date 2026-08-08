@@ -1,7 +1,11 @@
 import {
+  CHAT_HISTORY_SIZE,
   CLIENT_EVENTS,
   SERVER_EVENTS,
   type AppError,
+  type ChatMessage,
+  type ChatReactionEvent,
+  type ChatReactionId,
   type GameAction,
   type GameId,
   type GamePublicState,
@@ -29,6 +33,21 @@ import React, {
 import { socket } from './lib/socket.js';
 import { clearSession, loadProfileId, loadSession, saveName, saveSession } from './lib/session.js';
 
+/**
+ * Estado compartido de la aplicacion, repartido en tres contextos.
+ *
+ * Antes habia uno solo con todo dentro, asi que un `game:state` —hasta dos por
+ * segundo en los juegos con fisica— re-renderizaba tambien el lobby, los avisos
+ * y la barra de salida. Ahora cada consumidor se suscribe solo a lo que mira:
+ *
+ * - `useRoom`   sala, sesion, jugadores y acciones de lobby.
+ * - `useMatch`  estado de la partida en curso y envio de acciones.
+ * - `useNotices` avisos efimeros y errores.
+ *
+ * Los snapshots de fisica (20 Hz) siguen viajando por una `ref` y no provocan
+ * ningun render: las vistas los leen dentro de su propio bucle de dibujo.
+ */
+
 export interface Toast {
   id: number;
   message: string;
@@ -40,28 +59,18 @@ interface SessionInfo {
   code: string;
 }
 
-interface AppStateValue {
+export type AnySnapshot = GolfSnapshot | PoolSnapshot | ArcadeSportSnapshot | HeadSportSnapshot;
+
+interface RoomContextValue {
   connected: boolean;
   session: SessionInfo | null;
   room: RoomSummary | null;
-  gameState: GamePublicState | null;
-  result: MatchResult | null;
-  error: AppError | null;
-  toasts: Toast[];
-  golfEvents: GolfFeedEvent[];
-  /** Ultimo evento de partida sin interpretar, para los momentos destacados. */
-  lastGameEvent: { id: number; payload: unknown } | null;
-  snapshotRef: React.MutableRefObject<
-    GolfSnapshot | PoolSnapshot | ArcadeSportSnapshot | HeadSportSnapshot | null
-  >;
   me: RoomSummary['players'][number] | null;
   isHost: boolean;
   /** true si la sala actual es una práctica en solitario. */
   isSolo: boolean;
   /** Marcas personales de este navegador, ya ordenadas por el servidor. */
   records: SoloRecord[];
-  /** Desenlace de la última práctica terminada. */
-  soloOutcome: SoloOutcome | null;
   createRoom: (name: string) => void;
   createSoloRoom: (name: string, game: GameId, config: SoloConfig) => void;
   updateSoloConfig: (config: SoloConfig) => void;
@@ -75,12 +84,47 @@ interface AppStateValue {
   kickPlayer: (playerId: string) => void;
   transferHost: (playerId: string) => void;
   backToLobby: () => void;
+  /** Monta, reconfigura o cancela el torneo de la sala. */
+  setTournament: (games: GameId[] | null) => void;
+}
+
+interface MatchContextValue {
+  gameState: GamePublicState | null;
+  result: MatchResult | null;
+  golfEvents: GolfFeedEvent[];
+  /** Ultimo evento de partida sin interpretar, para los momentos destacados. */
+  lastGameEvent: { id: number; payload: unknown } | null;
+  snapshotRef: React.MutableRefObject<AnySnapshot | null>;
+  /** Desenlace de la última práctica terminada. */
+  soloOutcome: SoloOutcome | null;
   sendAction: (action: GameAction) => void;
+}
+
+interface NoticeContextValue {
+  toasts: Toast[];
+  error: AppError | null;
   pushToast: (message: string) => void;
   dismissError: () => void;
 }
 
-const AppContext = createContext<AppStateValue | null>(null);
+interface ChatContextValue {
+  messages: ChatMessage[];
+  /** Reacciones vivas ahora mismo. Se retiran solas a los pocos segundos. */
+  reactions: (ChatReactionEvent & { key: number })[];
+  /** Mensajes recibidos desde la última vez que se abrió el chat. */
+  unread: number;
+  sendChat: (text: string) => void;
+  sendReaction: (reaction: ChatReactionId) => void;
+  markChatRead: () => void;
+}
+
+const RoomContext = createContext<RoomContextValue | null>(null);
+const MatchContext = createContext<MatchContextValue | null>(null);
+const NoticeContext = createContext<NoticeContextValue | null>(null);
+const ChatContext = createContext<ChatContextValue | null>(null);
+
+/** Tiempo que una reaccion permanece en pantalla. */
+const REACTION_TTL_MS = 3200;
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [connected, setConnected] = useState(socket.connected);
@@ -94,10 +138,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [lastGameEvent, setLastGameEvent] = useState<{ id: number; payload: unknown } | null>(null);
   const [records, setRecords] = useState<SoloRecord[]>([]);
   const [soloOutcome, setSoloOutcome] = useState<SoloOutcome | null>(null);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [reactions, setReactions] = useState<(ChatReactionEvent & { key: number })[]>([]);
+  const [unread, setUnread] = useState(0);
   const eventId = useRef(0);
-  const snapshotRef = useRef<
-    GolfSnapshot | PoolSnapshot | ArcadeSportSnapshot | HeadSportSnapshot | null
-  >(null);
+  const reactionKey = useRef(0);
+  const snapshotRef = useRef<AnySnapshot | null>(null);
   const pendingName = useRef<string>('');
   const sessionRef = useRef<SessionInfo | null>(null);
   const sessionRecoveryRef = useRef(false);
@@ -110,6 +156,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => [...prev.slice(-3), { id, message }]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4200);
   }, []);
+
+  const dismissError = useCallback(() => setError(null), []);
 
   // Esta referencia debe ser estable: varios juegos la usan como dependencia
   // de efectos de entrada o sincronización.
@@ -191,9 +239,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setGameState(payload.state);
     };
     const onState = (payload: GamePublicState) => setGameState(payload);
-    const onSnapshot = (
-      payload: GolfSnapshot | PoolSnapshot | ArcadeSportSnapshot | HeadSportSnapshot,
-    ) => {
+    const onSnapshot = (payload: AnySnapshot) => {
       snapshotRef.current = payload;
     };
     const onGameEvent = (payload: GolfFeedEvent) => {
@@ -226,6 +272,29 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
     };
     const onToast = (payload: { message: string }) => pushToast(payload.message);
+    const onChatHistory = (payload: { messages: ChatMessage[] }) => {
+      setMessages(payload.messages ?? []);
+      setUnread(0);
+    };
+    const onChatMessage = (payload: ChatMessage) => {
+      setMessages((prev) => [...prev, payload].slice(-CHAT_HISTORY_SIZE));
+      // Los mensajes propios no cuentan como pendientes de leer.
+      if (payload.playerId !== sessionRef.current?.playerId) setUnread((prev) => prev + 1);
+    };
+    const onChatReaction = (payload: ChatReactionEvent) => {
+      reactionKey.current += 1;
+      const key = reactionKey.current;
+      setReactions((prev) => [...prev.slice(-7), { ...payload, key }]);
+      // Se retira sola: una reaccion es un instante, no un registro.
+      setTimeout(
+        () => setReactions((prev) => prev.filter((entry) => entry.key !== key)),
+        REACTION_TTL_MS,
+      );
+    };
+    const onTournament = () => {
+      // El estado del torneo ya viaja dentro de room:state; este evento solo
+      // sirve para no depender del orden de llegada al terminar una prueba.
+    };
 
     socket.on('connect', onConnect);
     socket.on('disconnect', onDisconnect);
@@ -242,6 +311,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     socket.on(SERVER_EVENTS.toast, onToast);
     socket.on(SERVER_EVENTS.soloRecords, onRecords);
     socket.on(SERVER_EVENTS.soloOutcome, onSoloOutcome);
+    socket.on(SERVER_EVENTS.chatHistory, onChatHistory);
+    socket.on(SERVER_EVENTS.chatMessage, onChatMessage);
+    socket.on(SERVER_EVENTS.chatReaction, onChatReaction);
+    socket.on(SERVER_EVENTS.tournament, onTournament);
     if (socket.connected) onConnect();
 
     return () => {
@@ -260,6 +333,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       socket.off(SERVER_EVENTS.toast, onToast);
       socket.off(SERVER_EVENTS.soloRecords, onRecords);
       socket.off(SERVER_EVENTS.soloOutcome, onSoloOutcome);
+      socket.off(SERVER_EVENTS.chatHistory, onChatHistory);
+      socket.off(SERVER_EVENTS.chatMessage, onChatMessage);
+      socket.off(SERVER_EVENTS.chatReaction, onChatReaction);
+      socket.off(SERVER_EVENTS.tournament, onTournament);
     };
   }, [pushToast]);
 
@@ -268,29 +345,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return room.players.find((p) => p.id === session.playerId) ?? null;
   }, [room, session]);
 
-  const value = useMemo<AppStateValue>(
+  /* --------------------------- Acciones estables -------------------------- */
+
+  const actions = useMemo(
     () => ({
-      connected,
-      session,
-      room,
-      gameState,
-      result,
-      error,
-      toasts,
-      golfEvents,
-      lastGameEvent,
-      snapshotRef,
-      me,
-      isHost: Boolean(me?.isHost),
-      isSolo: Boolean(room?.solo),
-      records,
-      soloOutcome,
-      createRoom: (name) => {
+      createRoom: (name: string) => {
         pendingName.current = name;
         saveName(name);
         socket.emit(CLIENT_EVENTS.createRoom, { name });
       },
-      createSoloRoom: (name, game, config) => {
+      createSoloRoom: (name: string, game: GameId, config: SoloConfig) => {
         pendingName.current = name;
         saveName(name);
         setSoloOutcome(null);
@@ -301,10 +365,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           config,
         });
       },
-      updateSoloConfig: (config) => socket.emit(CLIENT_EVENTS.updateSoloConfig, config),
+      updateSoloConfig: (config: SoloConfig) => socket.emit(CLIENT_EVENTS.updateSoloConfig, config),
       refreshRecords: () =>
         socket.emit(CLIENT_EVENTS.requestRecords, { profileId: profileId.current }),
-      joinRoom: (code, name) => {
+      joinRoom: (code: string, name: string) => {
         pendingName.current = name;
         saveName(name);
         socket.emit(CLIENT_EVENTS.joinRoom, { code, name });
@@ -319,42 +383,112 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setGameState(null);
         setResult(null);
         setSoloOutcome(null);
+        setMessages([]);
+        setReactions([]);
+        setUnread(0);
       },
-      selectGame: (game) => socket.emit(CLIENT_EVENTS.selectGame, { game }),
-      updateSettings: (game, settings) =>
+      selectGame: (game: GameId) => socket.emit(CLIENT_EVENTS.selectGame, { game }),
+      updateSettings: <K extends GameId>(game: K, settings: GameSettings[K]) =>
         socket.emit(CLIENT_EVENTS.updateSettings, { game, settings }),
-      setReady: (ready) => socket.emit(CLIENT_EVENTS.setReady, { ready }),
+      setReady: (ready: boolean) => socket.emit(CLIENT_EVENTS.setReady, { ready }),
       startGame: () => socket.emit(CLIENT_EVENTS.startGame),
-      kickPlayer: (playerId) => socket.emit(CLIENT_EVENTS.kickPlayer, { playerId }),
-      transferHost: (playerId) => socket.emit(CLIENT_EVENTS.transferHost, { playerId }),
+      kickPlayer: (playerId: string) => socket.emit(CLIENT_EVENTS.kickPlayer, { playerId }),
+      transferHost: (playerId: string) => socket.emit(CLIENT_EVENTS.transferHost, { playerId }),
       backToLobby: () => socket.emit(CLIENT_EVENTS.backToLobby),
-      sendAction,
-      pushToast,
-      dismissError: () => setError(null),
+      setTournament: (games: GameId[] | null) => {
+        if (!games) {
+          socket.emit(CLIENT_EVENTS.updateTournament, { enabled: false });
+          return;
+        }
+        socket.emit(CLIENT_EVENTS.updateTournament, {
+          enabled: true,
+          settings: { games, preset: 'personalizado' },
+        });
+      },
     }),
-    [
+    [],
+  );
+
+  /* ------------------------------- Contextos ------------------------------ */
+
+  const roomValue = useMemo<RoomContextValue>(
+    () => ({
       connected,
       session,
       room,
-      gameState,
-      result,
-      error,
-      toasts,
-      golfEvents,
-      lastGameEvent,
       me,
+      isHost: Boolean(me?.isHost),
+      isSolo: Boolean(room?.solo),
       records,
-      soloOutcome,
-      sendAction,
-      pushToast,
-    ],
+      ...actions,
+    }),
+    [connected, session, room, me, records, actions],
   );
 
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+  const matchValue = useMemo<MatchContextValue>(
+    () => ({
+      gameState,
+      result,
+      golfEvents,
+      lastGameEvent,
+      snapshotRef,
+      soloOutcome,
+      sendAction,
+    }),
+    [gameState, result, golfEvents, lastGameEvent, soloOutcome, sendAction],
+  );
+
+  const chatValue = useMemo<ChatContextValue>(
+    () => ({
+      messages,
+      reactions,
+      unread,
+      sendChat: (text: string) => socket.emit(CLIENT_EVENTS.sendChat, { text }),
+      sendReaction: (reaction: ChatReactionId) =>
+        socket.emit(CLIENT_EVENTS.sendReaction, { reaction }),
+      markChatRead: () => setUnread(0),
+    }),
+    [messages, reactions, unread],
+  );
+
+  const noticeValue = useMemo<NoticeContextValue>(
+    () => ({ toasts, error, pushToast, dismissError }),
+    [toasts, error, pushToast, dismissError],
+  );
+
+  return (
+    <RoomContext.Provider value={roomValue}>
+      <MatchContext.Provider value={matchValue}>
+        <NoticeContext.Provider value={noticeValue}>
+          <ChatContext.Provider value={chatValue}>{children}</ChatContext.Provider>
+        </NoticeContext.Provider>
+      </MatchContext.Provider>
+    </RoomContext.Provider>
+  );
 }
 
-export function useApp(): AppStateValue {
-  const ctx = useContext(AppContext);
-  if (!ctx) throw new Error('useApp debe usarse dentro de AppProvider');
-  return ctx;
+function useRequired<T>(context: React.Context<T | null>, name: string): T {
+  const value = useContext(context);
+  if (!value) throw new Error(name + ' debe usarse dentro de AppProvider');
+  return value;
+}
+
+/** Sala, sesion y acciones de lobby. No cambia durante la fisica de la partida. */
+export function useRoom(): RoomContextValue {
+  return useRequired(RoomContext, 'useRoom');
+}
+
+/** Estado de la partida en curso y envio de acciones. */
+export function useMatch(): MatchContextValue {
+  return useRequired(MatchContext, 'useMatch');
+}
+
+/** Avisos efimeros y ultimo error recibido. */
+export function useNotices(): NoticeContextValue {
+  return useRequired(NoticeContext, 'useNotices');
+}
+
+/** Chat de sala y reacciones rapidas. */
+export function useChat(): ChatContextValue {
+  return useRequired(ChatContext, 'useChat');
 }

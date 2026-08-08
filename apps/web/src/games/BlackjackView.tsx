@@ -1,6 +1,6 @@
 import type { BlackjackCard, BlackjackPublicState, BlackjackRoundResult } from '@arcade/shared';
 import { Countdown, Panel, PlayerIconGlyph } from '../components/ui.js';
-import { useApp } from '../store.js';
+import { useMatch, useRoom } from '../store.js';
 
 const SUIT_GLYPH: Record<BlackjackCard['suit'], string> = {
   hearts: '♥',
@@ -48,7 +48,8 @@ function PlayingCard({ card }: { card: BlackjackCard | null }) {
 }
 
 export default function BlackjackView({ state }: { state: BlackjackPublicState }) {
-  const { room, session, sendAction } = useApp();
+  const { room, session } = useRoom();
+  const { sendAction } = useMatch();
   const myId = session?.playerId ?? '';
   const myHand = state.hands[myId];
   const isMyTurn = state.phase === 'playing' && state.activePlayerId === myId;

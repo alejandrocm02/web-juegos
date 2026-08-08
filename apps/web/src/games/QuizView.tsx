@@ -1,11 +1,12 @@
 import type { QuizPublicState } from '@arcade/shared';
 import { useEffect, useRef, useState } from 'react';
-import { useApp } from '../store.js';
+import { useMatch, useRoom } from '../store.js';
 import { Panel, PlayerIconGlyph, ProgressBar, Scoreboard } from '../components/ui.js';
 import { quizCategoryLabel } from '../lib/format.js';
 
 export default function QuizView({ state }: { state: QuizPublicState }) {
-  const { sendAction, session, room } = useApp();
+  const { session, room } = useRoom();
+  const { sendAction } = useMatch();
   const [now, setNow] = useState(Date.now());
   const [picked, setPicked] = useState<number | null>(null);
   const phaseDuration = useRef(1);

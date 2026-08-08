@@ -25,6 +25,10 @@ const envSchema = z.object({
   RECONNECT_GRACE_SECONDS: z.coerce.number().int().min(10).max(3600).default(90),
   SOCKET_RATE_LIMIT: z.coerce.number().int().min(5).max(1000).default(60),
   SOCKET_RATE_WINDOW_MS: z.coerce.number().int().min(500).max(60000).default(5000),
+  // Tope duro de salas vivas en el proceso. Sin el, un cliente automatizado
+  // puede crear salas en bucle hasta agotar la memoria: cada una sobrevive
+  // ROOM_EMPTY_TTL_SECONDS aunque se abandone al instante.
+  MAX_ROOMS: z.coerce.number().int().min(1).max(100000).default(500),
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 });
 

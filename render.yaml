@@ -14,8 +14,15 @@ services:
         value: production
       - key: PORT
         value: 3001
+      # Cadena de conexion de la base de datos.
+      #
+      # Se rellena a mano en el panel de Render (Environment) porque es un
+      # secreto. Con una URL `postgres://...` las marcas personales y las
+      # estadisticas sobreviven a los reinicios; con `file:./dev.db` se usa
+      # SQLite, que en el plan gratuito se borra cada vez que el servicio
+      # despierta porque el disco es efimero.
       - key: DATABASE_URL
-        value: file:./dev.db
+        sync: false
       - key: LOG_LEVEL
         value: info
       # CORS_ORIGINS y PUBLIC_WEB_URL no hacen falta: cliente y servidor

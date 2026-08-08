@@ -7,7 +7,7 @@ import {
   defaultSoloConfig,
 } from '@arcade/shared';
 import { useEffect, useState } from 'react';
-import { useApp } from '../store.js';
+import { useNotices, useRoom } from '../store.js';
 import { loadName } from '../lib/session.js';
 import { ErrorBanner, GameIcon } from '../components/ui.js';
 import { SoloSetup, type SoloSetupValue } from './SoloSetup.js';
@@ -16,8 +16,8 @@ import { RecordsPanel } from './RecordsPanel.js';
 type HomeMode = 'create' | 'join' | 'solo';
 
 export default function HomeView() {
-  const { createRoom, createSoloRoom, joinRoom, error, dismissError, connected, records } =
-    useApp();
+  const { createRoom, createSoloRoom, joinRoom, connected, records } = useRoom();
+  const { error, dismissError } = useNotices();
   const [name, setName] = useState(loadName());
   const [code, setCode] = useState('');
   const [mode, setMode] = useState<HomeMode>('create');

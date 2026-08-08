@@ -1,4 +1,6 @@
-export function DisconnectedOverlay({ visible }: { visible: boolean }) {
+import { memo } from 'react';
+
+function DisconnectedOverlayInner({ visible }: { visible: boolean }) {
   if (!visible) return null;
   return (
     <div className="fixed inset-x-0 top-0 z-50 bg-amber-500/90 px-4 py-2 text-center text-sm font-semibold text-night-900">
@@ -15,3 +17,6 @@ export function EmptyState({ title, description }: { title: string; description:
     </main>
   );
 }
+
+/** Solo cambia cuando cambia la conexion, no en cada fotograma de la partida. */
+export const DisconnectedOverlay = memo(DisconnectedOverlayInner);

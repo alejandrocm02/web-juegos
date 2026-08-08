@@ -19,6 +19,8 @@ import {
 } from './games/modes.js';
 import { TANK_MAP_IDS } from './games/tanks.js';
 import { BOT_DIFFICULTIES } from './games/solo.js';
+import { TOURNAMENT_MAX_ROUNDS, TOURNAMENT_MIN_ROUNDS } from './games/tournament.js';
+import { CHAT_REACTION_IDS, sanitizeChatMessage } from './chat.js';
 import { sanitizeName } from './util.js';
 
 /* -------------------------------------------------------------------------- */
@@ -186,6 +188,46 @@ export const createSoloRoomSchema = z.object({
 });
 
 export const updateSoloConfigSchema = soloConfigSchema;
+
+/**
+ * Configuracion del torneo.
+ *
+ * Se valida aparte de `settingsPatchSchema` porque no es la configuracion de un
+ * juego, sino la del orquestador que los encadena.
+ */
+export const tournamentSettingsSchema = z.object({
+  games: z
+    .array(gameIdSchema)
+    .min(TOURNAMENT_MIN_ROUNDS)
+    .max(TOURNAMENT_MAX_ROUNDS)
+    .refine((games) => new Set(games).size === games.length, {
+      message: 'No se puede repetir la misma prueba en un torneo',
+    }),
+  preset: z.enum(['clasico', 'relampago', 'personalizado']),
+});
+
+/**
+ * Mensaje de chat.
+ *
+ * El saneado se hace dentro del propio esquema, igual que con los nombres: al
+ * servidor nunca le llega texto sin limpiar, y el limite duro de 400 caracteres
+ * antes de recortar evita gastar CPU saneando parrafadas.
+ */
+export const chatMessageSchema = z.object({
+  text: z
+    .string()
+    .max(400)
+    .transform((value) => sanitizeChatMessage(value))
+    .refine((value) => value.length > 0, { message: 'El mensaje está vacío' }),
+});
+
+export const chatReactionSchema = z.object({ reaction: z.enum(CHAT_REACTION_IDS) });
+
+/** Activar o desactivar el torneo y, si se activa, con que pruebas. */
+export const tournamentModeSchema = z.discriminatedUnion('enabled', [
+  z.object({ enabled: z.literal(false) }),
+  z.object({ enabled: z.literal(true), settings: tournamentSettingsSchema }),
+]);
 
 export const recordsQuerySchema = z.object({ profileId: profileIdSchema });
 export const rejoinSchema = z.object({ code: roomCodeSchema, token: z.string().min(10).max(200) });
@@ -367,6 +409,9 @@ export const CLIENT_EVENTS = {
   leaveRoom: 'room:leave',
   selectGame: 'room:select-game',
   updateSettings: 'room:update-settings',
+  updateTournament: 'room:tournament',
+  sendChat: 'chat:send',
+  sendReaction: 'chat:react',
   setReady: 'room:ready',
   startGame: 'room:start',
   kickPlayer: 'room:kick',
@@ -387,6 +432,13 @@ export const SERVER_EVENTS = {
   gameOver: 'game:over',
   kicked: 'room:kicked',
   toast: 'app:toast',
+  /** Clasificacion del torneo tras cada prueba y al terminar. */
+  tournament: 'tournament:state',
+  /** Un mensaje nuevo. El historial completo viaja en `chat:history`. */
+  chatMessage: 'chat:message',
+  chatHistory: 'chat:history',
+  /** Reaccion efimera: se muestra y se descarta, no se guarda. */
+  chatReaction: 'chat:reaction',
   /** Marca personal calculada al terminar una partida en solitario. */
   soloOutcome: 'solo:outcome',
   /** Listado completo de marcas personales del perfil. */

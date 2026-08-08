@@ -6,13 +6,14 @@ import {
   type DartsPublicState,
 } from '@arcade/shared';
 import { useEffect, useRef, useState } from 'react';
-import { useApp } from '../store.js';
+import { useMatch, useRoom } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 
 const SIZE = 420;
 
 export default function DartsView({ state }: { state: DartsPublicState }) {
-  const { sendAction, session, room } = useApp();
+  const { session, room } = useRoom();
+  const { sendAction } = useMatch();
   const boardRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
   const [now, setNow] = useState(Date.now());

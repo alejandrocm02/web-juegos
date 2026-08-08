@@ -1,11 +1,14 @@
 node_modules/
 dist/
 coverage/
+.nyc_output/
 *.log
 .env
 .env.local
 *.db
 *.db-journal
+# Esquema derivado que genera run-prisma.mjs al elegir proveedor.
+schema.runtime.prisma
 playwright-report/
 test-results/
 *.tsbuildinfo

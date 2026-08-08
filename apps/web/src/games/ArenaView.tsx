@@ -8,7 +8,7 @@ import {
   type ArenaSnapshot,
 } from '@arcade/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useApp } from '../store.js';
+import { useMatch, useRoom } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 
 const VIEW = 720;
@@ -21,7 +21,8 @@ interface Intent {
 }
 
 export default function ArenaView({ state }: { state: ArenaPublicState }) {
-  const { sendAction, session, room, snapshotRef } = useApp();
+  const { session, room } = useRoom();
+  const { sendAction, snapshotRef } = useMatch();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keysRef = useRef(new Set<string>());
   const touchRef = useRef({ moveX: 0, moveY: 0, attack: false });
