@@ -34,6 +34,11 @@ vi.mock('../src/games/registry.js', () => {
     prefetchGame: vi.fn(),
   };
 });
+// Las reacciones flotantes leen su propio contexto: se sustituye igual que el
+// store para que App se pueda montar suelto.
+vi.mock('../src/lib/chat-store.js', () => ({
+  useChat: () => ({ messages: [], reactions: [], sendChat: vi.fn(), sendReaction: vi.fn() }),
+}));
 vi.mock('../src/views/LobbyView.js', () => ({ default: () => <div>vista:lobby</div> }));
 vi.mock('../src/views/HomeView.js', () => ({ default: () => <div>vista:inicio</div> }));
 vi.mock('../src/views/ResultsView.js', () => ({ default: () => <div>vista:resultados</div> }));

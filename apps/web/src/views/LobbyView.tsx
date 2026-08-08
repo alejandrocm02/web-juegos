@@ -3,6 +3,7 @@ import {
   BOT_DIFFICULTY_META,
   GAME_IDS,
   GAME_META,
+  TOURNAMENT_PRESETS,
   botRangeFor,
   soloUsesBots,
   type GameId,
@@ -16,6 +17,8 @@ import { EmptyState } from './StatusViews.js';
 import { RecordsPanel } from './RecordsPanel.js';
 import { GameSettingsForm } from './lobby/GameSettingsForm.js';
 import { ModeSelector } from './lobby/ModeSelector.js';
+import { TournamentPanel, TournamentStandings } from './lobby/TournamentPanel.js';
+import { ChatPanel } from '../components/Chat.js';
 
 export default function LobbyView() {
   const {
@@ -32,6 +35,7 @@ export default function LobbyView() {
     kickPlayer,
     transferHost,
     leaveRoom,
+    setTournament,
     error,
     dismissError,
   } = useApp();
@@ -71,6 +75,9 @@ export default function LobbyView() {
   const canStart = connectedPlayers.length >= room.minPlayers && allReady;
   const currentMode = room.settings[room.selectedGame].mode;
   const botRange = botRangeFor(room.selectedGame);
+  // Durante un torneo el orden de las pruebas manda: nadie cambia de juego a
+  // mitad, ni siquiera el anfitrion.
+  const canPickGame = isHost && !(room.tournament && !room.tournament.finished);
   // Con rivales del servidor la sala cuenta como partida normal a efectos de modos.
   const participants = isSolo ? 1 + botPlayers.length : room.players.length;
 
@@ -339,9 +346,47 @@ export default function LobbyView() {
         </Panel>
 
         <div className="space-y-6">
+          {!isSolo && (
+            <Panel title="Chat de la sala" subtitle="Últimos mensajes y reacciones">
+              <ChatPanel />
+            </Panel>
+          )}
+
+          {!isSolo && (
+            <Panel
+              title="Torneo"
+              subtitle={
+                room.tournament
+                  ? 'Las pruebas se juegan en orden'
+                  : 'Encadena varias pruebas en una sola velada'
+              }
+            >
+              <TournamentPanel
+                tournament={room.tournament}
+                disabled={!isHost}
+                onToggle={(enabled) =>
+                  setTournament(enabled ? [...TOURNAMENT_PRESETS.relampago.games] : null)
+                }
+                onGamesChange={(games) => setTournament(games)}
+              />
+              {room.tournament && room.tournament.rounds.length > 0 && (
+                <div className="mt-4">
+                  <span className="label">Clasificación general</span>
+                  <TournamentStandings tournament={room.tournament} />
+                </div>
+              )}
+            </Panel>
+          )}
+
           <Panel
-            title="Elige el juego"
-            subtitle={isHost ? 'Solo el anfitrión decide' : 'El anfitrión decide'}
+            title={room.tournament ? 'Prueba en juego' : 'Elige el juego'}
+            subtitle={
+              room.tournament
+                ? 'Lo decide el orden del torneo'
+                : isHost
+                  ? 'Solo el anfitrión decide'
+                  : 'El anfitrión decide'
+            }
           >
             <div className="grid gap-3 sm:grid-cols-2">
               {GAME_IDS.map((id) => {
@@ -349,8 +394,8 @@ export default function LobbyView() {
                 return (
                   <button
                     key={id}
-                    onClick={() => isHost && selectGame(id)}
-                    disabled={!isHost}
+                    onClick={() => canPickGame && selectGame(id)}
+                    disabled={!canPickGame}
                     // El nombre accesible seria "Quiz 10 preguntas a contrarreloj" y
                     // chocaria con el boton "Iniciar Quiz". Con aria-label la tarjeta
                     // se anuncia por su juego y queda identificable sin ambiguedad.
@@ -361,7 +406,7 @@ export default function LobbyView() {
                       (active
                         ? 'bg-white/[0.08] shadow-glow'
                         : 'border-white/[0.08] bg-white/[0.025] hover:-translate-y-0.5 hover:bg-white/[0.055]') +
-                      (isHost ? '' : ' cursor-not-allowed opacity-70')
+                      (canPickGame ? '' : ' cursor-not-allowed opacity-70')
                     }
                     style={active ? { borderColor: GAME_META[id].accent } : undefined}
                   >

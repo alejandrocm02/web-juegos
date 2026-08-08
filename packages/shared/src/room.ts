@@ -1,4 +1,6 @@
 import type { GameId, PlayerIcon } from './constants.js';
+import type { QuizCategory } from './games/quiz.js';
+import type { TournamentPublicState } from './games/tournament.js';
 import type {
   ArenaMode,
   BowlingMode,
@@ -43,7 +45,8 @@ export interface QuizSettings {
   mode: QuizMode;
   questionCount: number;
   secondsPerQuestion: number;
-  categories: string[];
+  /** Vacío = todas. Tipado en vez de `string[]` para que el filtro no mienta. */
+  categories: QuizCategory[];
 }
 
 export interface DartsSettings {
@@ -193,6 +196,13 @@ export interface RoomSummary {
   solo: boolean;
   /** Configuración de rivales del servidor. Solo se usa si `solo` es true. */
   soloConfig: SoloConfig;
+  /**
+   * Torneo en curso o configurado, o `null` si la sala juega partidas sueltas.
+   *
+   * Viaja dentro del estado de sala para que quien se reconecte a mitad de un
+   * torneo recupere la clasificación acumulada sin pedir nada.
+   */
+  tournament: TournamentPublicState | null;
 }
 
 export interface ScoreRow {

@@ -79,6 +79,7 @@ Dos avisos sobre el plan gratuito de Render:
 | `npm run typecheck`                       | Comprobación de tipos de todos los workspaces                 |
 | `npm run lint` / `npm run lint:fix`       | ESLint sobre todo el repositorio                              |
 | `npm run format` / `npm run format:check` | Prettier                                                      |
+| `npm run test:coverage`                   | Los mismos tests midiendo cobertura, con umbrales mínimos     |
 | `npm test`                                | Tests unitarios y de integración (Vitest)                     |
 | `npm run test:e2e`                        | Tests de extremo a extremo con dos navegadores (Playwright)   |
 | `npm run db:push` / `npm run db:generate` | Prisma sobre SQLite (usan el `.env` de la raíz)               |
@@ -150,40 +151,47 @@ Todos los payloads de cliente a servidor se validan con Zod (`packages/shared/sr
 
 ### Cliente → servidor
 
-| Evento                 | Payload                             | Reglas                                                                              |
-| ---------------------- | ----------------------------------- | ----------------------------------------------------------------------------------- |
-| `room:create`          | `{ name }`                          | Nombre saneado, 2–16 caracteres                                                     |
-| `room:create-solo`     | `{ name, profileId, game, config }` | Sala de práctica: un humano, bots opcionales                                        |
-| `room:solo-config`     | `{ botCount, botDifficulty }`       | Solo en salas de práctica, solo en lobby                                            |
-| `solo:records`         | `{ profileId }`                     | Devuelve las marcas personales del perfil anónimo                                   |
-| `room:join`            | `{ code, name }`                    | Sala existente, con hueco, en lobby y sin nombre duplicado. Rechaza las de práctica |
-| `room:rejoin`          | `{ code, token }`                   | Token anónimo guardado en `localStorage`                                            |
-| `room:leave`           | —                                   | Libera la plaza y promociona anfitrión si hace falta                                |
-| `room:select-game`     | `{ game }`                          | Solo anfitrión, solo en lobby                                                       |
-| `room:update-settings` | `{ game, settings }`                | Solo anfitrión, solo en lobby                                                       |
-| `room:ready`           | `{ ready }`                         | Cualquier jugador                                                                   |
-| `room:start`           | —                                   | Solo anfitrión, con 2–5 conectados y todos preparados                               |
-| `room:kick`            | `{ playerId }`                      | Solo anfitrión, no a sí mismo                                                       |
-| `room:transfer-host`   | `{ playerId }`                      | Solo el anfitrión actual                                                            |
-| `room:back-to-lobby`   | —                                   | Solo anfitrión                                                                      |
-| `game:action`          | unión discriminada                  | Acciones tipadas de los catorce juegos: respuestas, tiros, movimiento y controles   |
+| Evento                 | Payload                                 | Reglas                                                                              |
+| ---------------------- | --------------------------------------- | ----------------------------------------------------------------------------------- |
+| `room:create`          | `{ name }`                              | Nombre saneado, 2–16 caracteres                                                     |
+| `room:create-solo`     | `{ name, profileId, game, config }`     | Sala de práctica: un humano, bots opcionales                                        |
+| `room:solo-config`     | `{ botCount, botDifficulty }`           | Solo en salas de práctica, solo en lobby                                            |
+| `solo:records`         | `{ profileId }`                         | Devuelve las marcas personales del perfil anónimo                                   |
+| `room:join`            | `{ code, name }`                        | Sala existente, con hueco, en lobby y sin nombre duplicado. Rechaza las de práctica |
+| `room:rejoin`          | `{ code, token }`                       | Token anónimo guardado en `localStorage`                                            |
+| `room:leave`           | —                                       | Libera la plaza y promociona anfitrión si hace falta                                |
+| `room:select-game`     | `{ game }`                              | Solo anfitrión, solo en lobby                                                       |
+| `room:update-settings` | `{ game, settings }`                    | Solo anfitrión, solo en lobby                                                       |
+| `room:tournament`      | `{ enabled }` o `{ enabled, settings }` | Solo anfitrión, solo en lobby, 3–5 pruebas distintas                                |
+| `chat:send`            | `{ text }`                              | Saneado, máximo 160 caracteres, enfriamiento de 700 ms                              |
+| `chat:react`           | `{ reaction }`                          | Solo emojis del catálogo, enfriamiento de 1,2 s                                     |
+| `room:ready`           | `{ ready }`                             | Cualquier jugador                                                                   |
+| `room:start`           | —                                       | Solo anfitrión, con 2–5 conectados y todos preparados                               |
+| `room:kick`            | `{ playerId }`                          | Solo anfitrión, no a sí mismo                                                       |
+| `room:transfer-host`   | `{ playerId }`                          | Solo el anfitrión actual                                                            |
+| `room:back-to-lobby`   | —                                       | Solo anfitrión                                                                      |
+| `game:action`          | unión discriminada                      | Acciones tipadas de los catorce juegos: respuestas, tiros, movimiento y controles   |
 
 ### Servidor → cliente
 
-| Evento          | Contenido                                                                                          |
-| --------------- | -------------------------------------------------------------------------------------------------- |
-| `session`       | `{ playerId, token, code }` para reconexión                                                        |
-| `room:state`    | Estado completo de la sala (jugadores, conexión, preparación, configuración, enlace de invitación) |
-| `game:started`  | Juego elegido y estado inicial                                                                     |
-| `game:state`    | Estado público del juego en curso                                                                  |
-| `game:snapshot` | Posiciones de bolas (billar y minigolf) a 20 Hz                                                    |
-| `game:event`    | Sucesos del minigolf: `ace`, `holed`, `out`, `penalty`, `reset`, `maxStrokes`, `timeUp`            |
-| `game:over`     | Clasificación final y ganadores                                                                    |
-| `room:kicked`   | Has sido expulsado                                                                                 |
-| `solo:outcome`  | Marca de la práctica recién terminada y si mejora el récord anterior                               |
-| `solo:records`  | Listado completo de marcas personales del perfil                                                   |
-| `app:error`     | `{ code, message }` con códigos tipados                                                            |
-| `app:toast`     | Aviso puntual (individual o a toda la sala)                                                        |
+| Evento             | Contenido                                                                                          |
+| ------------------ | -------------------------------------------------------------------------------------------------- |
+| `session`          | `{ playerId, token, code }` para reconexión                                                        |
+| `room:state`       | Estado completo de la sala (jugadores, conexión, preparación, configuración, enlace de invitación) |
+| `game:started`     | Juego elegido y estado inicial                                                                     |
+| `game:state`       | Estado público del juego en curso                                                                  |
+| `game:snapshot`    | Posiciones de bolas (billar y minigolf) a 20 Hz                                                    |
+| `game:event`       | Sucesos del minigolf: `ace`, `holed`, `out`, `penalty`, `reset`, `maxStrokes`, `timeUp`            |
+| `game:over`        | Clasificación final y ganadores                                                                    |
+| `room:kicked`      | Has sido expulsado                                                                                 |
+| `solo:outcome`     | Marca de la práctica recién terminada y si mejora el récord anterior                               |
+| `solo:records`     | Listado completo de marcas personales del perfil                                                   |
+| `app:error`        | `{ code, message }` con códigos tipados                                                            |
+| `tournament:state` | Clasificación general del torneo tras cada prueba                                                  |
+| `chat:history`     | Hilo completo al entrar o reconectar                                                               |
+| `chat:message`     | Mensaje nuevo de la sala                                                                           |
+| `chat:reaction`    | Reacción efímera: se muestra unos segundos y no se guarda                                          |
+| `app:toast`        | Aviso puntual (individual o a toda la sala)                                                        |
 
 También hay una ruta HTTP equivalente para las marcas: `GET /api/records?profileId=<id>`.
 
@@ -215,7 +223,9 @@ También hay una ruta HTTP equivalente para las marcas: `GET /api/records?profil
 - Respuestas simultáneas y ocultas hasta que todos contestan o expira el tiempo.
 - 100 puntos por acierto + hasta 50 de bonificación por rapidez.
 - Clasificación después de cada pregunta y clasificación final.
-- Banco local de **46 preguntas en español** en siete categorías: cultura general, ciencia, historia, geografía, cine, música y tecnología.
+- Banco local de **151 preguntas en español** en siete categorías (21–22 por categoría): cultura general, ciencia, historia, geografía, cine, música y tecnología.
+- **Las cuatro respuestas se barajan en cada partida.** Con el orden fijo, a la tercera partida se memoriza la posición del botón en lugar de la respuesta.
+- El filtro de categorías se **respeta siempre**: si con las categorías marcadas no hay preguntas suficientes, la partida se acorta y se avisa, en vez de colar en silencio preguntas de categorías que nadie ha pedido. El lobby muestra cuántas hay disponibles.
 
 ### Dardos (301)
 
@@ -343,7 +353,31 @@ El texto del acento se aclara con `color-mix(... 45%, #ffffff)` porque el rojo y
 
 ---
 
-## 6. Modo individual
+## 6. Modo torneo, chat y modo individual
+
+### Modo torneo
+
+En una sala normal el anfitrión puede encadenar **de tres a cinco pruebas** con clasificación acumulada. No es un juego más: es un orquestador por encima de la sala que va lanzando partidas normales y sumando puntos, así que **ningún juego sabe que está dentro de un torneo**.
+
+- Reparto por prueba: **10 · 7 · 5 · 3 · 1** puntos según posición. La curva es suave a propósito: una mala ronda no deja a nadie fuera y la última prueba sigue decidiendo.
+- Los empatados cobran lo mismo. Es más generoso que repartir, pero mucho más fácil de entender en pantalla.
+- Desempate de la general: **pruebas ganadas**. Si persiste, empate compartido.
+- Mientras dura, el juego lo decide el orden de las pruebas: nadie puede cambiarlo, ni el anfitrión.
+- Entre prueba y prueba se muestran la clasificación de esa prueba **y** la general, con la siguiente anunciada.
+- La general viaja en `room:state`, así que recargar a mitad de torneo la recupera sin pedir nada.
+
+Dos presets (**Clásico**, cinco pruebas; **Relámpago**, tres) o selección libre.
+
+### Chat y reacciones
+
+Dos canales para dos momentos:
+
+- **Chat de texto** en el lobby, donde hay tiempo de escribir. Máximo 160 caracteres, 30 mensajes de historial, y quien entra o se reconecta recibe el hilo completo. Enfriamiento de 700 ms por jugador.
+- **Seis reacciones** con emoji, también durante la partida, donde nadie va a soltar el ratón. Son efímeras: aparecen unos segundos sobre el tablero y no se guardan. Enfriamiento de 1,2 s.
+
+El catálogo es cerrado en lugar de aceptar cualquier emoji: el servidor valida contra una lista y no hay que sanear texto arbitrario. En las salas de práctica no hay chat.
+
+### Modo individual
 
 Los catorce juegos se pueden practicar en solitario desde la pestaña **Practicar** de la pantalla de inicio.
 
@@ -405,11 +439,11 @@ Se guardan en la tabla `SoloRecord` de SQLite, indexadas por un **identificador 
 ## 7. Pruebas
 
 ```bash
-npm test          # Vitest: 331 tests
+npm test             # Vitest: 376 tests
 npm run test:e2e  # Playwright: dos navegadores compartiendo sala
 ```
 
-Actualmente hay **295 tests Vitest** y 9 flujos E2E (5 multijugador en `e2e/multiplayer.spec.ts` y 4 de modo individual en `e2e/solo.spec.ts`). GitHub Actions ejecuta el control completo
+Actualmente hay **376 tests Vitest** y 9 flujos E2E (5 multijugador en `e2e/multiplayer.spec.ts` y 4 de modo individual en `e2e/solo.spec.ts`). GitHub Actions ejecuta el control completo
 en cada pull request y cada actualización de `main`, y conserva las trazas de Playwright si falla.
 
 Cobertura de los tests exigidos del minigolf:
@@ -478,6 +512,26 @@ Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, config
 
 ---
 
+### Cobertura
+
+`npm run test:coverage` mide la lógica que decide el resultado de una partida: servidor, reglas
+compartidas y simulaciones, más los módulos del cliente que se pueden probar sin pintar nada. Las
+vistas de React quedan fuera a propósito —se cubren con los tests de componentes y con Playwright—
+porque mezclarlas daría un porcentaje que no significa nada.
+
+| Métrica    | Actual | Umbral mínimo |
+| ---------- | ------ | ------------- |
+| Líneas     | 83%    | 80%           |
+| Sentencias | 83%    | 80%           |
+| Funciones  | 83%    | 80%           |
+| Ramas      | 79%    | 75%           |
+
+El umbral es de **no retroceso**: se sube al añadir pruebas y no se baja para que pase una entrega.
+Si la cobertura cae, `test:coverage` falla y el informe HTML queda en `coverage/` y como artefacto
+de CI para ver qué se ha dejado de probar.
+
+---
+
 ## 8. Seguridad y robustez
 
 - **Validación Zod** de todos los eventos entrantes; los payloads inválidos responden con `app:error` y nunca tocan el estado.
@@ -488,7 +542,7 @@ Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, config
 
 - **Política de seguridad de contenido (CSP)** explícita: `default-src 'self'`, sin `object-src` ni `frame-ancestors`. El cliente no carga nada de terceros.
 - **El contenedor no corre como root**: la imagen final cambia al usuario `node`.
-- **Rate limiting HTTP** (120 peticiones/minuto) y cabeceras de seguridad con Helmet.
+- **Rate limiting HTTP** (120 peticiones/minuto) aplicado solo a `/api`, omitiendo `/api/health` y los ficheros estáticos, para que recargar la página desde varios equipos tras el mismo NAT no consuma el presupuesto y cabeceras de seguridad con Helmet.
 - **CORS por entorno**: abierto en desarrollo, lista blanca de `CORS_ORIGINS` en producción.
 - **Nombres** saneados (sin caracteres de control), longitud máxima y detección de duplicados ignorando acentos y mayúsculas.
 - **Identificadores internos** (`randomUUID`) independientes del nombre; el token de reconexión son 24 bytes aleatorios.

@@ -40,5 +40,32 @@ export default defineConfig({
     testTimeout: 30000,
     hookTimeout: 30000,
     pool: 'forks',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'html', 'lcov'],
+      reportsDirectory: 'coverage',
+      // Se mide la logica que decide el resultado de una partida: servidor,
+      // reglas compartidas y simulaciones, mas los modulos del cliente que se
+      // pueden probar sin pintar nada. Las vistas de React quedan fuera porque
+      // se cubren con Playwright y con los tests de componentes, y mezclarlas
+      // aqui daria un porcentaje que no significa nada.
+      include: [
+        'apps/server/src/**/*.ts',
+        'packages/shared/src/**/*.ts',
+        'packages/game-engine/src/**/*.ts',
+        'apps/web/src/games/golf-input.ts',
+        'apps/web/src/games/golf-render.ts',
+        'apps/web/src/lib/canvas.ts',
+      ],
+      exclude: ['**/*.d.ts', '**/dist/**'],
+      // Umbral de no retroceso, unos puntos por debajo de la cobertura real.
+      // Se sube cuando se anaden pruebas; no se baja para que pase una entrega.
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        statements: 80,
+        branches: 75,
+      },
+    },
   },
 });

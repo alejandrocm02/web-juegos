@@ -22,6 +22,11 @@ vi.mock('../src/store.js', () => ({
 }));
 // La precarga de fragmentos no aporta nada aqui y evita import() reales.
 vi.mock('../src/games/registry.js', () => ({ prefetchGame: vi.fn() }));
+// El chat tiene su propio contexto y tambien abre socket: se sustituye igual
+// que el store. El lobby solo lo monta; lo que hace el chat se prueba aparte.
+vi.mock('../src/lib/chat-store.js', () => ({
+  useChat: () => ({ messages: [], reactions: [], sendChat: vi.fn(), sendReaction: vi.fn() }),
+}));
 
 const { default: LobbyView } = await import('../src/views/LobbyView.js');
 
