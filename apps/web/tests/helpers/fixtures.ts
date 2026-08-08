@@ -43,6 +43,7 @@ export function makeRoom(overrides: Partial<RoomSummary> = {}): RoomSummary {
     createdAt: 1,
     solo: false,
     soloConfig: { botCount: 0, botDifficulty: 'normal' },
+    tournament: null,
     ...overrides,
   };
 }
@@ -58,6 +59,7 @@ export function makeActions() {
     kickPlayer: vi.fn(),
     transferHost: vi.fn(),
     leaveRoom: vi.fn(),
+    setTournament: vi.fn(),
     dismissError: vi.fn(),
     backToLobby: vi.fn(),
     refreshRecords: vi.fn(),

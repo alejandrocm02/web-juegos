@@ -9,7 +9,10 @@ import {
   readySchema,
   recordsQuerySchema,
   rejoinSchema,
+  chatMessageSchema,
+  chatReactionSchema,
   selectGameSchema,
+  tournamentModeSchema,
   settingsPatchSchema,
   targetPlayerSchema,
   updateSoloConfigSchema,
@@ -273,6 +276,8 @@ export function registerSocketHandlers(io: Server): RoomManager {
           token: player.token,
           code: room.code,
         });
+        // Quien llega tarde ve de que se estaba hablando.
+        socket.emit(SERVER_EVENTS.chatHistory, { messages: room.chatHistory() });
         room.broadcastRoom();
       });
     });
@@ -301,6 +306,10 @@ export function registerSocketHandlers(io: Server): RoomManager {
         if (result) socket.emit(SERVER_EVENTS.gameOver, { result });
         const outcome = room.getLastSoloOutcome();
         if (outcome) socket.emit(SERVER_EVENTS.soloOutcome, outcome);
+        // Quien se reconecta a mitad de torneo recupera la general acumulada.
+        const tournament = room.tournamentState();
+        if (tournament) socket.emit(SERVER_EVENTS.tournament, tournament);
+        socket.emit(SERVER_EVENTS.chatHistory, { messages: room.chatHistory() });
         if (room.soloProfileId) void sendRecords(socket, room.soloProfileId);
       });
     });
@@ -338,6 +347,46 @@ export function registerSocketHandlers(io: Server): RoomManager {
           return fail(socket, 'ALREADY_STARTED', 'La configuración está bloqueada.');
         }
         context.room.updateSettings(patch.game, patch.settings);
+      });
+    });
+
+    socket.on(CLIENT_EVENTS.updateTournament, (payload) => {
+      guard(socket, tournamentModeSchema, payload, (config) => {
+        const context = sessionOf(socket);
+        if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
+        if (!context.player.isHost) {
+          return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede montar el torneo.');
+        }
+        const result = context.room.configureTournament(config);
+        if (!result.ok) {
+          fail(
+            socket,
+            context.room.solo ? 'SOLO_ROOM' : 'ALREADY_STARTED',
+            result.reason ?? 'No se puede cambiar el torneo ahora.',
+          );
+        }
+      });
+    });
+
+    socket.on(CLIENT_EVENTS.sendChat, (payload) => {
+      guard(socket, chatMessageSchema, payload, ({ text }) => {
+        const context = sessionOf(socket);
+        if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
+        if (context.room.solo) {
+          return fail(socket, 'SOLO_ROOM', 'En una práctica no hay con quién hablar.');
+        }
+        const result = context.room.postChatMessage(context.player.id, text);
+        if (!result.ok) fail(socket, 'RATE_LIMITED', result.reason ?? 'Espera un momento.');
+      });
+    });
+
+    socket.on(CLIENT_EVENTS.sendReaction, (payload) => {
+      guard(socket, chatReactionSchema, payload, ({ reaction }) => {
+        const context = sessionOf(socket);
+        if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
+        if (context.room.solo) return;
+        const result = context.room.postReaction(context.player.id, reaction);
+        if (!result.ok) fail(socket, 'RATE_LIMITED', result.reason ?? 'Espera un momento.');
       });
     });
 

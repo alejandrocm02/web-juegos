@@ -35,6 +35,20 @@ jobs:
       - name: Validar proyecto completo
         run: npm run check
 
+      # Se ejecuta aparte de `check` para que el informe se publique aunque los
+      # umbrales no se cumplan y se vea cuanto ha bajado y donde.
+      - name: Medir cobertura
+        run: npm run test:coverage
+
+      - name: Guardar informe de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura
+          path: coverage/
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Guardar trazas E2E si falla
         if: failure()
         uses: actions/upload-artifact@v4

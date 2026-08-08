@@ -98,6 +98,77 @@ export class RoomManager {
     logger.info('Sala eliminada', { code });
   }
 
+  /** Todas las salas vivas. Se usa para metricas y para el apagado ordenado. */
+  all(): Room[] {
+    return [...this.rooms.values()];
+  }
+
+  /**
+   * Foto del estado del proceso.
+   *
+   * Es deliberadamente barata (recorre las salas una vez y no serializa nada)
+   * para poder consultarse con frecuencia sin afectar a las partidas.
+   */
+  snapshotMetrics(): {
+    rooms: number;
+    maxRooms: number;
+    playing: number;
+    lobby: number;
+    players: number;
+    connected: number;
+    bots: number;
+    solo: number;
+  } {
+    let playing = 0;
+    let lobby = 0;
+    let players = 0;
+    let connected = 0;
+    let bots = 0;
+    let solo = 0;
+
+    for (const room of this.rooms.values()) {
+      if (room.currentPhase === 'playing') playing += 1;
+      if (room.currentPhase === 'lobby') lobby += 1;
+      if (room.solo) solo += 1;
+      for (const player of room.publicPlayers()) {
+        if (player.isBot) {
+          bots += 1;
+          continue;
+        }
+        players += 1;
+        if (player.connection === 'connected') connected += 1;
+      }
+    }
+
+    return {
+      rooms: this.rooms.size,
+      maxRooms: this.maxRooms,
+      playing,
+      lobby,
+      players,
+      connected,
+      bots,
+      solo,
+    };
+  }
+
+  /**
+   * Avisa a todas las salas de que el proceso se va a apagar.
+   *
+   * No cierra nada: solo da a los jugadores unos segundos de contexto para que
+   * la partida no se corte en seco sin explicacion.
+   */
+  announceShutdown(seconds: number): void {
+    const message =
+      'El servidor se reinicia en ' +
+      seconds +
+      ' s. Guarda el codigo de sala: podras volver a entrar en cuanto vuelva.';
+    for (const room of this.rooms.values()) {
+      if (room.isEmpty) continue;
+      room.announce(message);
+    }
+  }
+
   get size(): number {
     return this.rooms.size;
   }

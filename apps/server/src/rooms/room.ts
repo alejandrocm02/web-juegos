@@ -1,5 +1,8 @@
 import {
   BOT_NAMES,
+  CHAT_HISTORY_SIZE,
+  CHAT_MESSAGE_COOLDOWN_MS,
+  CHAT_REACTION_COOLDOWN_MS,
   DEFAULT_SETTINGS,
   GAME_META,
   MAX_PLAYERS,
@@ -23,6 +26,11 @@ import {
   type RoomSummary,
   type SoloConfig,
   type SoloOutcome,
+  type ChatMessage,
+  type ChatReactionEvent,
+  type ChatReactionId,
+  type TournamentPublicState,
+  type TournamentSettings,
 } from '@arcade/shared';
 import { randomUUID, randomBytes } from 'node:crypto';
 import { logger } from '../logger.js';
@@ -31,6 +39,7 @@ import { createGameRunner } from '../games/factory.js';
 import { getStats } from '../stats.js';
 import { BotDirector, type BotSeat } from '../bots/index.js';
 import { describeOutcome, recordSoloMatch } from '../records.js';
+import { Tournament } from './tournament.js';
 
 export type RoomBroadcast = (event: string, payload: unknown) => void;
 export type RoomDirect = (socketId: string, event: string, payload: unknown) => void;
@@ -73,6 +82,16 @@ export class Room {
   private botDirector: BotDirector | null = null;
   private lastResult: MatchResult | null = null;
   private lastSoloOutcome: SoloOutcome | null = null;
+  /**
+   * Torneo configurado para esta sala, o null si juega partidas sueltas.
+   *
+   * Es lo que decide cual es la siguiente prueba cuando termina una partida.
+   */
+  private tournament: Tournament | null = null;
+  /** Ultimos mensajes de chat. Se recortan a CHAT_HISTORY_SIZE. */
+  private readonly chatLog: ChatMessage[] = [];
+  private readonly chatCooldowns = new Map<string, number>();
+  private readonly reactionCooldowns = new Map<string, number>();
   emptySince: number | null = Date.now();
 
   constructor(
@@ -198,7 +217,61 @@ export class Room {
       createdAt: this.createdAt,
       solo: this.solo,
       soloConfig: this.currentSoloConfig,
+      tournament: this.tournamentState(),
     };
+  }
+
+  /* ------------------------------- Torneo -------------------------------- */
+
+  /** Foto del torneo para el cliente, o null si la sala no juega uno. */
+  tournamentState(): TournamentPublicState | null {
+    if (!this.tournament) return null;
+    return this.tournament.publicState(
+      this.humans().map((player) => ({
+        id: player.id,
+        name: player.name,
+        color: player.color,
+      })),
+    );
+  }
+
+  /**
+   * Activa, reconfigura o cancela el torneo. Solo en el lobby.
+   *
+   * Al activarlo, el juego seleccionado pasa a ser la primera prueba: asi el
+   * anfitrion ve en el lobby exactamente lo que va a empezar.
+   */
+  configureTournament(
+    config: { enabled: false } | { enabled: true; settings: TournamentSettings },
+  ): { ok: true } | { ok: false; reason: string } {
+    if (this.phase !== 'lobby') return { ok: false, reason: 'El torneo ya ha empezado' };
+    if (this.solo) return { ok: false, reason: 'El torneo necesita más de un jugador' };
+
+    if (!config.enabled) {
+      this.tournament = null;
+      this.broadcastRoom();
+      return { ok: true };
+    }
+
+    this.tournament = new Tournament(config.settings);
+    const first = this.tournament.currentGame;
+    if (first) this.selectedGame = first;
+    this.resetReady();
+    this.broadcastRoom();
+    return { ok: true };
+  }
+
+  /**
+   * Prepara la siguiente prueba del torneo.
+   *
+   * No arranca la partida: deja la sala en el lobby con el juego cambiado y a
+   * todo el mundo sin marcar. El anfitrion sigue decidiendo cuando se juega.
+   */
+  private advanceTournament(): void {
+    const next = this.tournament?.currentGame;
+    if (!next) return;
+    this.selectedGame = next;
+    this.resetReady();
   }
 
   currentGameState(): GamePublicState | null {
@@ -339,6 +412,8 @@ export class Room {
     const player = this.players.get(playerId);
     if (!player) return;
     this.players.delete(playerId);
+    this.chatCooldowns.delete(playerId);
+    this.reactionCooldowns.delete(playerId);
     this.runner?.onPlayerLeft(playerId);
     this.botDirector?.removeSeat(playerId);
     if (player.isHost) this.promoteNextHost();
@@ -406,6 +481,10 @@ export class Room {
 
   selectGame(game: GameId): void {
     if (this.phase !== 'lobby') return;
+    // Durante un torneo el orden de las pruebas lo decide el torneo, no el
+    // anfitrion: cambiarlo a mitad haria que la clasificacion no cuadrase con
+    // las pruebas anunciadas al empezar.
+    if (this.tournament && !this.tournament.finished) return;
     this.selectedGame = game;
     this.resetReady();
     if (this.solo) {
@@ -541,7 +620,41 @@ export class Room {
     this.lastResult = result;
     this.botDirector?.stop();
     this.botDirector = null;
-    this.deps.broadcast('game:over', { result });
+
+    // En torneo, la prueba recien terminada suma puntos y se anuncia la
+    // siguiente. La clasificacion de la prueba se sigue mostrando igual: lo que
+    // cambia es que debajo aparece la general.
+    if (this.tournament) {
+      const round = this.tournament.recordResult(result);
+      if (this.tournament.finished) {
+        this.lastResult = this.tournament.finalResult(
+          this.humans().map((player) => ({
+            id: player.id,
+            name: player.name,
+            color: player.color,
+            icon: player.icon,
+          })),
+        );
+        this.deps.broadcast('app:toast', {
+          message: 'Torneo terminado tras ' + this.tournament.totalRounds + ' pruebas.',
+        });
+      } else {
+        this.advanceTournament();
+        this.deps.broadcast('app:toast', {
+          message:
+            'Prueba ' +
+            (round.index + 1) +
+            ' de ' +
+            this.tournament.totalRounds +
+            ' terminada. Siguiente: ' +
+            GAME_META[this.selectedGame].name +
+            '.',
+        });
+      }
+      this.deps.broadcast('tournament:state', this.tournamentState());
+    }
+
+    this.deps.broadcast('game:over', { result: this.lastResult });
     this.broadcastRoom();
     this.saveSoloRecord(result);
     const golfExtras = extras?.golf as
@@ -592,6 +705,9 @@ export class Room {
     this.phase = 'lobby';
     this.lastResult = null;
     this.lastSoloOutcome = null;
+    // Un torneo terminado se retira al volver al lobby: la sala vuelve a jugar
+    // partidas sueltas hasta que alguien monte otro.
+    if (this.tournament?.finished) this.tournament = null;
     this.resetReady();
     // Los bots se recolocan por si cambió el juego o la configuración.
     this.syncBots();
@@ -603,6 +719,79 @@ export class Room {
     this.runner = null;
     this.botDirector?.stop();
     this.botDirector = null;
+  }
+
+  /* -------------------------------- Chat --------------------------------- */
+
+  /**
+   * Publica un mensaje de chat.
+   *
+   * El texto llega ya saneado por Zod. Aqui solo se aplica el enfriamiento por
+   * jugador —el limitador general de sockets es demasiado generoso para una
+   * conversacion— y se guarda una copia del nombre y el color, para que el hilo
+   * siga leyendose aunque el autor se vaya de la sala.
+   */
+  postChatMessage(playerId: string, text: string): { ok: boolean; reason?: string } {
+    const player = this.players.get(playerId);
+    if (!player) return { ok: false, reason: 'No estás en la sala' };
+
+    const now = Date.now();
+    const last = this.chatCooldowns.get(playerId) ?? 0;
+    if (now - last < CHAT_MESSAGE_COOLDOWN_MS) {
+      return { ok: false, reason: 'Espera un momento antes de volver a escribir' };
+    }
+    this.chatCooldowns.set(playerId, now);
+
+    const message: ChatMessage = {
+      id: randomUUID(),
+      playerId,
+      name: player.name,
+      color: player.color,
+      text,
+      at: now,
+    };
+    this.chatLog.push(message);
+    if (this.chatLog.length > CHAT_HISTORY_SIZE) this.chatLog.shift();
+    this.deps.broadcast('chat:message', message);
+    return { ok: true };
+  }
+
+  /**
+   * Emite una reaccion efimera.
+   *
+   * No se guarda en el historial a proposito: durante una partida se lanzan
+   * muchas y el valor es el instante, no el registro.
+   */
+  postReaction(playerId: string, reaction: ChatReactionId): { ok: boolean; reason?: string } {
+    const player = this.players.get(playerId);
+    if (!player) return { ok: false, reason: 'No estás en la sala' };
+
+    const now = Date.now();
+    const last = this.reactionCooldowns.get(playerId) ?? 0;
+    if (now - last < CHAT_REACTION_COOLDOWN_MS) {
+      return { ok: false, reason: 'Reacciona un poco más despacio' };
+    }
+    this.reactionCooldowns.set(playerId, now);
+
+    const event: ChatReactionEvent = {
+      playerId,
+      name: player.name,
+      color: player.color,
+      reaction,
+      at: now,
+    };
+    this.deps.broadcast('chat:reaction', event);
+    return { ok: true };
+  }
+
+  /** Historial para quien entra o se reconecta. */
+  chatHistory(): ChatMessage[] {
+    return [...this.chatLog];
+  }
+
+  /** Aviso puntual a toda la sala. Lo usa el apagado ordenado del proceso. */
+  announce(message: string): void {
+    this.deps.broadcast('app:toast', { message });
   }
 
   broadcastRoom(): void {

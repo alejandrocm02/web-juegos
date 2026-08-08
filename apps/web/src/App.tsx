@@ -19,6 +19,7 @@ import {
 } from './games/registry.js';
 import { ErrorBanner, Toasts } from './components/ui.js';
 import { GameExitBar } from './components/GameExitBar.js';
+import { ReactionOverlay } from './components/Chat.js';
 import { GameStage } from './components/GameStage.js';
 import { DisconnectedOverlay, EmptyState } from './views/StatusViews.js';
 
@@ -114,6 +115,7 @@ export default function App() {
         </div>
       )}
       {inGame && <GameExitBar />}
+      {inGame && !room?.solo && <ReactionOverlay />}
       {inGame && gameState ? (
         <GameStage state={gameState}>
           {/*

@@ -1,10 +1,11 @@
 import {
   QUIZ_BASE_POINTS,
-  QUIZ_QUESTIONS,
   QUIZ_SPEED_BONUS,
   assignTeams,
   createRng,
   isTeamMode,
+  quizPool,
+  shuffleQuizAnswers,
   shuffleWithRng,
   type GameAction,
   type QuizAnswerBreakdown,
@@ -55,12 +56,19 @@ export class QuizGame implements GameRunner {
     if (isTeamMode('quiz', this.settings.mode)) {
       this.teams = assignTeams(this.ctx.players().map((player) => player.id));
     }
-    const pool =
-      this.settings.categories.length > 0
-        ? QUIZ_QUESTIONS.filter((q) => this.settings.categories.includes(q.category))
-        : QUIZ_QUESTIONS;
-    const usable = pool.length >= this.settings.questionCount ? pool : QUIZ_QUESTIONS;
-    this.questions = shuffleWithRng(usable, rng).slice(0, this.settings.questionCount);
+    // El filtro de categorias se respeta siempre. Si no hay preguntas de sobra,
+    // la partida se acorta y se avisa; antes se colaban preguntas de todas las
+    // categorias sin decir nada y el anfitrion no entendia por que.
+    const pool = quizPool(this.settings.categories);
+    const count = Math.max(1, Math.min(this.settings.questionCount, pool.length));
+    this.questions = shuffleWithRng(pool, rng)
+      .slice(0, count)
+      .map((question) => shuffleQuizAnswers(question, rng));
+    if (count < this.settings.questionCount) {
+      this.ctx.toast(
+        'Con las categorías elegidas solo hay ' + count + ' preguntas: la partida se ha ajustado.',
+      );
+    }
     for (const player of this.ctx.players()) this.scores.set(player.id, 0);
 
     this.phase = 'countdown';

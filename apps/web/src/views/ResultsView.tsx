@@ -1,6 +1,7 @@
 import { GAME_META, SOLO_RECORD_META, formatSoloRecord } from '@arcade/shared';
 import { useApp } from '../store.js';
 import { GameIcon, Panel, Scoreboard } from '../components/ui.js';
+import { TournamentStandings } from './lobby/TournamentPanel.js';
 import { EmptyState } from './StatusViews.js';
 
 export default function ResultsView() {
@@ -15,6 +16,12 @@ export default function ResultsView() {
   }
 
   const winners = result.rows.filter((row) => row.rank === 1);
+  const tournament = room.tournament;
+  const tournamentDone = Boolean(tournament?.finished);
+  // Durante el torneo esta pantalla no es un final sino un descanso entre
+  // pruebas: el titulo y el boton lo dicen para que nadie crea que ha acabado.
+  const midTournament = Boolean(tournament && !tournament.finished);
+  const nextGame = tournament?.games[tournament.currentIndex] ?? null;
   const unit = result.game === 'golf' ? 'golpes' : result.game === 'darts' ? 'restantes' : 'pts';
 
   return (
@@ -38,14 +45,27 @@ export default function ResultsView() {
           >
             <GameIcon game={result.game} size={34} />
           </div>
-          <p className="eyebrow mt-5">Partida completada · {GAME_META[result.game].name}</p>
+          <p className="eyebrow mt-5">
+            {tournamentDone && tournament
+              ? 'Torneo completado · ' + tournament.games.length + ' pruebas'
+              : midTournament && tournament
+                ? 'Prueba ' +
+                  tournament.currentIndex +
+                  ' de ' +
+                  tournament.games.length +
+                  ' · ' +
+                  GAME_META[result.game].name
+                : 'Partida completada · ' + GAME_META[result.game].name}
+          </p>
           <h1 className="mt-2 font-display text-3xl font-black tracking-tight sm:text-5xl">
             {winners.length > 1 ? 'Empate en la cima' : winners[0]?.name + ' gana'}
           </h1>
           <p className="mt-2 text-sm text-slate-400">
-            {winners.length > 1
-              ? 'La primera posición se comparte. Habrá que resolverlo con otra partida.'
-              : 'Una victoria para recordar. La revancha está a un clic.'}
+            {midTournament
+              ? 'Quedan pruebas por jugar: la general puede darse la vuelta.'
+              : winners.length > 1
+                ? 'La primera posición se comparte. Habrá que resolverlo con otra partida.'
+                : 'Una victoria para recordar. La revancha está a un clic.'}
           </p>
         </div>
 
@@ -91,7 +111,23 @@ export default function ResultsView() {
             </div>
           )}
 
-          <Scoreboard rows={result.rows} unit={unit} />
+          <Scoreboard rows={result.rows} unit={tournamentDone ? 'pts' : unit} />
+
+          {tournament && tournament.rounds.length > 0 && !tournamentDone && (
+            <div className="mt-6 rounded-2xl border border-neon-amber/25 bg-neon-amber/[0.05] px-4 py-4">
+              <p className="font-display text-sm font-black uppercase tracking-[0.14em] text-neon-amber">
+                Clasificación general del torneo
+              </p>
+              {nextGame && (
+                <p className="mt-1 text-xs text-slate-400">
+                  Siguiente prueba: {GAME_META[nextGame].name}
+                </p>
+              )}
+              <div className="mt-3">
+                <TournamentStandings tournament={tournament} />
+              </div>
+            </div>
+          )}
 
           {result.game === 'golf' && result.extra ? (
             <p className="mt-4 text-sm text-slate-400">
@@ -108,7 +144,11 @@ export default function ResultsView() {
           <div className="mt-7 flex flex-wrap items-center justify-center gap-3 border-t border-white/[0.07] pt-6">
             {isHost ? (
               <button className="btn-primary min-w-48" onClick={backToLobby}>
-                {isSolo ? 'Volver a intentarlo' : 'Preparar revancha'}
+                {midTournament
+                  ? 'Ir a la siguiente prueba'
+                  : isSolo
+                    ? 'Volver a intentarlo'
+                    : 'Preparar revancha'}
               </button>
             ) : (
               <p className="text-sm text-slate-400">

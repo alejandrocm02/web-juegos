@@ -1,6 +1,7 @@
 export * from './constants.js';
 export * from './util.js';
 export * from './room.js';
+export * from './chat.js';
 export * from './events.js';
 export * from './games/quiz.js';
 export * from './games/darts.js';
@@ -18,4 +19,5 @@ export * from './games/head-sport.js';
 export * from './games/tanks.js';
 export * from './games/modes.js';
 export * from './games/solo.js';
+export * from './games/tournament.js';
 export * from './state.js';

@@ -16,6 +16,18 @@ import { getStats, initStats } from './stats.js';
 
 export async function createApp() {
   const app = express();
+  const httpServer = createServer(app);
+  const io = new Server(httpServer, {
+    cors: { origin: env.isProduction ? env.corsOrigins : true, credentials: true },
+    maxHttpBufferSize: 1e5,
+    pingTimeout: 20000,
+    pingInterval: 10000,
+  });
+  // El gestor de salas se crea antes que las rutas porque `/api/metrics` lo
+  // consulta. Registrar los handlers de socket no abre ninguna conexion: solo
+  // deja preparados los listeners.
+  const manager = registerSocketHandlers(io);
+
   // Render termina TLS en un proxy. Confiar solo en el primer salto permite
   // que express-rate-limit use la IP real sin aceptar cabeceras arbitrarias.
   if (env.isProduction) app.set('trust proxy', 1);
@@ -50,12 +62,18 @@ export async function createApp() {
     }),
   );
   app.use(express.json({ limit: '32kb' }));
+  // El limite se aplica solo a la API. Si cubriera tambien los estaticos, cinco
+  // amigos tras el mismo NAT gastarian el presupuesto solo con recargar la
+  // pagina, porque cada carga son varias peticiones (HTML, JS, CSS, icono).
   app.use(
+    '/api',
     rateLimit({
       windowMs: 60_000,
       limit: 120,
       standardHeaders: true,
       legacyHeaders: false,
+      // El sondeo de salud de la plataforma no debe consumir cuota.
+      skip: (req) => req.path === '/health',
     }),
   );
 
@@ -85,6 +103,28 @@ export async function createApp() {
       return;
     }
     res.json({ records: await listSoloRecords(parsed.data.profileId) });
+  });
+
+  // Metricas de proceso en texto plano, sin dependencias ni formato exotico.
+  // Sirve para saber de un vistazo si el servidor esta sufriendo: cuantas salas
+  // sostiene, cuantas partidas hay en curso y cuanta memoria consume.
+  app.get('/api/metrics', (_req, res) => {
+    const rooms = manager.snapshotMetrics();
+    const memory = process.memoryUsage();
+    const lines = [
+      'uptime_seconds ' + Math.round(process.uptime()),
+      'rooms_total ' + rooms.rooms,
+      'rooms_max ' + rooms.maxRooms,
+      'rooms_playing ' + rooms.playing,
+      'rooms_lobby ' + rooms.lobby,
+      'rooms_solo ' + rooms.solo,
+      'players_total ' + rooms.players,
+      'players_connected ' + rooms.connected,
+      'bots_total ' + rooms.bots,
+      'memory_heap_used_bytes ' + memory.heapUsed,
+      'memory_rss_bytes ' + memory.rss,
+    ];
+    res.type('text/plain').send(lines.join('\n') + '\n');
   });
 
   app.get('/api/leaderboard', async (_req, res) => {
@@ -125,33 +165,49 @@ export async function createApp() {
     },
   );
 
-  const httpServer = createServer(app);
-  const io = new Server(httpServer, {
-    cors: { origin: env.isProduction ? env.corsOrigins : true, credentials: true },
-    maxHttpBufferSize: 1e5,
-    pingTimeout: 20000,
-    pingInterval: 10000,
-  });
-
-  const manager = registerSocketHandlers(io);
   return { app, httpServer, io, manager };
 }
 
+/** Segundos de cortesia entre el aviso de apagado y el cierre real. */
+const SHUTDOWN_GRACE_SECONDS = 8;
+
 async function main() {
   await initStats();
-  const { httpServer } = await createApp();
+  const { httpServer, io, manager } = await createApp();
   httpServer.listen(env.PORT, () => {
     logger.info('Servidor escuchando en http://localhost:' + env.PORT);
     logger.info('Origenes CORS permitidos: ' + env.corsOrigins.join(', '));
   });
 
-  const shutdown = () => {
-    logger.info('Apagando servidor...');
-    httpServer.close(() => process.exit(0));
-    setTimeout(() => process.exit(0), 3000).unref();
+  let shuttingDown = false;
+  /**
+   * Apagado ordenado.
+   *
+   * Antes el proceso moria de golpe y las partidas en curso se cortaban sin
+   * explicacion. Ahora se avisa a las salas ocupadas, se les dan unos segundos
+   * para que el jugador vea el mensaje y copie el codigo, y despues se cierra.
+   */
+  const shutdown = (signal: string) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    const busy = manager.all().filter((room) => !room.isEmpty).length;
+    logger.info('Apagando servidor (' + signal + '). Salas ocupadas: ' + busy);
+
+    if (busy > 0) manager.announceShutdown(SHUTDOWN_GRACE_SECONDS);
+    const wait = busy > 0 ? SHUTDOWN_GRACE_SECONDS * 1000 : 0;
+
+    setTimeout(() => {
+      manager.stopSweeper();
+      for (const room of manager.all()) room.dispose();
+      io.close();
+      httpServer.close(() => process.exit(0));
+      // Red de seguridad: si algun socket se queda colgado, no bloqueamos el
+      // reinicio de la plataforma indefinidamente.
+      setTimeout(() => process.exit(0), 3000).unref();
+    }, wait).unref();
   };
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
 const entryPath = process.argv[1] ? path.resolve(process.argv[1]) : '';

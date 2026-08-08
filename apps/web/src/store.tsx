@@ -75,6 +75,8 @@ interface AppStateValue {
   kickPlayer: (playerId: string) => void;
   transferHost: (playerId: string) => void;
   backToLobby: () => void;
+  /** Monta, reconfigura o cancela el torneo de la sala. */
+  setTournament: (games: GameId[] | null) => void;
   sendAction: (action: GameAction) => void;
   pushToast: (message: string) => void;
   dismissError: () => void;
@@ -328,6 +330,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       kickPlayer: (playerId) => socket.emit(CLIENT_EVENTS.kickPlayer, { playerId }),
       transferHost: (playerId) => socket.emit(CLIENT_EVENTS.transferHost, { playerId }),
       backToLobby: () => socket.emit(CLIENT_EVENTS.backToLobby),
+      setTournament: (games) => {
+        if (!games) {
+          socket.emit(CLIENT_EVENTS.updateTournament, { enabled: false });
+          return;
+        }
+        socket.emit(CLIENT_EVENTS.updateTournament, {
+          enabled: true,
+          settings: { games, preset: 'personalizado' },
+        });
+      },
       sendAction,
       pushToast,
       dismissError: () => setError(null),

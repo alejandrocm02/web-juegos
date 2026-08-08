@@ -30,7 +30,8 @@
     "test:e2e": "npm run build:packages && npm run build -w @arcade/server && playwright test",
     "db:generate": "npm run db:generate -w @arcade/server",
     "db:push": "npm run db:push -w @arcade/server",
-    "check": "npm run lint && npm run typecheck && npm run test && npm run build && npm run test:e2e"
+    "check": "npm run lint && npm run typecheck && npm run test && npm run build && npm run test:e2e",
+    "test:coverage": "npm run build:packages && vitest run --coverage"
   },
   "devDependencies": {
     "@eslint/js": "^9.14.0",
@@ -39,6 +40,7 @@
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.3",
     "@types/node": "^22.9.0",
+    "@vitest/coverage-v8": "^3.2.7",
     "concurrently": "^9.1.0",
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^9.1.0",
@@ -51,6 +53,16 @@
     "vitest": "^3.2.7"
   },
   "overrides": {
-    "brace-expansion": "^5.0.8"
-  }
+    "@testing-library/react": {
+      "react": "^18.3.1",
+      "react-dom": "^18.3.1"
+    },
+    "minimatch@3": {
+      "brace-expansion": "^2.0.2"
+    },
+    "minimatch@>=9": {
+      "brace-expansion": "^5.0.9"
+    }
+  },
+  "_comentario_overrides": "Dos ajustes de resolucion, ambos con motivo: (1) @testing-library/react admite React 18 o 19 y en una instalacion limpia se trae el 19, con lo que los tests de componentes renderizan con una copia de React distinta a la de la app y fallan con \"A React Element from an older version of React\". Se fija a la del proyecto. (2) brace-expansion cambio de API entre mayores y los dos minimatch del arbol esperan cosas distintas: minimatch 3 (via ESLint) llama al modulo como funcion y minimatch 10 (via glob y test-exclude) llama a .expand(). Un override global rompe a uno de los dos, y con el a la herramienta de cobertura, asi que va dirigido a cada rama."
 }
