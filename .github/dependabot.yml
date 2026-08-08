@@ -22,6 +22,10 @@ updates:
           - 'typescript-eslint'
           - 'prettier*'
           - 'vitest'
+          # `@vitest/coverage-v8` declara a vitest como peer con la version
+          # exacta, asi que subir uno sin el otro deja el arbol sin resolver y
+          # `npm ci` falla en CI. Tienen que viajar en el mismo PR.
+          - '@vitest/*'
           - '@playwright/test'
           - 'concurrently'
       produccion:
