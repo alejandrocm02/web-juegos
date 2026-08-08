@@ -19,7 +19,6 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3001),
   CORS_ORIGINS: z.string().default('http://localhost:5173'),
-  PUBLIC_WEB_URL: z.string().default('http://localhost:5173'),
   DATABASE_URL: z.string().default('file:./dev.db'),
   ROOM_EMPTY_TTL_SECONDS: z.coerce.number().int().min(10).max(3600).default(120),
   RECONNECT_GRACE_SECONDS: z.coerce.number().int().min(10).max(3600).default(90),

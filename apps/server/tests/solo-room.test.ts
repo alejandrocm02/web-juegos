@@ -212,7 +212,7 @@ describe('sala de practica', () => {
   it('no publica enlace de invitacion', () => {
     const { room } = makeRoom({ game: 'quiz' });
     room.addPlayer('Alejandro', 'socket-1');
-    expect(summaryOf(room).inviteUrl).toBe('');
+    expect(summaryOf(room).solo).toBe(true);
     expect(summaryOf(room).solo).toBe(true);
     room.dispose();
   });

@@ -181,7 +181,6 @@ export interface RoomSummary {
   players: PublicPlayer[];
   hostId: string;
   settings: GameSettings;
-  inviteUrl: string;
   maxPlayers: number;
   minPlayers: number;
   createdAt: number;

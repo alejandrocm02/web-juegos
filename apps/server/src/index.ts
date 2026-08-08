@@ -19,7 +19,30 @@ export async function createApp() {
   // Render termina TLS en un proxy. Confiar solo en el primer salto permite
   // que express-rate-limit use la IP real sin aceptar cabeceras arbitrarias.
   if (env.isProduction) app.set('trust proxy', 1);
-  app.use(helmet({ contentSecurityPolicy: false }));
+  // CSP explicita en vez de desactivada. El cliente son bundles propios y no
+  // carga nada de terceros, asi que 'self' basta. Se permite 'unsafe-inline'
+  // solo en estilos porque las vistas usan variables CSS en atributos style.
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          imgSrc: ["'self'", 'data:', 'blob:'],
+          fontSrc: ["'self'", 'data:'],
+          // WebSocket de Socket.IO, mismo origen en produccion.
+          connectSrc: ["'self'", 'ws:', 'wss:'],
+          mediaSrc: ["'self'", 'data:', 'blob:'],
+          objectSrc: ["'none'"],
+          frameAncestors: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
   app.use(
     cors({
       origin: env.isProduction ? env.corsOrigins : true,

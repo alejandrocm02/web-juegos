@@ -78,7 +78,7 @@ describe('recorrido completo del modo individual', () => {
     expect(room.minPlayers).toBe(1);
     expect(room.players).toHaveLength(1);
     // Sin gente a la que invitar no se publica enlace.
-    expect(room.inviteUrl).toBe('');
+    expect(room.solo).toBe(true);
     // El unico jugador entra ya preparado: no hay a quien esperar.
     expect(room.players[0]!.ready).toBe(true);
 

@@ -1,5 +1,6 @@
 import type { GolfBallState, GolfPublicState, GolfSnapshot } from '@arcade/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { syncCanvasResolution } from '../lib/canvas.js';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph, Scoreboard } from '../components/ui.js';
 import { playAceSound, playHoledSound, playOutSound } from '../lib/sound.js';
@@ -158,7 +159,11 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
         const levelTime =
           (clockRef.current.levelClockMs + (time - clockRef.current.receivedAt)) / 1000;
 
-        drawGolfFrame(ctx, canvas, {
+        // El buffer se ajusta a la densidad de pantalla en cada fotograma: es
+        // idempotente y cubre el caso de arrastrar la ventana a otro monitor.
+        const view = syncCanvasResolution(canvas, ctx, VIEW_W, VIEW_H);
+
+        drawGolfFrame(ctx, view, {
           level: state.level,
           balls: [...renderBalls.current.values()],
           camera,

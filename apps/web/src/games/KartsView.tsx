@@ -4,8 +4,10 @@ import {
   type KartsPublicState,
   type KartsSnapshot,
   type KartState,
+  clamp,
 } from '@arcade/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { syncCanvasResolution, type Viewport } from '../lib/canvas.js';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 
@@ -112,10 +114,13 @@ export default function KartsView({ state }: { state: KartsPublicState }) {
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext('2d');
       if (canvas && ctx) {
+        // El buffer se ajusta a la densidad de pantalla en cada fotograma: es
+        // idempotente y cubre el caso de arrastrar la ventana a otro monitor.
+        const view = syncCanvasResolution(canvas, ctx, VIEW_W, VIEW_H);
         const snapshot = snapshotRef.current as KartsSnapshot | null;
         const source = snapshot && 'karts' in snapshot ? snapshot.karts : state.karts;
         interpolate(renderRef.current, source, dt);
-        draw(ctx, canvas, state, renderRef.current, room?.players ?? [], session?.playerId);
+        draw(ctx, view, state, renderRef.current, room?.players ?? [], session?.playerId);
       }
       frame = requestAnimationFrame(loop);
     };
@@ -331,7 +336,7 @@ function interpolate(
 
 function draw(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  view: Viewport,
   state: KartsPublicState,
   render: Map<string, { x: number; y: number; heading: number }>,
   players: { id: string; name: string; color: string }[],
@@ -339,21 +344,21 @@ function draw(
 ): void {
   const gates = state.track.gates;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const ground = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  ctx.clearRect(0, 0, view.width, view.height);
+  const ground = ctx.createLinearGradient(0, 0, view.width, view.height);
   ground.addColorStop(0, '#0a231e');
   ground.addColorStop(0.55, '#071a18');
   ground.addColorStop(1, '#081311');
   ctx.fillStyle = ground;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, view.width, view.height);
 
   // Textura técnica del terreno.
   ctx.strokeStyle = 'rgba(74, 222, 128, 0.045)';
   ctx.lineWidth = 1;
-  for (let x = -canvas.height; x < canvas.width; x += 38) {
+  for (let x = -view.height; x < view.width; x += 38) {
     ctx.beginPath();
     ctx.moveTo(x, 0);
-    ctx.lineTo(x + canvas.height, canvas.height);
+    ctx.lineTo(x + view.height, view.height);
     ctx.stroke();
   }
 
@@ -371,7 +376,7 @@ function draw(
   ctx.shadowColor = 'rgba(0,0,0,0.75)';
   ctx.shadowBlur = 24;
   ctx.shadowOffsetY = 12;
-  const asphalt = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+  const asphalt = ctx.createLinearGradient(0, 0, view.width, view.height);
   asphalt.addColorStop(0, '#2a303a');
   asphalt.addColorStop(0.45, '#171c24');
   asphalt.addColorStop(1, '#252a32');
@@ -487,8 +492,4 @@ function draw(
       ctx.globalAlpha = 1;
     }
   }
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return value < min ? min : value > max ? max : value;
 }

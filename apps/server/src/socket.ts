@@ -18,9 +18,9 @@ import {
 } from '@arcade/shared';
 import type { ZodSchema } from 'zod';
 import { logger } from './logger.js';
-import { RoomManager } from './rooms/manager.js';
+import { RoomCapacityError, RoomManager } from './rooms/manager.js';
 import { listSoloRecords } from './records.js';
-import { SocketRateLimiter, payloadTooLarge } from './security.js';
+import { IpQuota, SocketRateLimiter, payloadTooLarge } from './security.js';
 
 interface SocketSession {
   roomCode: string;
@@ -35,7 +35,13 @@ export function registerSocketHandlers(io: Server): RoomManager {
   manager.startSweeper();
 
   const limiter = new SocketRateLimiter();
+  const quota = new IpQuota();
   const sessions = new Map<string, SocketSession>();
+
+  /** Direccion del cliente, ya normalizada por Socket.IO detras del proxy. */
+  function ipOf(socket: Socket): string {
+    return socket.handshake.address || 'desconocida';
+  }
 
   function roomChannel(code: string): string {
     return 'room:' + code;
@@ -72,6 +78,49 @@ export function registerSocketHandlers(io: Server): RoomManager {
       logger.error('Error tratando un evento de socket', String(error));
       fail(socket, 'INTERNAL', 'Se ha producido un error inesperado.');
     }
+  }
+
+  /**
+   * Equivalente de `guard` para los eventos que no llevan payload.
+   *
+   * Sin esto, `room:leave`, `room:start` y `room:back-to-lobby` quedaban fuera
+   * del limitador y fuera del try/catch: se podian repetir sin coste y una
+   * excepcion inesperada tumbaba el handler en vez de responder `app:error`.
+   */
+  function guardSimple(socket: Socket, handler: () => void): void {
+    if (!limiter.allow(socket.id)) {
+      fail(socket, 'RATE_LIMITED', 'Estás enviando demasiadas acciones. Espera un momento.');
+      return;
+    }
+    try {
+      handler();
+    } catch (error) {
+      logger.error('Error tratando un evento de socket', String(error));
+      fail(socket, 'INTERNAL', 'Se ha producido un error inesperado.');
+    }
+  }
+
+  /**
+   * Comprueba que hay sitio para una sala mas.
+   *
+   * Crear salas es la operacion mas cara del servidor (una partida en curso
+   * mantiene un bucle a 60 Hz) y era la unica sin limite propio. Se mira el
+   * techo del proceso y, despues, cuantas salas *con gente dentro* tiene ya esa
+   * IP: las vacias no cuentan, porque solo estan esperando a que alguien vuelva.
+   *
+   * Importa llamarlo despues de abandonar la sala anterior; si no, la sala que
+   * el jugador acaba de dejar todavia contaria como suya.
+   */
+  function canOpenRoom(socket: Socket): boolean {
+    if (!manager.hasCapacity) {
+      fail(socket, 'SERVER_BUSY', 'El servidor está al completo. Inténtalo dentro de un momento.');
+      return false;
+    }
+    if (!manager.hasCapacityForIp(ipOf(socket))) {
+      fail(socket, 'SERVER_BUSY', 'Tienes demasiadas partidas abiertas a la vez. Cierra alguna.');
+      return false;
+    }
+    return true;
   }
 
   function sessionOf(socket: Socket) {
@@ -118,12 +167,31 @@ export function registerSocketHandlers(io: Server): RoomManager {
   }
 
   io.on('connection', (socket) => {
+    // Abrir conexiones es barato: sin techo por IP, el resto de limites se
+    // esquivan simplemente abriendo mas sockets.
+    if (!quota.addSocket(ipOf(socket))) {
+      logger.warn('Demasiadas conexiones desde la misma IP; se rechaza el socket');
+      socket.emit(SERVER_EVENTS.error, {
+        code: 'SERVER_BUSY',
+        message: 'Demasiadas conexiones desde este dispositivo.',
+      } satisfies AppError);
+      socket.disconnect(true);
+      return;
+    }
     logger.debug('Socket conectado', socket.id);
 
     socket.on(CLIENT_EVENTS.createRoom, (payload) => {
       guard(socket, createRoomSchema, payload, ({ name }) => {
+        // Primero se suelta la sala anterior: si no, contaria contra la cuota.
         leaveCurrentSession(socket);
-        const room = manager.create();
+        if (!canOpenRoom(socket)) return;
+        let room;
+        try {
+          room = manager.create({ ownerIp: ipOf(socket) });
+        } catch (error) {
+          if (error instanceof RoomCapacityError) return fail(socket, 'SERVER_BUSY', error.message);
+          throw error;
+        }
         const player = room.addPlayer(name, socket.id);
         joinChannel(socket, room.code, player.id);
         socket.emit(SERVER_EVENTS.session, {
@@ -138,7 +206,14 @@ export function registerSocketHandlers(io: Server): RoomManager {
     socket.on(CLIENT_EVENTS.createSoloRoom, (payload) => {
       guard(socket, createSoloRoomSchema, payload, ({ name, profileId, game, config }) => {
         leaveCurrentSession(socket);
-        const room = manager.create({ solo: { game, profileId, config } });
+        if (!canOpenRoom(socket)) return;
+        let room;
+        try {
+          room = manager.create({ solo: { game, profileId, config }, ownerIp: ipOf(socket) });
+        } catch (error) {
+          if (error instanceof RoomCapacityError) return fail(socket, 'SERVER_BUSY', error.message);
+          throw error;
+        }
         const player = room.addPlayer(name, socket.id);
         // En práctica no hay a quién esperar: el único jugador entra listo.
         room.setReady(player.id, true);
@@ -231,12 +306,14 @@ export function registerSocketHandlers(io: Server): RoomManager {
     });
 
     socket.on(CLIENT_EVENTS.leaveRoom, () => {
-      const context = sessionOf(socket);
-      if (!context) return;
-      const { room, player } = context;
-      void socket.leave(roomChannel(room.code));
-      sessions.delete(socket.id);
-      room.removePlayer(player.id);
+      guardSimple(socket, () => {
+        const context = sessionOf(socket);
+        if (!context) return;
+        const { room, player } = context;
+        void socket.leave(roomChannel(room.code));
+        sessions.delete(socket.id);
+        room.removePlayer(player.id);
+      });
     });
 
     socket.on(CLIENT_EVENTS.selectGame, (payload) => {
@@ -273,24 +350,26 @@ export function registerSocketHandlers(io: Server): RoomManager {
     });
 
     socket.on(CLIENT_EVENTS.startGame, () => {
-      const context = sessionOf(socket);
-      if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
-      if (!context.player.isHost) {
-        return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede iniciar la partida.');
-      }
-      const result = context.room.startGame();
-      if (!result.ok) {
-        const connectedPlayers = context.room
-          .publicPlayers()
-          .filter((player) => player.connection === 'connected' && !player.isBot).length;
-        const code: ErrorCode =
-          context.room.currentPhase !== 'lobby'
-            ? 'ALREADY_STARTED'
-            : connectedPlayers < context.room.minPlayers
-              ? 'NOT_ENOUGH_PLAYERS'
-              : 'ACTION_REJECTED';
-        fail(socket, code, result.reason ?? 'No se puede iniciar la partida.');
-      }
+      guardSimple(socket, () => {
+        const context = sessionOf(socket);
+        if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
+        if (!context.player.isHost) {
+          return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede iniciar la partida.');
+        }
+        const result = context.room.startGame();
+        if (!result.ok) {
+          const connectedPlayers = context.room
+            .publicPlayers()
+            .filter((player) => player.connection === 'connected' && !player.isBot).length;
+          const code: ErrorCode =
+            context.room.currentPhase !== 'lobby'
+              ? 'ALREADY_STARTED'
+              : connectedPlayers < context.room.minPlayers
+                ? 'NOT_ENOUGH_PLAYERS'
+                : 'ACTION_REJECTED';
+          fail(socket, code, result.reason ?? 'No se puede iniciar la partida.');
+        }
+      });
     });
 
     socket.on(CLIENT_EVENTS.kickPlayer, (payload) => {
@@ -336,12 +415,14 @@ export function registerSocketHandlers(io: Server): RoomManager {
     });
 
     socket.on(CLIENT_EVENTS.backToLobby, () => {
-      const context = sessionOf(socket);
-      if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
-      if (!context.player.isHost) {
-        return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede volver al lobby.');
-      }
-      context.room.backToLobby();
+      guardSimple(socket, () => {
+        const context = sessionOf(socket);
+        if (!context) return fail(socket, 'NOT_IN_ROOM', 'No estás en ninguna sala.');
+        if (!context.player.isHost) {
+          return fail(socket, 'NOT_HOST', 'Solo el anfitrión puede volver al lobby.');
+        }
+        context.room.backToLobby();
+      });
     });
 
     socket.on(CLIENT_EVENTS.gameAction, (payload) => {
@@ -354,6 +435,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
 
     socket.on('disconnect', () => {
       const context = sessionOf(socket);
+      quota.removeSocket(ipOf(socket));
       limiter.forget(socket.id);
       sessions.delete(socket.id);
       if (!context) return;

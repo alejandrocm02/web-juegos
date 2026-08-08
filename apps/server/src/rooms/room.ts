@@ -25,7 +25,6 @@ import {
   type SoloOutcome,
 } from '@arcade/shared';
 import { randomUUID, randomBytes } from 'node:crypto';
-import { env } from '../env.js';
 import { logger } from '../logger.js';
 import type { GameContext, GameRunner, RoomPlayer } from './types.js';
 import { createGameRunner } from '../games/factory.js';
@@ -51,11 +50,17 @@ export interface SoloRoomOptions {
 
 export interface RoomOptions {
   solo?: SoloRoomOptions;
+  /**
+   * IP que creo la sala. Solo se usa para descontar la cuota cuando el
+   * barredor la retira; no se registra en logs ni se expone al cliente.
+   */
+  ownerIp?: string;
 }
 
 export class Room {
   readonly code: string;
   readonly createdAt = Date.now();
+  readonly ownerIp: string | null;
   /** true si la sala es de práctica: un humano y, si hace falta, bots. */
   readonly solo: boolean;
   private readonly profileId: string | null;
@@ -76,6 +81,7 @@ export class Room {
     options: RoomOptions = {},
   ) {
     this.code = code;
+    this.ownerIp = options.ownerIp ?? null;
     this.solo = Boolean(options.solo);
     this.profileId = options.solo?.profileId ?? null;
     if (options.solo) {
@@ -111,6 +117,18 @@ export class Room {
 
   get isEmpty(): boolean {
     return this.humans().length === 0;
+  }
+
+  /**
+   * true si ahora mismo hay alguien conectado en la sala.
+   *
+   * No es lo mismo que `!isEmpty`: al cerrar la pestana el jugador no se
+   * borra, se marca como desconectado y conserva su plaza durante
+   * RECONNECT_GRACE_SECONDS por si vuelve. Para las cuotas lo que cuenta es si
+   * la sala se esta usando de verdad, no si queda alguien apuntado en ella.
+   */
+  get hasPlayersOnline(): boolean {
+    return this.emptySince === null;
   }
 
   get currentPhase(): RoomPhase {
@@ -175,8 +193,6 @@ export class Room {
       players: this.publicPlayers(),
       hostId: this.hostId,
       settings: this.settings,
-      // Una sala de práctica no se comparte: no se publica enlace de invitación.
-      inviteUrl: this.solo ? '' : env.PUBLIC_WEB_URL.replace(/\/$/, '') + '/?code=' + this.code,
       maxPlayers: MAX_PLAYERS,
       minPlayers: this.minPlayers,
       createdAt: this.createdAt,

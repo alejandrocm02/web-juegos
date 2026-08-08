@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#12101f"/>
+  <!-- Palanca arcade: base, vastago y bola -->
+  <rect x="16" y="44" width="32" height="8" rx="4" fill="#2a2545"/>
+  <rect x="29" y="24" width="6" height="22" rx="3" fill="#b9b3d6"/>
+  <circle cx="32" cy="21" r="11" fill="#ff5c8a"/>
+  <circle cx="28" cy="17" r="3.5" fill="#ffffff" opacity="0.55"/>
+  <circle cx="15" cy="36" r="4" fill="#43e0c8"/>
+  <circle cx="49" cy="36" r="4" fill="#ffd166"/>
+</svg>

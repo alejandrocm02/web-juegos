@@ -5,6 +5,7 @@ import {
   type BowlingSnapshot,
 } from '@arcade/shared';
 import { useEffect, useRef, useState } from 'react';
+import { syncCanvasResolution, type Viewport } from '../lib/canvas.js';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 
@@ -35,11 +36,14 @@ export default function BowlingView({ state }: { state: BowlingPublicState }) {
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext('2d');
       if (canvas && ctx) {
+        // El buffer se ajusta a la densidad de pantalla en cada fotograma: es
+        // idempotente y cubre el caso de arrastrar la ventana a otro monitor.
+        const view = syncCanvasResolution(canvas, ctx, VIEW_W, VIEW_H);
         const snapshot = snapshotRef.current as BowlingSnapshot | null;
         const live = snapshot && 'pins' in snapshot ? snapshot : null;
         drawLane(
           ctx,
-          canvas,
+          view,
           live?.ball ?? state.ball,
           live?.pins ?? state.pins,
           isMyTurn ? aim : null,
@@ -235,29 +239,29 @@ export default function BowlingView({ state }: { state: BowlingPublicState }) {
 
 function drawLane(
   ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
+  view: Viewport,
   ball: BowlingPublicState['ball'],
   pins: BowlingPublicState['pins'],
   aim: number | null,
   spin: number,
 ): void {
-  const scaleX = canvas.width / BOWLING_LANE.width;
-  const scaleY = canvas.height / (BOWLING_LANE.length + 120);
+  const scaleX = view.width / BOWLING_LANE.width;
+  const scaleY = view.height / (BOWLING_LANE.length + 120);
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  const room = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  ctx.clearRect(0, 0, view.width, view.height);
+  const room = ctx.createLinearGradient(0, 0, 0, view.height);
   room.addColorStop(0, '#070a11');
   room.addColorStop(0.55, '#10131b');
   room.addColorStop(1, '#05070b');
   ctx.fillStyle = room;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillRect(0, 0, view.width, view.height);
 
   // La pista se dibuja con el fondo abajo: el jugador lanza desde la parte inferior.
-  const toY = (y: number) => canvas.height - (y + 60) * scaleY;
+  const toY = (y: number) => view.height - (y + 60) * scaleY;
 
   // Luz del pin deck.
-  const laneGlow = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  const laneGlow = ctx.createLinearGradient(0, 0, 0, view.height);
   laneGlow.addColorStop(0, '#f3d293');
   laneGlow.addColorStop(0.38, '#d7a85d');
   laneGlow.addColorStop(1, '#9c6231');
@@ -272,17 +276,17 @@ function drawLane(
   );
   ctx.shadowBlur = 0;
 
-  const gutter = ctx.createLinearGradient(0, 0, canvas.width, 0);
+  const gutter = ctx.createLinearGradient(0, 0, view.width, 0);
   gutter.addColorStop(0, '#030509');
   gutter.addColorStop(0.5, '#161a22');
   gutter.addColorStop(1, '#030509');
   ctx.fillStyle = gutter;
-  ctx.fillRect(0, 0, BOWLING_LANE.gutterWidth * scaleX, canvas.height);
+  ctx.fillRect(0, 0, BOWLING_LANE.gutterWidth * scaleX, view.height);
   ctx.fillRect(
-    canvas.width - BOWLING_LANE.gutterWidth * scaleX,
+    view.width - BOWLING_LANE.gutterWidth * scaleX,
     0,
     BOWLING_LANE.gutterWidth * scaleX,
-    canvas.height,
+    view.height,
   );
 
   // Lamas de madera y reflejos longitudinales.
@@ -294,7 +298,7 @@ function drawLane(
       ((BOWLING_LANE.width - BOWLING_LANE.gutterWidth * 2) / 15) * i * scaleX;
     ctx.beginPath();
     ctx.moveTo(x, toY(BOWLING_LANE.length));
-    ctx.lineTo(x, canvas.height);
+    ctx.lineTo(x, view.height);
     ctx.stroke();
   }
 
@@ -323,10 +327,10 @@ function drawLane(
     ctx.shadowBlur = 8;
     ctx.setLineDash([6, 6]);
     ctx.beginPath();
-    ctx.moveTo(startX, canvas.height - 20);
+    ctx.moveTo(startX, view.height - 20);
     ctx.quadraticCurveTo(
       startX + spin * 90,
-      canvas.height * 0.45,
+      view.height * 0.45,
       startX + spin * 150,
       toY(BOWLING_LANE.length),
     );
@@ -396,11 +400,14 @@ function drawLane(
   ctx.lineWidth = 1;
   ctx.stroke();
   ctx.fillStyle = 'rgba(3, 7, 18, 0.8)';
-  for (const [dx, dy] of [
+  // Tupla explicita en vez de number[]: asi el desestructurado no produce
+  // `number | undefined` y no hace falta afirmar nada.
+  const fingerHoles: ReadonlyArray<readonly [number, number]> = [
     [-0.22, -0.18],
     [0.18, -0.28],
     [0.05, 0.08],
-  ]) {
+  ];
+  for (const [dx, dy] of fingerHoles) {
     ctx.beginPath();
     ctx.arc(ballX + dx * ballRadius, ballY + dy * ballRadius, ballRadius * 0.11, 0, Math.PI * 2);
     ctx.fill();

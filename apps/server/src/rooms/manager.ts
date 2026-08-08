@@ -3,12 +3,55 @@ import { randomInt } from 'node:crypto';
 import { env } from '../env.js';
 import { logger } from '../logger.js';
 import { Room, type RoomDeps, type RoomOptions } from './room.js';
+import { MAX_ROOMS, MAX_ROOMS_PER_IP } from '../security.js';
+
+/** Se lanza cuando el proceso ya sostiene todas las salas que admite. */
+export class RoomCapacityError extends Error {
+  constructor() {
+    super('El servidor esta al completo. Intentalo dentro de un momento.');
+    this.name = 'RoomCapacityError';
+  }
+}
 
 export class RoomManager {
   private rooms = new Map<string, Room>();
   private sweeper: NodeJS.Timeout | null = null;
+  constructor(
+    private readonly depsFactory: (code: string) => RoomDeps,
+    private readonly maxRooms: number = MAX_ROOMS,
+  ) {}
 
-  constructor(private readonly depsFactory: (code: string) => RoomDeps) {}
+  /** true si todavia cabe una sala mas en el proceso. */
+  get hasCapacity(): boolean {
+    return this.rooms.size < this.maxRooms;
+  }
+
+  /**
+   * Salas de esa IP que ahora mismo tienen a alguien conectado.
+   *
+   * Se mira `hasPlayersOnline` y no `!isEmpty` a proposito: al cerrar la
+   * pestana el jugador conserva su plaza durante RECONNECT_GRACE_SECONDS por si
+   * vuelve, asi que una sala abandonada seguiria pareciendo ocupada minuto y
+   * medio. Con partidas encadenadas eso agota el cupo sin que haya en ningun
+   * momento mas de una sala en uso.
+   *
+   * Se recorre en vez de llevar un contador porque un contador se
+   * desincroniza: habria que acertar en cada alta, baja, barrido, desconexion y
+   * reconexion. Crear salas es raro y el total esta acotado por MAX_ROOMS, asi
+   * que recorrer sale gratis y no puede mentir.
+   */
+  activeRoomsForIp(ip: string): number {
+    let total = 0;
+    for (const room of this.rooms.values()) {
+      if (room.ownerIp === ip && room.hasPlayersOnline) total += 1;
+    }
+    return total;
+  }
+
+  /** true si esa IP puede abrir otra sala. */
+  hasCapacityForIp(ip: string): boolean {
+    return this.activeRoomsForIp(ip) < MAX_ROOMS_PER_IP;
+  }
 
   startSweeper(): void {
     if (this.sweeper) return;
@@ -33,6 +76,9 @@ export class RoomManager {
   }
 
   create(options: RoomOptions = {}): Room {
+    // El techo se comprueba aqui y no solo en el handler, para que ninguna via
+    // futura de creacion pueda saltarselo por descuido.
+    if (!this.hasCapacity) throw new RoomCapacityError();
     const code = this.generateCode();
     const room = new Room(code, this.depsFactory(code), options);
     this.rooms.set(code, room);

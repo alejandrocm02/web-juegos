@@ -33,7 +33,6 @@ Para jugar entre varios ordenadores de la misma red, arranca con `npm run dev` y
 
 ```env
 CORS_ORIGINS=http://192.168.1.50:5173
-PUBLIC_WEB_URL=http://192.168.1.50:5173
 VITE_SERVER_URL=http://192.168.1.50:3001
 ```
 
@@ -59,7 +58,7 @@ El `Dockerfile` construye todo el monorepo y arranca **un único servicio** que 
 2. En Render: **New → Blueprint**, elige el repositorio. Render lee `render.yaml` y crea el servicio con el plan gratuito.
 3. Espera al primer build (unos minutos) y comparte la URL que te da Render.
 
-No hace falta configurar `CORS_ORIGINS` ni `PUBLIC_WEB_URL`: el enlace de invitación se construye en el navegador a partir del dominio real, así que funciona igual en local, en red local y en producción.
+No hace falta configurar `CORS_ORIGINS`: el enlace de invitación se construye en el navegador a partir del dominio real, así que funciona igual en local, en red local y en producción.
 
 Dos avisos sobre el plan gratuito de Render:
 
@@ -101,6 +100,8 @@ arcade-party/
 │  │  ├─ src/security.ts Rate limiting y tamaño máximo de mensaje
 │  │  └─ prisma/         Esquema SQLite de estadísticas
 │  └─ web/               React + Vite + TypeScript + Tailwind
+│     ├─ src/lib/canvas.ts  Ajuste de los lienzos a la densidad de pantalla
+│     ├─ src/games/registry.ts  Carga diferida de las vistas de juego
 │     ├─ src/views/      Inicio, lobby, resultados, estados de error
 │     ├─ src/games/      una vista React por juego
 │     └─ src/store.tsx   Estado global y conexión Socket.IO
@@ -121,7 +122,9 @@ arcade-party/
    El servidor debe simular con paso fijo y obtener siempre el mismo resultado. Matter.js no garantiza determinismo entre versiones ni plataformas y arrastra un motor de cuerpos rígidos genérico que aquí no hace falta: el minigolf y el billar solo necesitan círculos contra segmentos, zonas de superficie y obstáculos móviles. El motor incluido son ~600 líneas auditables, con paso fijo de 1/60 s, y está cubierto por tests.
 2. **Render con Canvas 2D en lugar de Phaser 3.**
    Al ser el servidor autoritativo, el cliente **no simula**: interpola los snapshots recibidos a 20 Hz. La pila de escenas, loaders y física de Phaser sería peso muerto (~1 MB) para dibujar unos círculos y rectángulos. El render vive en `PoolView.tsx` y `GolfView.tsx` y usa la misma geometría declarativa que el servidor, así que ambos ven exactamente lo mismo.
-3. **Minigolf en vista cenital 2.5D.** Los saltos de rampa usan una altura simulada (`z`) que afecta a las reglas (una bola en el aire ignora paredes y límites) y al dibujo (sombra y escala). Se mantiene todo en el mismo motor, sin una pila 3D aparte.
+3. **Las vistas de juego se cargan bajo demanda.** Cada una arrastra su propio renderizador de canvas: cargarlas todas por adelantado hacía que abrir la página para jugar a una sola descargase las trece restantes. Con `React.lazy` el arranque baja de 129 kB a 99 kB comprimidos y cada juego pesa entre 1,5 y 8 kB aparte. Para que dividir no cueste un parpadeo justo al empezar la partida, el lobby precarga el fragmento del juego seleccionado (`prefetchGame`) mientras la gente sigue eligiendo.
+4. **Los lienzos se ajustan a la densidad de pantalla.** Los juegos declaran un tamaño lógico fijo y lo estiran por CSS, así que en cualquier pantalla 2x el navegador escalaba un mapa de bits de baja resolución. `syncCanvasResolution` separa las dos dimensiones: el buffer mide `lógico x dpr` píxeles reales y el contexto arranca cada fotograma con esa escala, de modo que el código de dibujo sigue trabajando en las mismas coordenadas de siempre. La densidad se acota a 2x porque el área a rellenar crece con el cuadrado del factor.
+5. **Minigolf en vista cenital 2.5D.** Los saltos de rampa usan una altura simulada (`z`) que afecta a las reglas (una bola en el aire ignora paredes y límites) y al dibujo (sombra y escala). Se mantiene todo en el mismo motor, sin una pila 3D aparte.
 
 ### Modelo de sincronización
 
@@ -402,7 +405,7 @@ Se guardan en la tabla `SoloRecord` de SQLite, indexadas por un **identificador 
 ## 7. Pruebas
 
 ```bash
-npm test          # Vitest: 295 tests
+npm test          # Vitest: 331 tests
 npm run test:e2e  # Playwright: dos navegadores compartiendo sala
 ```
 
@@ -450,6 +453,27 @@ Cobertura del modo individual:
 | El lobby de práctica oculta invitación y "Estoy listo"             | idem                                         |
 | La marca sobrevive a recargar la página                            | idem                                         |
 
+### Tests de componentes
+
+Las vistas de React se prueban con Vitest sobre jsdom y Testing Library. El
+store real abre un socket al importarse, así que las pruebas lo sustituyen por
+un valor controlado (`apps/web/tests/helpers/fixtures.ts`) y comprueban lo que
+ve el jugador, no el estado interno.
+
+| Comprobación                                                 | Dónde                               |
+| ------------------------------------------------------------ | ----------------------------------- |
+| Permisos del anfitrión (cambiar juego, iniciar, expulsar)    | `apps/web/tests/LobbyView.test.tsx` |
+| Condiciones para empezar: mínimo de jugadores y todos listos | idem                                |
+| Los bots no bloquean el inicio                               | idem                                |
+| Una sala de práctica no ofrece invitación                    | idem                                |
+| La desconexión se dice con palabras, no solo con color       | idem                                |
+| Enrutado por fase: inicio, lobby, partida y resultados       | `apps/web/tests/App.test.tsx`       |
+| Las vistas de juego perezosas montan la correcta             | idem                                |
+| Air Hockey y tenis de mesa comparten vista                   | idem                                |
+
+Un fichero pide jsdom con el docblock `// @vitest-environment jsdom`; el resto
+de las suites siguen ejecutándose en Node, que es más rápido.
+
 Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, configuración bloqueada, transferencia de anfitrión, promoción automática), banco de preguntas, puntuación de la diana y simulación de billar.
 
 ---
@@ -457,7 +481,13 @@ Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, config
 ## 8. Seguridad y robustez
 
 - **Validación Zod** de todos los eventos entrantes; los payloads inválidos responden con `app:error` y nunca tocan el estado.
-- **Rate limiting** por socket (60 mensajes / 5 s configurable) y límite de tamaño de mensaje (4 KB; el buffer de Socket.IO está limitado a 100 KB).
+- **Rate limiting** por socket (60 mensajes / 5 s configurable) y límite de tamaño de mensaje (4 KB; el buffer de Socket.IO está limitado a 100 KB). Se aplica a **todos** los eventos, incluidos los que no llevan payload (`room:leave`, `room:start`, `room:back-to-lobby`).
+- **Techo de recursos**: máximo de salas simultáneas por proceso (`MAX_ROOMS`), de sockets por IP (`MAX_SOCKETS_PER_IP`) y de salas **con gente dentro** por IP (`MAX_ROOMS_PER_IP`). Crear salas es la operación más cara del servidor —una partida en curso mantiene un bucle a 60 Hz— y era la única sin límite propio. Al superarlos se responde `SERVER_BUSY`.
+
+  Que el cupo por IP cuente salas _en uso_ y no salas _existentes_ no es un detalle: una sala vacía sobrevive `ROOM_EMPTY_TTL_SECONDS` por si alguien vuelve, así que contarlas castigaría a quien encadena partidas. Y como todo un NAT doméstico o de oficina comparte una sola IP pública, los márgenes son deliberadamente amplios: un límite ajustado no para a un atacante, que dispone de muchas IPs, y en cambio deja fuera al grupo de amigos para el que existe el juego.
+
+- **Política de seguridad de contenido (CSP)** explícita: `default-src 'self'`, sin `object-src` ni `frame-ancestors`. El cliente no carga nada de terceros.
+- **El contenedor no corre como root**: la imagen final cambia al usuario `node`.
 - **Rate limiting HTTP** (120 peticiones/minuto) y cabeceras de seguridad con Helmet.
 - **CORS por entorno**: abierto en desarrollo, lista blanca de `CORS_ORIGINS` en producción.
 - **Nombres** saneados (sin caracteres de control), longitud máxima y detección de duplicados ignorando acentos y mayúsculas.
@@ -490,8 +520,7 @@ Además: reglas de sala (nombres duplicados, aforo, mínimo de jugadores, config
 - Los bots del modo individual son deterministas por diseño dentro de cada dificultad: no aprenden ni se adaptan al rival entre partidas.
 - Las marcas personales viven en el navegador (identificador anónimo en `localStorage`) y en el SQLite del servidor. No se sincronizan entre dispositivos ni sobreviven a borrar los datos del navegador.
 - Playwright necesita descargar Chromium la primera vez (`npx playwright install chromium`).
-- Si `npm audit` sigue avisando tras actualizar, borra `node_modules` y `package-lock.json` y reinstala: un `npm install` incremental conserva resoluciones antiguas del lockfile. Una instalación limpia da cero avisos.
-- El repositorio fija `overrides: { "brace-expansion": "^5.0.8" }` para que `npm audit` quede a cero: la cadena `eslint → minimatch@3 → brace-expansion@1` arrastraba un aviso de denegación de servicio que solo afectaba a la herramienta de desarrollo.
+- `npm audit --omit=dev` da **cero vulnerabilidades**: la superficie que llega a producción está limpia. El `npm audit` completo sí puede avisar de algo en las herramientas de desarrollo (hoy, `brace-expansion` a través de `eslint → minimatch@3`, pese al `override` fijado en `package.json`). No afecta a lo desplegado, pero conviene revisarlo en cada actualización de ESLint.
 - Prisma descarga sus motores nativos durante `npm install`; si no hay red, la aplicación cae automáticamente al almacén en memoria.
 
 ---

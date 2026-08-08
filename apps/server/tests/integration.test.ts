@@ -91,7 +91,7 @@ describe('flujo multijugador por sockets', () => {
       (value) => value.players.length === 2,
     );
     expect(room.players.map((p) => p.name)).toEqual(['Ana', 'Bea']);
-    expect(room.inviteUrl).toContain(session.code);
+    expect(room.code).toBe(session.code);
 
     // Un invitado no puede cambiar el juego
     guest.emit(CLIENT_EVENTS.selectGame, { game: 'darts' });
