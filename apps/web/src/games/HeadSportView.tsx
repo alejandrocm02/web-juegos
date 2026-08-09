@@ -97,7 +97,7 @@ export default function HeadSportView({ state }: { state: HeadSportPublicState }
     return () => {
       window.removeEventListener('keydown', onDown);
       window.removeEventListener('keyup', onUp);
-      window.removeEventListener('blur', onBlur);
+      window.removeEventListener('blur-sm', onBlur);
     };
   }, [publish, syncKeyboard]);
 
@@ -159,7 +159,7 @@ export default function HeadSportView({ state }: { state: HeadSportPublicState }
             }
           />
           {state.phase === 'countdown' && (
-            <div className="absolute inset-1.5 z-[4] flex items-center justify-center rounded-[0.95rem] bg-black/70 backdrop-blur-sm">
+            <div className="absolute inset-1.5 z-4 flex items-center justify-center rounded-[0.95rem] bg-black/70 backdrop-blur-xs">
               <div className="game-countdown">
                 <span className="game-countdown-label">Preparados</span>
                 <span className="game-countdown-value">
@@ -169,7 +169,7 @@ export default function HeadSportView({ state }: { state: HeadSportPublicState }
             </div>
           )}
           {resetting && (
-            <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-full border border-white/15 bg-black/65 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-white backdrop-blur">
+            <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-full border border-white/15 bg-black/65 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-white backdrop-blur-sm">
               {state.lastScoringTeam ? 'Punto ' + state.lastScoringTeam : 'Saque inicial'}
             </div>
           )}
@@ -303,7 +303,7 @@ function TeamPanel({
         {players.map((player) => (
           <li
             key={player.id}
-            className="flex items-center gap-2 rounded-xl border border-white/[0.07] bg-white/[0.03] px-3 py-2 text-sm"
+            className="flex items-center gap-2 rounded-xl border border-white/[0.07] bg-white/3 px-3 py-2 text-sm"
           >
             <PlayerIconGlyph icon={player.icon} color={player.color} size={15} />
             <span className="text-white">{player.name}</span>

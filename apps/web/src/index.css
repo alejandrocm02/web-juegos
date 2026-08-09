@@ -1,7 +1,192 @@
-@import './theme.css';
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import './theme.css' layer(base);
+@import 'tailwindcss';
+
+@theme {
+  --color-night-500: #2a3454;
+  --color-night-600: #1d2540;
+  --color-night-700: #141a2e;
+  --color-night-800: #0d1020;
+  --color-night-900: #070912;
+
+  --color-neon-cyan: #22d3ee;
+  --color-neon-pink: #f472b6;
+  --color-neon-amber: #fbbf24;
+  --color-neon-lime: #4ade80;
+  --color-neon-violet: #a78bfa;
+
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: Inter, system-ui, sans-serif;
+
+  --shadow-glow: 0 0 0 1px rgba(148, 163, 184, 0.12), 0 18px 40px -20px rgba(34, 211, 238, 0.55);
+
+  --animate-pop: pop 180ms ease-out;
+  --animate-slideUp: slideUp 220ms ease-out;
+
+  @keyframes pop {
+    0% {
+      transform: scale(0.85);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  @keyframes slideUp {
+    0% {
+      transform: translateY(12px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility card {
+  @apply relative rounded-[1.4rem] border border-white/9 p-5 backdrop-blur-xl sm:p-6;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.055), transparent 45%), rgba(13, 16, 32, 0.84);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 28px 70px -42px rgba(0, 0, 0, 0.95),
+    0 18px 48px -34px rgba(34, 211, 238, 0.42);
+}
+
+@utility btn {
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm
+      font-bold tracking-[-0.01em] transition-all duration-200 disabled:cursor-not-allowed
+      disabled:opacity-40;
+}
+
+@utility btn-primary {
+  @apply btn text-night-900 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98];
+  background: linear-gradient(135deg, #67e8f9 0%, #22d3ee 48%, #38bdf8 100%);
+  box-shadow:
+    0 10px 28px -12px rgba(34, 211, 238, 0.85),
+    0 1px 0 rgba(255, 255, 255, 0.55) inset;
+}
+
+@utility btn-secondary {
+  @apply btn border border-white/12 bg-white/4.5 text-slate-100 hover:-translate-y-0.5
+      hover:border-white/20 hover:bg-white/9 active:translate-y-0 active:scale-[0.98];
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
+}
+
+@utility btn-danger {
+  @apply btn border border-rose-500/30 bg-rose-500/8 text-rose-200 hover:border-rose-400/50
+      hover:bg-rose-500/15;
+}
+
+@utility input {
+  @apply w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3.5 text-base text-white
+      shadow-inner placeholder:text-slate-600 focus:border-neon-cyan/80;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background 180ms ease;
+
+  &:focus {
+    background: rgba(5, 7, 17, 0.72);
+    box-shadow:
+      0 0 0 3px rgba(34, 211, 238, 0.08),
+      0 12px 30px -20px rgba(34, 211, 238, 0.7);
+  }
+}
+
+@utility chip {
+  @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/4.5
+      px-3 py-1.5 text-xs font-semibold text-slate-300 backdrop-blur-sm;
+}
+
+@utility label {
+  @apply mb-2 block text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-400;
+}
+
+@utility eyebrow {
+  @apply text-[0.68rem] font-bold uppercase tracking-[0.22em] text-neon-cyan;
+}
+
+@utility game-card {
+  @apply relative overflow-hidden rounded-[1.35rem] border border-white/8 p-5 text-left
+      transition duration-300;
+  background:
+    radial-gradient(circle at 95% 5%, var(--game-glow, rgba(34, 211, 238, 0.16)), transparent 45%),
+    rgba(13, 16, 32, 0.7);
+  box-shadow: 0 20px 45px -38px rgba(0, 0, 0, 0.95);
+
+  &:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255, 255, 255, 0.16);
+    box-shadow:
+      0 28px 55px -36px rgba(0, 0, 0, 1),
+      0 18px 45px -34px var(--game-accent, #22d3ee);
+  }
+}
+
+@utility game-icon-shell {
+  @apply flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10;
+  color: var(--game-accent, #22d3ee);
+  background: color-mix(in srgb, var(--game-accent, #22d3ee) 13%, transparent);
+  box-shadow: 0 12px 28px -18px var(--game-accent, #22d3ee);
+}
+
+@utility hero-title {
+  @apply font-display text-5xl font-black leading-[0.92] tracking-[-0.055em] sm:text-7xl lg:text-[5.4rem];
+  text-wrap: balance;
+}
+
+@utility text-gradient {
+  color: transparent;
+  background: linear-gradient(100deg, #67e8f9 0%, #a5f3fc 34%, #c4b5fd 68%, #f9a8d4 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+}
+
+@utility status-dot {
+  @apply h-2 w-2 rounded-full bg-neon-lime;
+  box-shadow:
+    0 0 0 4px rgba(74, 222, 128, 0.08),
+    0 0 12px rgba(74, 222, 128, 0.9);
+}
+
+@utility score-row {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    background 180ms ease;
+
+  &:hover {
+    transform: translateX(2px);
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+}
+
+@utility canvas-frame {
+  @apply overflow-hidden rounded-[1.4rem] border border-white/12 bg-black/30 p-1.5;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 30px 75px -42px rgba(0, 0, 0, 1);
+}
 
 @layer base {
   :root {
@@ -52,145 +237,13 @@
   }
 
   *:focus-visible {
-    @apply outline-none ring-2 ring-neon-cyan ring-offset-2 ring-offset-night-900;
+    @apply outline-hidden ring-2 ring-neon-cyan ring-offset-2 ring-offset-night-900;
   }
 
   button,
   input,
   select {
     -webkit-tap-highlight-color: transparent;
-  }
-}
-
-@layer components {
-  .card {
-    @apply relative rounded-[1.4rem] border border-white/[0.09] p-5 backdrop-blur-xl sm:p-6;
-    background:
-      linear-gradient(145deg, rgba(255, 255, 255, 0.055), transparent 45%), rgba(13, 16, 32, 0.84);
-    box-shadow:
-      0 1px 0 rgba(255, 255, 255, 0.08) inset,
-      0 28px 70px -42px rgba(0, 0, 0, 0.95),
-      0 18px 48px -34px rgba(34, 211, 238, 0.42);
-  }
-
-  .btn {
-    @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm
-      font-bold tracking-[-0.01em] transition-all duration-200 disabled:cursor-not-allowed
-      disabled:opacity-40;
-  }
-
-  .btn-primary {
-    @apply btn text-night-900 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98];
-    background: linear-gradient(135deg, #67e8f9 0%, #22d3ee 48%, #38bdf8 100%);
-    box-shadow:
-      0 10px 28px -12px rgba(34, 211, 238, 0.85),
-      0 1px 0 rgba(255, 255, 255, 0.55) inset;
-  }
-
-  .btn-secondary {
-    @apply btn border border-white/[0.12] bg-white/[0.045] text-slate-100 hover:-translate-y-0.5
-      hover:border-white/20 hover:bg-white/[0.09] active:translate-y-0 active:scale-[0.98];
-    box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06) inset;
-  }
-
-  .btn-danger {
-    @apply btn border border-rose-500/30 bg-rose-500/[0.08] text-rose-200 hover:border-rose-400/50
-      hover:bg-rose-500/15;
-  }
-
-  .input {
-    @apply w-full rounded-xl border border-white/[0.1] bg-black/20 px-4 py-3.5 text-base text-white
-      shadow-inner placeholder:text-slate-600 focus:border-neon-cyan/80;
-    transition:
-      border-color 180ms ease,
-      box-shadow 180ms ease,
-      background 180ms ease;
-  }
-
-  .input:focus {
-    background: rgba(5, 7, 17, 0.72);
-    box-shadow:
-      0 0 0 3px rgba(34, 211, 238, 0.08),
-      0 12px 30px -20px rgba(34, 211, 238, 0.7);
-  }
-
-  .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-white/[0.1] bg-white/[0.045]
-      px-3 py-1.5 text-xs font-semibold text-slate-300 backdrop-blur;
-  }
-
-  .label {
-    @apply mb-2 block text-[0.68rem] font-bold uppercase tracking-[0.16em] text-slate-400;
-  }
-
-  .eyebrow {
-    @apply text-[0.68rem] font-bold uppercase tracking-[0.22em] text-neon-cyan;
-  }
-
-  .game-card {
-    @apply relative overflow-hidden rounded-[1.35rem] border border-white/[0.08] p-5 text-left
-      transition duration-300;
-    background:
-      radial-gradient(
-        circle at 95% 5%,
-        var(--game-glow, rgba(34, 211, 238, 0.16)),
-        transparent 45%
-      ),
-      rgba(13, 16, 32, 0.7);
-    box-shadow: 0 20px 45px -38px rgba(0, 0, 0, 0.95);
-  }
-
-  .game-card:hover {
-    transform: translateY(-4px);
-    border-color: rgba(255, 255, 255, 0.16);
-    box-shadow:
-      0 28px 55px -36px rgba(0, 0, 0, 1),
-      0 18px 45px -34px var(--game-accent, #22d3ee);
-  }
-
-  .game-icon-shell {
-    @apply flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10;
-    color: var(--game-accent, #22d3ee);
-    background: color-mix(in srgb, var(--game-accent, #22d3ee) 13%, transparent);
-    box-shadow: 0 12px 28px -18px var(--game-accent, #22d3ee);
-  }
-
-  .hero-title {
-    @apply font-display text-5xl font-black leading-[0.92] tracking-[-0.055em] sm:text-7xl lg:text-[5.4rem];
-    text-wrap: balance;
-  }
-
-  .text-gradient {
-    color: transparent;
-    background: linear-gradient(100deg, #67e8f9 0%, #a5f3fc 34%, #c4b5fd 68%, #f9a8d4 100%);
-    background-clip: text;
-    -webkit-background-clip: text;
-  }
-
-  .status-dot {
-    @apply h-2 w-2 rounded-full bg-neon-lime;
-    box-shadow:
-      0 0 0 4px rgba(74, 222, 128, 0.08),
-      0 0 12px rgba(74, 222, 128, 0.9);
-  }
-
-  .score-row {
-    transition:
-      transform 180ms ease,
-      border-color 180ms ease,
-      background 180ms ease;
-  }
-
-  .score-row:hover {
-    transform: translateX(2px);
-    border-color: rgba(255, 255, 255, 0.12);
-  }
-
-  .canvas-frame {
-    @apply overflow-hidden rounded-[1.4rem] border border-white/[0.12] bg-black/30 p-1.5;
-    box-shadow:
-      0 1px 0 rgba(255, 255, 255, 0.08) inset,
-      0 30px 75px -42px rgba(0, 0, 0, 1);
   }
 }
 

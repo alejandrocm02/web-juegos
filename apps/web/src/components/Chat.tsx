@@ -36,7 +36,7 @@ export const ChatPanel = memo(function ChatPanel() {
     <div className="flex h-full flex-col gap-3">
       <div
         ref={listRef}
-        className="max-h-56 min-h-[7rem] flex-1 space-y-2 overflow-y-auto pr-1"
+        className="max-h-56 min-h-28 flex-1 space-y-2 overflow-y-auto pr-1"
         role="log"
         aria-live="polite"
         aria-label="Mensajes de la sala"
@@ -52,8 +52,7 @@ export const ChatPanel = memo(function ChatPanel() {
               <p
                 key={message.id}
                 className={
-                  'rounded-lg px-2.5 py-1.5 text-sm ' +
-                  (mine ? 'bg-neon-cyan/[0.08]' : 'bg-white/[0.03]')
+                  'rounded-lg px-2.5 py-1.5 text-sm ' + (mine ? 'bg-neon-cyan/8' : 'bg-white/3')
                 }
               >
                 <span className="mr-1.5 text-xs font-semibold" style={{ color: message.color }}>
@@ -130,7 +129,7 @@ export const ReactionOverlay = memo(function ReactionOverlay() {
       {reactions.map((reaction) => (
         <span
           key={reaction.key}
-          className="animate-slideUp rounded-full border border-white/15 bg-night-700/90 px-3 py-1 text-sm shadow-xl backdrop-blur"
+          className="animate-slideUp rounded-full border border-white/15 bg-night-700/90 px-3 py-1 text-sm shadow-xl backdrop-blur-sm"
         >
           <span className="mr-1.5 text-base">{reactionEmoji(reaction.reaction)}</span>
           <span className="text-xs" style={{ color: reaction.color }}>

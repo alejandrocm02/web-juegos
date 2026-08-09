@@ -143,7 +143,7 @@ export default function TanksView({ state }: { state: TanksPublicState }) {
             aria-label="Campo de batalla de Tanques"
           />
           {state.phase === 'countdown' && (
-            <div className="absolute inset-1.5 z-[4] flex items-center justify-center rounded-[0.95rem] bg-black/70 backdrop-blur-sm">
+            <div className="absolute inset-1.5 z-4 flex items-center justify-center rounded-[0.95rem] bg-black/70 backdrop-blur-xs">
               <div className="game-countdown">
                 <span className="game-countdown-label">Sistemas armados</span>
                 <span className="game-countdown-value">
@@ -153,13 +153,13 @@ export default function TanksView({ state }: { state: TanksPublicState }) {
             </div>
           )}
           {state.phase === 'resolving' && (
-            <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-full border border-white/15 bg-black/65 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-white backdrop-blur">
+            <div className="pointer-events-none absolute left-1/2 top-4 -translate-x-1/2 rounded-full border border-white/15 bg-black/65 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.16em] text-white backdrop-blur-sm">
               Analizando impacto
             </div>
           )}
         </div>
 
-        <div className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-3 sm:p-4">
+        <div className="rounded-2xl border border-white/8 bg-white/2.5 p-3 sm:p-4">
           <div className="grid gap-4 lg:grid-cols-[auto_minmax(150px,1fr)_minmax(150px,1fr)_auto] lg:items-end">
             <div>
               <span className="label">Movimiento · {myTank?.fuel ?? 0} cargas</span>
@@ -312,7 +312,7 @@ function TankRow({
     <li
       className={
         'rounded-xl border px-3 py-2.5 ' +
-        (active ? 'border-white/25 bg-white/[0.08]' : 'border-white/[0.06] bg-white/[0.025]') +
+        (active ? 'border-white/25 bg-white/8' : 'border-white/6 bg-white/2.5') +
         (!tank.alive ? ' opacity-45' : '')
       }
     >

@@ -43,7 +43,7 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/80 p-4 backdrop-blur-sm sm:items-center"
+      className="fixed inset-0 z-60 flex items-end justify-center bg-black/80 p-4 backdrop-blur-xs sm:items-center"
       role="presentation"
       onClick={(event) => {
         if (event.target === event.currentTarget) onCancel();
