@@ -16,7 +16,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from 'dotenv';
-import { prepareSchema, providerFor } from './prisma-schema.mjs';
+import { prepareSchema, providerFor, resolveDatabaseUrl } from './prisma-schema.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const serverDir = path.resolve(here, '..');
@@ -41,6 +41,12 @@ if (args.length === 0) {
 // PostgreSQL cuando se apunta a un servidor. Asi la misma imagen sirve para
 // desarrollo y para produccion sin tocar el esquema a mano.
 const prismaDir = path.join(serverDir, 'prisma');
+
+// Se ancla la ruta relativa de SQLite antes de invocar la CLI para que apunte
+// al mismo fichero que abrira el servidor, sin depender de desde donde se
+// lance cada uno.
+process.env.DATABASE_URL = resolveDatabaseUrl(process.env.DATABASE_URL, prismaDir);
+
 let schemaPath;
 try {
   schemaPath = prepareSchema(prismaDir, process.env.DATABASE_URL);
