@@ -3,7 +3,12 @@ import { mkdtempSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 // @ts-expect-error El script de Prisma es JavaScript plano, sin tipos.
-import { providerFor, withProvider, prepareSchema } from '../scripts/prisma-schema.mjs';
+import {
+  providerFor,
+  withProvider,
+  prepareSchema,
+  resolveDatabaseUrl,
+} from '../scripts/prisma-schema.mjs';
 
 const SCHEMA = `generator client {
   provider = "prisma-client-js"
@@ -85,5 +90,40 @@ describe('preparacion del esquema efectivo', () => {
     const dir = sandbox();
     const chosen = prepareSchema(dir, 'postgres://host/db');
     expect(path.dirname(chosen)).toBe(dir);
+  });
+});
+
+describe('anclaje de la ruta de SQLite', () => {
+  const prismaDir = path.join(path.sep, 'app', 'apps', 'server', 'prisma');
+
+  it('convierte una ruta relativa en absoluta contra la carpeta prisma', () => {
+    expect(resolveDatabaseUrl('file:./dev.db', prismaDir)).toBe(
+      'file:' + path.join(prismaDir, 'dev.db'),
+    );
+  });
+
+  it('resuelve tambien los saltos hacia arriba', () => {
+    expect(resolveDatabaseUrl('file:../datos/arcade.db', prismaDir)).toBe(
+      'file:' + path.join(path.sep, 'app', 'apps', 'server', 'datos', 'arcade.db'),
+    );
+  });
+
+  it('deja intacta una ruta que ya es absoluta', () => {
+    expect(resolveDatabaseUrl('file:/var/data/arcade.db', prismaDir)).toBe(
+      'file:/var/data/arcade.db',
+    );
+  });
+
+  it('no toca las URL de PostgreSQL', () => {
+    const url = 'postgresql://user:pass@host:5432/db';
+    expect(resolveDatabaseUrl(url, prismaDir)).toBe(url);
+  });
+
+  it('dos procesos con distinto directorio de trabajo apuntan al mismo fichero', () => {
+    // Es el fallo que motivo el anclaje: la CLI se lanza desde apps/server y el
+    // servidor desde la raiz, y cada uno abria un dev.db distinto.
+    expect(resolveDatabaseUrl('file:./dev.db', prismaDir)).toBe(
+      resolveDatabaseUrl('file:./dev.db', prismaDir),
+    );
   });
 });

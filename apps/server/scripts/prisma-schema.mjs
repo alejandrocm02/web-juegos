@@ -65,3 +65,28 @@ export function prepareSchema(prismaDir, databaseUrl) {
   writeFileSync(target, withProvider(schema, provider), 'utf8');
   return target;
 }
+
+/**
+ * Convierte una `DATABASE_URL` de SQLite relativa en absoluta.
+ *
+ * Hasta Prisma 6 una ruta como `file:./dev.db` se resolvia contra la carpeta
+ * del esquema, asi que daba igual desde donde se lanzara el proceso. Con el
+ * adaptador de driver de Prisma 7 la resuelve SQLite contra el directorio de
+ * trabajo, y eso partia la base en dos: la CLI creaba las tablas en un fichero
+ * (se invoca desde apps/server) y el servidor abria otro distinto al arrancar
+ * desde la raiz, con lo que no encontraba ninguna tabla y caia al almacen en
+ * memoria sin avisar.
+ *
+ * Anclando en la carpeta `prisma` se recupera el comportamiento de siempre y
+ * ambos procesos apuntan al mismo fichero. Las URLs de PostgreSQL y las rutas
+ * ya absolutas se devuelven intactas.
+ */
+export function resolveDatabaseUrl(databaseUrl, prismaDir) {
+  const url = String(databaseUrl ?? '').trim();
+  if (!url.startsWith('file:')) return url;
+
+  const target = url.slice('file:'.length);
+  if (target === '' || target.startsWith('/')) return url;
+
+  return 'file:' + path.resolve(prismaDir, target);
+}

@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import type { BotDifficulty, GameId, MatchResult, SoloRecord } from '@arcade/shared';
 import { logger } from './logger.js';
 
@@ -175,12 +177,20 @@ export async function initStats(): Promise<StatsRepository> {
   try {
     // Prisma 7 genera el cliente en src/generated/prisma y ya no acepta la URL
     // desde el esquema: la conexion entra por un adaptador de driver.
-    const [{ PrismaClient }, { PrismaBetterSqlite3 }] = await Promise.all([
+    const [{ PrismaClient }, { PrismaBetterSqlite3 }, schemaHelpers] = await Promise.all([
       import('./generated/prisma/client.js'),
       import('@prisma/adapter-better-sqlite3'),
+      // @ts-expect-error El script de Prisma es JavaScript plano, sin tipos.
+      import('../scripts/prisma-schema.mjs') as Promise<{
+        resolveDatabaseUrl(url: string, prismaDir: string): string;
+      }>,
     ]);
+    // La ruta se ancla en la carpeta prisma, igual que hace la CLI, para que
+    // ambos abran el mismo fichero SQLite se lance el proceso desde donde se
+    // lance.
+    const prismaDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'prisma');
     const adapter = new PrismaBetterSqlite3({
-      url: process.env.DATABASE_URL ?? 'file:./dev.db',
+      url: schemaHelpers.resolveDatabaseUrl(process.env.DATABASE_URL ?? 'file:./dev.db', prismaDir),
     });
     const client = new PrismaClient({ adapter });
     // Comprobacion rapida: si alguna tabla no existe caemos al almacen en
