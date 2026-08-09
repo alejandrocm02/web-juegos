@@ -60,11 +60,18 @@ export default defineConfig({
       exclude: ['**/*.d.ts', '**/dist/**'],
       // Umbral de no retroceso, unos puntos por debajo de la cobertura real.
       // Se sube cuando se anaden pruebas; no se baja para que pase una entrega.
+      //
+      // Rebaselinado en Vitest 4: el proveedor v8 pasa a remapear con AST de
+      // forma obligatoria (en v3 era opt-in via experimentalAstAwareRemapping y
+      // en v4 la opcion desaparece). Mide lo mismo con mas precision, asi que
+      // las mismas 376 pruebas dan cifras mas bajas sin que se haya perdido ni
+      // una sola linea cubierta. Medicion real con v4: 77.41 lineas, 74.87
+      // funciones, 74.56 sentencias, 63.98 ramas.
       thresholds: {
-        lines: 80,
-        functions: 80,
-        statements: 80,
-        branches: 75,
+        lines: 75,
+        functions: 72,
+        statements: 72,
+        branches: 61,
       },
     },
   },
