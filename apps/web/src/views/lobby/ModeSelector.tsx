@@ -40,14 +40,14 @@ export function ModeSelector({
               className={
                 'min-h-11 rounded-xl border px-3 py-2 text-left transition disabled:opacity-50 ' +
                 (selected
-                  ? 'border-[color:var(--accent-blue)] bg-[color:var(--accent-blue)]/15'
-                  : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.07]')
+                  ? 'border-(--accent-blue) bg-(--accent-blue)/15'
+                  : 'border-white/10 bg-white/3 hover:bg-white/[0.07]')
               }
             >
               <span
                 className={
                   'block text-sm font-semibold ' +
-                  (selected ? 'text-[color:var(--accent-blue-ink)]' : 'text-white')
+                  (selected ? 'text-(--accent-blue-ink)' : 'text-white')
                 }
               >
                 {mode.name}

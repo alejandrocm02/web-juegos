@@ -99,7 +99,7 @@ export default function BlackjackView({ state }: { state: BlackjackPublicState }
               <article
                 key={playerId}
                 className={
-                  'rounded-2xl border bg-black/25 p-3 backdrop-blur-sm transition ' +
+                  'rounded-2xl border bg-black/25 p-3 backdrop-blur-xs transition ' +
                   (active
                     ? 'border-amber-300/80 shadow-[0_0_28px_rgba(245,196,81,.22)]'
                     : 'border-white/10')

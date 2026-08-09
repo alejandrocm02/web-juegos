@@ -106,7 +106,7 @@ export function TournamentPanel({
                       'relative flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border text-[10px] transition disabled:opacity-50 ' +
                       (picked
                         ? 'border-neon-amber bg-neon-amber/10 text-neon-amber'
-                        : 'border-white/10 bg-white/[0.03] text-slate-400 hover:bg-white/[0.07]')
+                        : 'border-white/10 bg-white/3 text-slate-400 hover:bg-white/[0.07]')
                     }
                   >
                     {picked && (
@@ -148,7 +148,7 @@ export function TournamentPanel({
                       ? 'border-neon-amber bg-neon-amber/15 text-neon-amber'
                       : played
                         ? 'border-white/10 bg-white/5 text-slate-500 line-through'
-                        : 'border-white/10 bg-white/[0.03] text-slate-400')
+                        : 'border-white/10 bg-white/3 text-slate-400')
                   }
                 >
                   {GAME_META[game].name}
@@ -170,7 +170,7 @@ export function TournamentStandings({ tournament }: { tournament: TournamentPubl
       {tournament.standings.map((standing) => (
         <li
           key={standing.playerId}
-          className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-white/[0.03] px-3 py-2"
+          className="flex items-center justify-between gap-3 rounded-lg border border-white/6 bg-white/3 px-3 py-2"
         >
           <span className="flex min-w-0 items-center gap-2.5">
             <span className="w-5 shrink-0 text-center text-xs font-bold text-slate-500">

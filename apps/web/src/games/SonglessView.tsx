@@ -119,7 +119,7 @@ export default function SonglessView({ state }: { state: SonglessPublicState }) 
               color="#b16cff"
             />
 
-            <div className="my-7 rounded-[1.5rem] border border-violet-300/15 bg-[radial-gradient(circle_at_center,rgba(124,58,237,.2),rgba(3,7,18,.88))] px-4 py-8 text-center">
+            <div className="my-7 rounded-3xl border border-violet-300/15 bg-[radial-gradient(circle_at_center,rgba(124,58,237,.2),rgba(3,7,18,.88))] px-4 py-8 text-center">
               <div
                 className="mx-auto flex h-24 max-w-xl items-center justify-center gap-1"
                 aria-hidden="true"
