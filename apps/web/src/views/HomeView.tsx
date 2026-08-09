@@ -130,7 +130,7 @@ export default function HomeView() {
                 className={
                   'flex-1 rounded-lg px-2 py-2.5 text-sm font-bold transition ' +
                   (mode === id
-                    ? 'bg-white/[0.1] text-white shadow-sm'
+                    ? 'bg-white/10 text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-300')
                 }
               >

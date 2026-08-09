@@ -95,7 +95,7 @@ export default function LobbyView() {
     <main className="mx-auto min-h-screen w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       <ErrorBanner error={error} onDismiss={dismissError} />
 
-      <header className="relative mb-6 overflow-hidden rounded-[1.6rem] border border-white/[0.08] bg-white/[0.025] px-5 py-5 sm:px-7">
+      <header className="relative mb-6 overflow-hidden rounded-[1.6rem] border border-white/8 bg-white/2.5 px-5 py-5 sm:px-7">
         <div
           className="pointer-events-none absolute -right-20 -top-28 h-64 w-64 rounded-full opacity-20 blur-3xl"
           style={{ background: GAME_META[room.selectedGame].accent }}
@@ -178,8 +178,8 @@ export default function LobbyView() {
                 className={
                   'rounded-2xl border px-3.5 py-3 transition ' +
                   (player.id === me.id
-                    ? 'border-neon-cyan/20 bg-neon-cyan/[0.06]'
-                    : 'border-white/[0.06] bg-white/[0.035]')
+                    ? 'border-neon-cyan/20 bg-neon-cyan/6'
+                    : 'border-white/6 bg-white/[0.035]')
                 }
               >
                 <div className="flex items-center justify-between gap-3">
@@ -236,7 +236,7 @@ export default function LobbyView() {
                   </span>
                 </div>
                 {isHost && !isSolo && player.id !== me.id && (
-                  <div className="mt-2.5 flex gap-2 border-t border-white/[0.05] pt-2.5">
+                  <div className="mt-2.5 flex gap-2 border-t border-white/5 pt-2.5">
                     <button
                       className="btn-secondary min-h-8 flex-1 px-2 py-1 text-[10px]"
                       onClick={() => transferHost(player.id)}
@@ -273,7 +273,7 @@ export default function LobbyView() {
                       className={
                         'flex-1 rounded-lg px-2 py-2 text-xs font-bold transition ' +
                         (room.soloConfig.botDifficulty === difficulty
-                          ? 'bg-white/[0.1] text-white shadow-sm'
+                          ? 'bg-white/10 text-white shadow-xs'
                           : 'text-slate-500 hover:text-slate-300')
                       }
                     >
@@ -404,8 +404,8 @@ export default function LobbyView() {
                     className={
                       'group rounded-2xl border p-4 text-left transition duration-200 ' +
                       (active
-                        ? 'bg-white/[0.08] shadow-glow'
-                        : 'border-white/[0.08] bg-white/[0.025] hover:-translate-y-0.5 hover:bg-white/[0.055]') +
+                        ? 'bg-white/8 shadow-glow'
+                        : 'border-white/8 bg-white/2.5 hover:-translate-y-0.5 hover:bg-white/5.5') +
                       (canPickGame ? '' : ' cursor-not-allowed opacity-70')
                     }
                     style={active ? { borderColor: GAME_META[id].accent } : undefined}

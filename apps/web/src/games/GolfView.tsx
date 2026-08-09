@@ -335,7 +335,7 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
           />
 
           {state.phase === 'scoreboard' && (
-            <div className="absolute inset-1.5 z-[4] flex items-center justify-center rounded-[0.95rem] bg-night-900/85 p-6 backdrop-blur">
+            <div className="absolute inset-1.5 z-4 flex items-center justify-center rounded-[0.95rem] bg-night-900/85 p-6 backdrop-blur-sm">
               <div className="w-full max-w-md">
                 <h3 className="mb-3 text-center font-display text-xl font-bold">
                   Hoyo {level.id} completado
@@ -366,7 +366,7 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
           )}
 
           {aceBanner && (
-            <div className="pointer-events-none absolute inset-0 z-[4] flex items-center justify-center">
+            <div className="pointer-events-none absolute inset-0 z-4 flex items-center justify-center">
               <div className="game-overlay animate-pop border-neon-amber/60 px-8 py-5 text-center shadow-glow">
                 <p className="font-display text-3xl font-black text-neon-amber">HOYO EN UNO</p>
                 <p className="mt-1 text-sm text-slate-200">
@@ -377,13 +377,13 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
           )}
 
           {hint && (
-            <div className="game-overlay absolute bottom-4 left-1/2 z-[4] -translate-x-1/2 px-4 py-2 text-sm text-white">
+            <div className="game-overlay absolute bottom-4 left-1/2 z-4 -translate-x-1/2 px-4 py-2 text-sm text-white">
               {hint}
             </div>
           )}
 
           {myBall?.outOfBounds && (
-            <div className="game-overlay absolute left-1/2 top-6 z-[4] -translate-x-1/2 border-rose-500/50 px-4 py-2 text-sm font-semibold text-rose-200">
+            <div className="game-overlay absolute left-1/2 top-6 z-4 -translate-x-1/2 border-rose-500/50 px-4 py-2 text-sm font-semibold text-rose-200">
               Fuera del recorrido. Pulsa Reiniciar (R).
             </div>
           )}
@@ -404,12 +404,12 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
             <span className="text-xs text-slate-400">Potencia</span>
             <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/10">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-neon-lime via-neon-amber to-rose-500"
+                className="h-full rounded-full bg-linear-to-r from-neon-lime via-neon-amber to-rose-500"
                 style={{ width: power * 100 + '%' }}
               />
             </div>
           </div>
-          <span className="basis-full rounded-xl border border-white/[0.06] bg-white/[0.025] px-3 py-2 text-xs text-slate-500 sm:basis-auto">
+          <span className="basis-full rounded-xl border border-white/6 bg-white/2.5 px-3 py-2 text-xs text-slate-500 sm:basis-auto">
             Consejo: {level.hint}
           </span>
         </div>

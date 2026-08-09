@@ -28,7 +28,7 @@ export default function ResultsView() {
     <main className="mx-auto flex min-h-screen w-full max-w-4xl items-center px-4 py-10">
       <Panel className="w-full overflow-hidden p-0 sm:p-0">
         <div
-          className="relative overflow-hidden border-b border-white/[0.08] px-6 py-10 text-center sm:px-10"
+          className="relative overflow-hidden border-b border-white/8 px-6 py-10 text-center sm:px-10"
           style={{
             background:
               'radial-gradient(circle at 50% 0%, ' +
@@ -76,7 +76,7 @@ export default function ResultsView() {
                 'mb-5 rounded-2xl border px-4 py-4 ' +
                 (soloOutcome.improved
                   ? 'border-neon-lime/30 bg-neon-lime/[0.07]'
-                  : 'border-white/[0.08] bg-white/[0.03]')
+                  : 'border-white/8 bg-white/3')
               }
             >
               <p className="font-display text-sm font-black uppercase tracking-[0.14em]">
@@ -114,7 +114,7 @@ export default function ResultsView() {
           <Scoreboard rows={result.rows} unit={tournamentDone ? 'pts' : unit} />
 
           {tournament && tournament.rounds.length > 0 && !tournamentDone && (
-            <div className="mt-6 rounded-2xl border border-neon-amber/25 bg-neon-amber/[0.05] px-4 py-4">
+            <div className="mt-6 rounded-2xl border border-neon-amber/25 bg-neon-amber/5 px-4 py-4">
               <p className="font-display text-sm font-black uppercase tracking-[0.14em] text-neon-amber">
                 Clasificación general del torneo
               </p>

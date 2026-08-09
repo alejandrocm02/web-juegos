@@ -130,7 +130,7 @@ export default function BowlingView({ state }: { state: BowlingPublicState }) {
             value={aim}
             disabled={!isMyTurn}
             onChange={(event) => setAim(Number(event.target.value))}
-            className="h-11 w-full accent-[color:var(--accent-blue)]"
+            className="h-11 w-full accent-(--accent-blue)"
           />
 
           <label className="label mt-2" htmlFor="bowling-spin">
@@ -145,7 +145,7 @@ export default function BowlingView({ state }: { state: BowlingPublicState }) {
             value={spin}
             disabled={!isMyTurn}
             onChange={(event) => setSpin(Number(event.target.value))}
-            className="h-11 w-full accent-[color:var(--accent-red)]"
+            className="h-11 w-full accent-(--accent-red)"
           />
 
           <label className="label mt-2" htmlFor="bowling-power">
@@ -182,8 +182,8 @@ export default function BowlingView({ state }: { state: BowlingPublicState }) {
                 className={
                   'rounded-xl border p-3 transition ' +
                   (active
-                    ? 'border-[color:var(--accent-red)] bg-[color:var(--accent-red)]/10'
-                    : 'border-white/5 bg-white/[0.03]')
+                    ? 'border-(--accent-red) bg-(--accent-red)/10'
+                    : 'border-white/5 bg-white/3')
                 }
               >
                 <div className="mb-2 flex items-center justify-between">
@@ -204,7 +204,7 @@ export default function BowlingView({ state }: { state: BowlingPublicState }) {
                   {card.frames.map((frame, index) => (
                     <div
                       key={index}
-                      className="min-w-[38px] rounded border border-white/10 bg-black/50 px-1 py-0.5 text-center"
+                      className="min-w-[38px] rounded-sm border border-white/10 bg-black/50 px-1 py-0.5 text-center"
                     >
                       <div className="flex justify-center gap-0.5 text-[10px] text-slate-300">
                         {frame.strike ? (

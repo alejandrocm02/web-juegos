@@ -85,9 +85,9 @@ export function SoloSetup({
                 title={GAME_META[id].name}
                 onClick={() => pickGame(id)}
                 className={
-                  'flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 ' +
+                  'flex aspect-square flex-col items-center justify-center gap-1 rounded-lg border transition focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 ' +
                   (active
-                    ? 'border-transparent bg-white/[0.09] text-white shadow-sm'
+                    ? 'border-transparent bg-white/9 text-white shadow-xs'
                     : 'border-white/[0.07] bg-black/20 text-slate-500 hover:border-white/20 hover:text-slate-200')
                 }
                 style={
@@ -154,7 +154,7 @@ export function SoloSetup({
                   className={
                     'flex-1 rounded-lg px-2 py-2 text-xs font-bold transition ' +
                     (value.config.botDifficulty === difficulty
-                      ? 'bg-white/[0.1] text-white shadow-sm'
+                      ? 'bg-white/10 text-white shadow-xs'
                       : 'text-slate-500 hover:text-slate-300')
                   }
                 >

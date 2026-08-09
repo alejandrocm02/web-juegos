@@ -55,7 +55,7 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
         }
         className="overflow-hidden"
       >
-        <div className="pointer-events-none absolute -left-28 top-1/3 h-64 w-64 rounded-full bg-neon-amber/[0.09] blur-3xl" />
+        <div className="pointer-events-none absolute -left-28 top-1/3 h-64 w-64 rounded-full bg-neon-amber/9 blur-3xl" />
         <div className="flex flex-col items-center gap-4">
           <div className="relative w-full max-w-[500px] py-3">
             <div className="pointer-events-none absolute inset-[12%] rounded-full bg-neon-amber/10 blur-3xl" />
@@ -207,9 +207,7 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
                               key={number}
                               className={
                                 'py-1 text-center tabular-nums ' +
-                                (closed
-                                  ? 'font-bold text-[color:var(--state-success)]'
-                                  : 'text-slate-300')
+                                (closed ? 'font-bold text-(--state-success)' : 'text-slate-300')
                               }
                             >
                               {/* Notacion clasica: barra, cruz y circulo. */}
