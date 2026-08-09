@@ -16,7 +16,7 @@
   "dependencies": {
     "@arcade/game-engine": "1.0.0",
     "@arcade/shared": "1.0.0",
-    "@prisma/client": "^5.22.0",
+    "@prisma/client": "^7.9.1",
     "prisma": "^5.22.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
