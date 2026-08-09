@@ -110,7 +110,7 @@ export default function App() {
     <>
       <DisconnectedOverlay visible={!connected} />
       {inGame && error && (
-        <div className="fixed left-1/2 top-20 z-[60] w-[min(92vw,42rem)] -translate-x-1/2">
+        <div className="fixed left-1/2 top-20 z-60 w-[min(92vw,42rem)] -translate-x-1/2">
           <ErrorBanner error={error} onDismiss={dismissError} />
         </div>
       )}

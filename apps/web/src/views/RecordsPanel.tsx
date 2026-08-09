@@ -22,7 +22,7 @@ export function RecordRow({ record }: { record: SoloRecord }) {
   const game = GAME_META[record.game];
   return (
     <li
-      className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.02] px-3 py-2.5"
+      className="flex items-center gap-3 rounded-xl border border-white/[0.07] bg-white/2 px-3 py-2.5"
       style={{ borderLeftColor: game.accent + '80', borderLeftWidth: 3 }}
     >
       <span

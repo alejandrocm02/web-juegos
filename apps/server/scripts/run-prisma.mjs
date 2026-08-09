@@ -16,6 +16,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from 'dotenv';
+import { prepareSchema, providerFor } from './prisma-schema.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const serverDir = path.resolve(here, '..');
@@ -35,6 +36,23 @@ if (args.length === 0) {
   console.error('Uso: node scripts/run-prisma.mjs <comando de prisma>');
   process.exit(1);
 }
+
+// El proveedor sale de la propia cadena de conexion: SQLite en local y
+// PostgreSQL cuando se apunta a un servidor. Asi la misma imagen sirve para
+// desarrollo y para produccion sin tocar el esquema a mano.
+const prismaDir = path.join(serverDir, 'prisma');
+let schemaPath;
+try {
+  schemaPath = prepareSchema(prismaDir, process.env.DATABASE_URL);
+} catch (error) {
+  console.error('[prisma] No se pudo preparar el esquema:', error.message);
+  process.exit(1);
+}
+console.log('[prisma] Proveedor: ' + providerFor(process.env.DATABASE_URL));
+
+// `generate`, `db push` y `studio` aceptan --schema. Si quien invoca ya lo ha
+// indicado se respeta su eleccion.
+if (!args.includes('--schema')) args.push('--schema', schemaPath);
 
 const require = createRequire(import.meta.url);
 

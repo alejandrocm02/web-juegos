@@ -95,7 +95,7 @@ export default function KartsView({ state }: { state: KartsPublicState }) {
     return () => {
       window.removeEventListener('keydown', onDown);
       window.removeEventListener('keyup', onUp);
-      window.removeEventListener('blur', onBlur);
+      window.removeEventListener('blur-sm', onBlur);
     };
   }, [publish]);
 
@@ -174,7 +174,7 @@ export default function KartsView({ state }: { state: KartsPublicState }) {
           />
 
           {state.phase === 'countdown' && (
-            <div className="absolute inset-1.5 z-[4] flex items-center justify-center rounded-[0.95rem] bg-black/70 backdrop-blur-sm">
+            <div className="absolute inset-1.5 z-4 flex items-center justify-center rounded-[0.95rem] bg-black/70 backdrop-blur-xs">
               <div className="game-countdown">
                 <span className="game-countdown-label">Parrilla preparada</span>
                 <span className="game-countdown-value">
@@ -185,7 +185,7 @@ export default function KartsView({ state }: { state: KartsPublicState }) {
           )}
 
           {myKart?.eliminated && (
-            <div className="game-overlay absolute left-1/2 top-6 z-[4] -translate-x-1/2 px-4 py-2 text-sm font-semibold text-rose-200">
+            <div className="game-overlay absolute left-1/2 top-6 z-4 -translate-x-1/2 px-4 py-2 text-sm font-semibold text-rose-200">
               Eliminado. Sigues viendo la carrera.
             </div>
           )}
@@ -244,8 +244,8 @@ export default function KartsView({ state }: { state: KartsPublicState }) {
                 className={
                   'flex items-center justify-between rounded-xl border px-3 py-2 text-sm ' +
                   (mine
-                    ? 'border-[color:var(--accent-blue)] bg-[color:var(--accent-blue)]/10'
-                    : 'border-white/5 bg-white/[0.03]')
+                    ? 'border-(--accent-blue) bg-(--accent-blue)/10'
+                    : 'border-white/5 bg-white/3')
                 }
               >
                 <span className="flex items-center gap-2">
@@ -293,7 +293,7 @@ function TouchButton({
       className={
         'min-h-14 rounded-xl border text-sm font-semibold transition ' +
         (active
-          ? 'border-[color:var(--accent-blue)] bg-[color:var(--accent-blue)]/25 text-white'
+          ? 'border-(--accent-blue) bg-(--accent-blue)/25 text-white'
           : 'border-white/15 bg-white/5 text-slate-200')
       }
       onPointerDown={(event) => {
