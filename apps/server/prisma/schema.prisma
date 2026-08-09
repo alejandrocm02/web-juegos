@@ -1,10 +1,14 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  runtime  = "nodejs"
 }
 
+// Desde Prisma 7 el campo `url` ya no se admite aqui. La cadena de conexion de
+// la CLI vive en prisma.config.mjs y la de la aplicacion la aporta el
+// adaptador de driver que construye stats.ts. Las dos leen DATABASE_URL.
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 /// Resultado de una partida terminada. Solo se guardan datos de juego,

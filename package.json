@@ -14,7 +14,7 @@
   "scripts": {
     "build:shared": "npm run build -w @arcade/shared",
     "build:engine": "npm run build -w @arcade/game-engine",
-    "build:packages": "npm run build:shared && npm run build:engine",
+    "build:packages": "npm run build:shared && npm run build:engine && npm run db:generate",
     "dev": "npm run build:packages && concurrently -n server,web -c magenta,cyan \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "npm run dev -w @arcade/server",
     "dev:web": "npm run dev -w @arcade/web",
