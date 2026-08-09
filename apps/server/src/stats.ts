@@ -173,10 +173,16 @@ let repository: StatsRepository = new MemoryStats();
 
 export async function initStats(): Promise<StatsRepository> {
   try {
-    const mod = await import('@prisma/client');
-    const PrismaClient = (mod as { PrismaClient?: new () => unknown }).PrismaClient;
-    if (!PrismaClient) throw new Error('PrismaClient no disponible');
-    const client = new PrismaClient();
+    // Prisma 7 genera el cliente en src/generated/prisma y ya no acepta la URL
+    // desde el esquema: la conexion entra por un adaptador de driver.
+    const [{ PrismaClient }, { PrismaBetterSqlite3 }] = await Promise.all([
+      import('./generated/prisma/client.js'),
+      import('@prisma/adapter-better-sqlite3'),
+    ]);
+    const adapter = new PrismaBetterSqlite3({
+      url: process.env.DATABASE_URL ?? 'file:./dev.db',
+    });
+    const client = new PrismaClient({ adapter });
     // Comprobacion rapida: si alguna tabla no existe caemos al almacen en
     // memoria. Se comprueban las dos, porque una base de datos creada antes de
     // añadir el modo individual tiene `MatchRecord` pero no `SoloRecord`.

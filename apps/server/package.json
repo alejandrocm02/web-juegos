@@ -16,13 +16,14 @@
   "dependencies": {
     "@arcade/game-engine": "1.0.0",
     "@arcade/shared": "1.0.0",
+    "@prisma/adapter-better-sqlite3": "^7.9.1",
     "@prisma/client": "^7.9.1",
-    "prisma": "^5.22.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
     "express-rate-limit": "^8.6.2",
     "helmet": "^8.0.0",
+    "prisma": "^7.9.1",
     "socket.io": "^4.8.1",
     "zod": "^3.23.8"
   },

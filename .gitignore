@@ -8,6 +8,8 @@ coverage/
 *.db-journal
 # Esquema derivado que genera run-prisma.mjs al elegir proveedor.
 schema.runtime.prisma
+# Cliente de Prisma: desde la version 7 se genera dentro del proyecto.
+apps/server/src/generated/
 playwright-report/
 test-results/
 *.tsbuildinfo
