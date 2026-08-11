@@ -10,6 +10,107 @@ import { resetToViewport, type Viewport } from '../lib/canvas.js';
 /** Longitud de arrastre (en unidades del mundo) que equivale a potencia maxima. */
 export const MAX_DRAG = 170;
 
+/**
+ * Direccion de la luz del hoyo, normalizada y comun a todo lo que se dibuja.
+ *
+ * Antes cada elemento inventaba su propio desplazamiento de sombra: los pads
+ * caian a (+7,+10), los obstaculos a (+3,+4) y las bolas a (+1.5,+2.5). Al no
+ * coincidir, el ojo no llegaba a deducir de donde venia la luz y todo el hoyo
+ * se leia plano por mucho degradado que se le pusiera. Con un unico foco, las
+ * sombras apuntan al mismo sitio y el relieve aparece solo.
+ */
+const LIGHT = { x: -0.55, y: -0.84 };
+
+/** Hacia donde caen las sombras: justo lo contrario que la luz. */
+const SHADOW = { x: -LIGHT.x, y: -LIGHT.y };
+
+/**
+ * Ejecuta un dibujo proyectando una sombra difusa coherente con el foco.
+ *
+ * `height` es la altura aparente del objeto sobre el cesped: cuanto mas alto,
+ * mas lejos y mas difuminada cae su sombra, que es lo que separa un objeto con
+ * volumen de una calcomania pegada al suelo.
+ */
+function withCastShadow(
+  ctx: CanvasRenderingContext2D,
+  height: number,
+  draw: () => void,
+  alpha = 0.45,
+): void {
+  ctx.save();
+  ctx.shadowColor = 'rgba(2,6,16,' + alpha + ')';
+  ctx.shadowBlur = Math.max(2, height * 1.35);
+  ctx.shadowOffsetX = SHADOW.x * height;
+  ctx.shadowOffsetY = SHADOW.y * height;
+  draw();
+  ctx.restore();
+}
+
+/**
+ * Degradado esferico: claro en el punto que mira a la luz y oscuro en el borde
+ * opuesto. Un degradado lineal, que es lo que habia, tinta el circulo pero lo
+ * deja leyendose como un disco; el radial es lo que lo convierte en bola.
+ */
+function sphereFill(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radius: number,
+  light: string,
+  mid: string,
+  dark: string,
+): CanvasGradient {
+  const gradient = ctx.createRadialGradient(
+    cx + LIGHT.x * radius * 0.45,
+    cy + LIGHT.y * radius * 0.45,
+    radius * 0.08,
+    cx,
+    cy,
+    radius,
+  );
+  gradient.addColorStop(0, light);
+  gradient.addColorStop(0.55, mid);
+  gradient.addColorStop(1, dark);
+  return gradient;
+}
+
+/**
+ * Mancha de contacto: elipse aplastada bajo el objeto, en el plano del cesped.
+ *
+ * El difuminado sale de un degradado radial que se desvanece, no de
+ * `ctx.filter`, que cuesta caro repetido en cada fotograma y no esta disponible
+ * en todos los navegadores. `lift` es la altura: al subir, la mancha se aleja,
+ * crece y pierde intensidad, igual que una sombra real.
+ */
+function drawContactShadow(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radius: number,
+  lift: number,
+): void {
+  const spread = 1 + lift / 40;
+  const rx = radius * 1.15 * spread;
+  const x = cx + SHADOW.x * (2 + lift * 0.35);
+  const y = cy + SHADOW.y * (2 + lift * 0.35) + radius * 0.22;
+  const strength = Math.max(0.06, 0.42 - lift / 240);
+
+  const gradient = ctx.createRadialGradient(x, y, 0, x, y, rx);
+  gradient.addColorStop(0, 'rgba(2,6,16,' + strength + ')');
+  gradient.addColorStop(0.6, 'rgba(2,6,16,' + strength * 0.55 + ')');
+  gradient.addColorStop(1, 'rgba(2,6,16,0)');
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(1, 0.58);
+  ctx.translate(-x, -y);
+  ctx.beginPath();
+  ctx.arc(x, y, rx, 0, Math.PI * 2);
+  ctx.fillStyle = gradient;
+  ctx.fill();
+  ctx.restore();
+}
+
 export interface RenderBall extends GolfBallState {
   /** Posicion interpolada que se dibuja, distinta de la autoritativa del servidor. */
   rx: number;
@@ -99,23 +200,70 @@ function drawLevel(
     const offset = pad.motion ? motionOffsetPublic(pad.motion, time) : { x: 0, y: 0 };
     const x = pad.rect.x + offset.x;
     const y = pad.rect.y + offset.y;
-    ctx.fillStyle = 'rgba(0,0,0,0.48)';
-    ctx.fillRect(x + 7, y + 10, pad.rect.w, pad.rect.h);
+    // La plataforma flota sobre el fondo: sombra difusa en la direccion del
+    // foco, en lugar del bloque negro desplazado a (+7,+10) que se veia antes
+    // como una segunda plataforma mal alineada.
+    withCastShadow(ctx, 11, () => {
+      ctx.fillStyle = palette.rail;
+      ctx.fillRect(x - 4, y - 4, pad.rect.w + 8, pad.rect.h + 8);
+    });
+
+    // Canto lateral y remate iluminado del borde de la plataforma.
+    ctx.fillStyle = colorMix(palette.rail, '#01030a', 0.5);
+    ctx.fillRect(x - 4 + SHADOW.x * 2, y - 4 + SHADOW.y * 2, pad.rect.w + 8, pad.rect.h + 8);
     ctx.fillStyle = palette.rail;
     ctx.fillRect(x - 4, y - 4, pad.rect.w + 8, pad.rect.h + 8);
     ctx.fillStyle = palette.railLight;
     ctx.fillRect(x - 2, y - 2, pad.rect.w + 4, 2);
+
     const surface = ctx.createLinearGradient(x, y, x, y + pad.rect.h);
     surface.addColorStop(0, GOLF_SURFACE_COLORS[pad.surface]);
     surface.addColorStop(1, colorShade(pad.surface));
     ctx.fillStyle = surface;
     ctx.fillRect(x, y, pad.rect.w, pad.rect.h);
+
+    // Franjas de siega, como en un campo de verdad. Solo en cesped: en arena o
+    // hielo no tendrian sentido.
+    if (pad.surface === 'green') {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, y, pad.rect.w, pad.rect.h);
+      ctx.clip();
+      const band = 26;
+      for (let i = 0; i * band < pad.rect.h; i++) {
+        if (i % 2 !== 0) continue;
+        ctx.fillStyle = 'rgba(255,255,255,0.028)';
+        ctx.fillRect(x, y + i * band, pad.rect.w, band);
+      }
+      ctx.restore();
+    }
+
     drawSurfaceTexture(ctx, pad.surface, x, y, pad.rect.w, pad.rect.h);
+
+    // Oclusion ambiental: el cesped se oscurece al acercarse al muro, que es lo
+    // que hace que la pared parezca levantarse del suelo.
+    const inset = Math.min(30, Math.min(pad.rect.w, pad.rect.h) * 0.32);
+    if (inset > 4) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, y, pad.rect.w, pad.rect.h);
+      ctx.clip();
+      const top = ctx.createLinearGradient(x, y, x, y + inset);
+      top.addColorStop(0, 'rgba(2,6,16,0.34)');
+      top.addColorStop(1, 'rgba(2,6,16,0)');
+      ctx.fillStyle = top;
+      ctx.fillRect(x, y, pad.rect.w, inset);
+      const left = ctx.createLinearGradient(x, y, x + inset, y);
+      left.addColorStop(0, 'rgba(2,6,16,0.26)');
+      left.addColorStop(1, 'rgba(2,6,16,0)');
+      ctx.fillStyle = left;
+      ctx.fillRect(x, y, inset, pad.rect.h);
+      ctx.restore();
+    }
+
     ctx.strokeStyle = 'rgba(255,255,255,0.2)';
     ctx.lineWidth = 1.2;
     ctx.strokeRect(x, y, pad.rect.w, pad.rect.h);
-    ctx.fillStyle = 'rgba(255,255,255,0.035)';
-    ctx.fillRect(x + 1, y + 1, pad.rect.w - 2, Math.min(3, pad.rect.h - 2));
   }
 
   for (const ramp of level.ramps) {
@@ -156,22 +304,52 @@ function drawLevel(
     ctx.setLineDash([]);
   }
 
-  // Hoyo
+  // Hoyo: una depresion, no una pegatina negra. El truco es que la pared
+  // interior se ve iluminada en el lado OPUESTO al foco, justo al reves que en
+  // un objeto que sobresale, y ese contraste es lo que hunde el agujero.
   ctx.beginPath();
-  ctx.arc(level.hole.x, level.hole.y, GOLF.holeRadius + 7, 0, Math.PI * 2);
-  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.arc(level.hole.x, level.hole.y, GOLF.holeRadius + 6, 0, Math.PI * 2);
+  const holeRim = ctx.createRadialGradient(
+    level.hole.x,
+    level.hole.y,
+    GOLF.holeRadius * 0.75,
+    level.hole.x,
+    level.hole.y,
+    GOLF.holeRadius + 6,
+  );
+  holeRim.addColorStop(0, 'rgba(2,6,16,0.4)');
+  holeRim.addColorStop(1, 'rgba(2,6,16,0)');
+  ctx.fillStyle = holeRim;
   ctx.fill();
+
   ctx.beginPath();
   ctx.arc(level.hole.x, level.hole.y, GOLF.holeRadius, 0, Math.PI * 2);
-  ctx.fillStyle = '#010204';
+  const holeWell = ctx.createRadialGradient(
+    level.hole.x - LIGHT.x * GOLF.holeRadius * 0.5,
+    level.hole.y - LIGHT.y * GOLF.holeRadius * 0.5,
+    GOLF.holeRadius * 0.1,
+    level.hole.x,
+    level.hole.y,
+    GOLF.holeRadius,
+  );
+  holeWell.addColorStop(0, '#000000');
+  holeWell.addColorStop(0.62, '#04070e');
+  holeWell.addColorStop(1, '#22303f');
+  ctx.fillStyle = holeWell;
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.5)';
-  ctx.lineWidth = 1.2;
+
+  // Filo del cesped recortado, mas claro donde le da la luz.
+  ctx.beginPath();
+  ctx.arc(level.hole.x, level.hole.y, GOLF.holeRadius, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(226,232,240,0.42)';
+  ctx.lineWidth = 1.4;
   ctx.stroke();
+
   ctx.beginPath();
   ctx.moveTo(level.hole.x, level.hole.y);
   ctx.lineTo(level.hole.x, level.hole.y - 34);
   ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 1.6;
   ctx.stroke();
   ctx.fillStyle = '#ef4444';
   ctx.fillRect(level.hole.x, level.hole.y - 34, 18, 10);
@@ -182,18 +360,36 @@ function drawLevel(
   ctx.fillStyle = '#fb7185';
   ctx.fill();
 
-  ctx.strokeStyle = 'rgba(0,0,0,0.42)';
-  ctx.lineWidth = 7;
+  // Muros en cuatro pasadas para que tengan grosor. Antes eran dos lineas
+  // superpuestas, una oscura y otra clara, y se leian como una raya pintada en
+  // el cesped en vez de como una valla que sobresale.
   ctx.lineCap = 'round';
+
+  // 1. Sombra proyectada sobre el cesped, en la direccion del foco.
+  ctx.strokeStyle = 'rgba(2,6,16,0.38)';
+  ctx.lineWidth = 9;
   for (const wall of level.walls) {
     const offset = wall.motion ? motionOffsetPublic(wall.motion, time) : { x: 0, y: 0 };
     ctx.beginPath();
-    ctx.moveTo(wall.a.x + offset.x, wall.a.y + offset.y);
-    ctx.lineTo(wall.b.x + offset.x, wall.b.y + offset.y);
+    ctx.moveTo(wall.a.x + offset.x + SHADOW.x * 5, wall.a.y + offset.y + SHADOW.y * 5);
+    ctx.lineTo(wall.b.x + offset.x + SHADOW.x * 5, wall.b.y + offset.y + SHADOW.y * 5);
     ctx.stroke();
   }
-  ctx.strokeStyle = palette.railLight;
-  ctx.lineWidth = 3.5;
+
+  // 2. Cara lateral: el canto del muro que queda a la sombra.
+  ctx.strokeStyle = colorMix(palette.rail, '#01030a', 0.45);
+  ctx.lineWidth = 8;
+  for (const wall of level.walls) {
+    const offset = wall.motion ? motionOffsetPublic(wall.motion, time) : { x: 0, y: 0 };
+    ctx.beginPath();
+    ctx.moveTo(wall.a.x + offset.x + SHADOW.x * 2, wall.a.y + offset.y + SHADOW.y * 2);
+    ctx.lineTo(wall.b.x + offset.x + SHADOW.x * 2, wall.b.y + offset.y + SHADOW.y * 2);
+    ctx.stroke();
+  }
+
+  // 3. Cara superior, la que recibe la luz de lleno.
+  ctx.strokeStyle = palette.rail;
+  ctx.lineWidth = 6.5;
   for (const wall of level.walls) {
     const offset = wall.motion ? motionOffsetPublic(wall.motion, time) : { x: 0, y: 0 };
     ctx.beginPath();
@@ -202,27 +398,59 @@ function drawLevel(
     ctx.stroke();
   }
 
-  for (const circle of level.circles) {
+  // 4. Filo brillante en la arista que mira al foco.
+  ctx.strokeStyle = palette.railLight;
+  ctx.lineWidth = 2.2;
+  for (const wall of level.walls) {
+    const offset = wall.motion ? motionOffsetPublic(wall.motion, time) : { x: 0, y: 0 };
     ctx.beginPath();
-    ctx.arc(circle.pos.x + 3, circle.pos.y + 4, circle.radius, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.38)';
-    ctx.fill();
+    ctx.moveTo(wall.a.x + offset.x + LIGHT.x * 1.9, wall.a.y + offset.y + LIGHT.y * 1.9);
+    ctx.lineTo(wall.b.x + offset.x + LIGHT.x * 1.9, wall.b.y + offset.y + LIGHT.y * 1.9);
+    ctx.stroke();
+  }
+
+  for (const circle of level.circles) {
+    const isBumper = circle.kind === 'bumper';
+    drawContactShadow(ctx, circle.pos.x, circle.pos.y, circle.radius, 7);
+
+    // Degradado radial anclado al foco: es lo que convierte el disco en cupula.
     ctx.beginPath();
     ctx.arc(circle.pos.x, circle.pos.y, circle.radius, 0, Math.PI * 2);
-    const obstacle = ctx.createLinearGradient(
-      circle.pos.x - circle.radius,
-      circle.pos.y - circle.radius,
-      circle.pos.x + circle.radius,
-      circle.pos.y + circle.radius,
+    ctx.fillStyle = sphereFill(
+      ctx,
+      circle.pos.x,
+      circle.pos.y,
+      circle.radius,
+      isBumper ? '#fbcfe8' : '#cbd5e1',
+      isBumper ? '#ec4899' : '#64748b',
+      isBumper ? '#6b1234' : '#161f2e',
     );
-    obstacle.addColorStop(0, circle.kind === 'bumper' ? '#f9a8d4' : '#aeb9c8');
-    obstacle.addColorStop(0.45, circle.kind === 'bumper' ? '#ec4899' : '#64748b');
-    obstacle.addColorStop(1, circle.kind === 'bumper' ? '#831843' : '#1e293b');
-    ctx.fillStyle = obstacle;
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
-    ctx.lineWidth = 1;
+
+    // Luz rebotada en el borde opuesto al foco: despega la pieza del fondo.
+    ctx.beginPath();
+    ctx.arc(
+      circle.pos.x + SHADOW.x * circle.radius * 0.55,
+      circle.pos.y + SHADOW.y * circle.radius * 0.55,
+      circle.radius * 0.62,
+      0,
+      Math.PI * 2,
+    );
+    ctx.strokeStyle = isBumper ? 'rgba(251,207,232,0.28)' : 'rgba(203,213,225,0.22)';
+    ctx.lineWidth = 1.6;
     ctx.stroke();
+
+    // Brillo especular, pequeno y desplazado hacia la luz.
+    ctx.beginPath();
+    ctx.arc(
+      circle.pos.x + LIGHT.x * circle.radius * 0.48,
+      circle.pos.y + LIGHT.y * circle.radius * 0.48,
+      Math.max(1.2, circle.radius * 0.2),
+      0,
+      Math.PI * 2,
+    );
+    ctx.fillStyle = 'rgba(255,255,255,' + (isBumper ? 0.5 : 0.34) + ')';
+    ctx.fill();
   }
 
   for (const blade of level.blades) {
@@ -462,35 +690,57 @@ function drawBalls(
     const isMine = ball.playerId === myId;
     const radius = GOLF.ballRadius * (1 + ball.z / 90);
 
-    if (ball.z > 0.5) {
-      ctx.beginPath();
-      ctx.arc(ball.rx, ball.ry + ball.z * 0.25, GOLF.ballRadius * 0.9, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0,0,0,0.35)';
-      ctx.fill();
-    }
+    // Una sola sombra, que se aleja y se difumina segun la bola gana altura.
+    // Asi el vuelo se lee sin necesidad de mirar el marcador.
+    drawContactShadow(ctx, ball.rx, ball.ry, GOLF.ballRadius, ball.z);
 
-    ctx.beginPath();
-    ctx.arc(ball.rx + 1.5, ball.ry + 2.5, radius, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.38)';
-    ctx.fill();
+    const base = info?.color ?? '#e2e8f0';
     ctx.beginPath();
     ctx.arc(ball.rx, ball.ry, radius, 0, Math.PI * 2);
-    ctx.fillStyle = info?.color ?? '#e2e8f0';
-    ctx.globalAlpha = isMine ? 1 : 0.72;
+    ctx.globalAlpha = isMine ? 1 : 0.78;
+    ctx.fillStyle = sphereFill(
+      ctx,
+      ball.rx,
+      ball.ry,
+      radius,
+      colorMix(base, '#ffffff', 0.62),
+      base,
+      colorMix(base, '#04070f', 0.58),
+    );
     ctx.fill();
     ctx.globalAlpha = 1;
+
+    // Luz rebotada del cesped en el canto inferior: evita que la bola parezca
+    // recortada sobre el fondo.
+    ctx.beginPath();
+    ctx.arc(
+      ball.rx + SHADOW.x * radius * 0.42,
+      ball.ry + SHADOW.y * radius * 0.42,
+      radius * 0.72,
+      Math.PI * 0.15,
+      Math.PI * 0.95,
+    );
+    ctx.strokeStyle = colorMix(base, '#ffffff', 0.35);
+    ctx.globalAlpha = 0.34;
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    ctx.beginPath();
+    ctx.arc(ball.rx, ball.ry, radius, 0, Math.PI * 2);
     ctx.lineWidth = isMine ? 2.5 : 1;
     ctx.strokeStyle = isMine ? '#f8fafc' : 'rgba(248,250,252,0.35)';
     ctx.stroke();
+
+    // Especular en el punto que mira al foco, mas un halo tenue alrededor.
+    const hx = ball.rx + LIGHT.x * radius * 0.42;
+    const hy = ball.ry + LIGHT.y * radius * 0.42;
     ctx.beginPath();
-    ctx.arc(
-      ball.rx - radius * 0.3,
-      ball.ry - radius * 0.35,
-      Math.max(1, radius * 0.22),
-      0,
-      Math.PI * 2,
-    );
-    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.arc(hx, hy, Math.max(1.4, radius * 0.3), 0, Math.PI * 2);
+    const glint = ctx.createRadialGradient(hx, hy, 0, hx, hy, Math.max(1.4, radius * 0.3));
+    glint.addColorStop(0, 'rgba(255,255,255,0.92)');
+    glint.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = glint;
     ctx.fill();
 
     ctx.fillStyle = 'rgba(15,23,42,0.85)';
@@ -545,6 +795,38 @@ function drawAim(
   ctx.strokeStyle = ratio > 0.8 ? '#f43f5e' : ratio > 0.5 ? '#fbbf24' : '#4ade80';
   ctx.lineWidth = 3;
   ctx.stroke();
+}
+
+/**
+ * Mezcla dos colores hexadecimales. Se usa para derivar la cara en sombra de un
+ * muro a partir de su color base, en vez de mantener a mano una segunda entrada
+ * por paleta que acabaria desincronizandose de la primera.
+ */
+function colorMix(from: string, to: string, amount: number): string {
+  const parse = (hex: string) => {
+    const clean = hex.replace('#', '');
+    const full =
+      clean.length === 3
+        ? clean
+            .split('')
+            .map((c) => c + c)
+            .join('')
+        : clean;
+    return [
+      parseInt(full.slice(0, 2), 16),
+      parseInt(full.slice(2, 4), 16),
+      parseInt(full.slice(4, 6), 16),
+    ];
+  };
+  const a = parse(from);
+  const b = parse(to);
+  const t = Math.min(1, Math.max(0, amount));
+  const channel = (i: number) => {
+    const from = a[i] ?? 0;
+    const to = b[i] ?? 0;
+    return Math.round(from + (to - from) * t);
+  };
+  return 'rgb(' + channel(0) + ',' + channel(1) + ',' + channel(2) + ')';
 }
 
 function colorShade(surface: keyof typeof GOLF_SURFACE_COLORS): string {
