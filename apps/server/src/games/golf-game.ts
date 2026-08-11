@@ -57,6 +57,15 @@ export class GolfGame implements GameRunner {
     return this.settings.mode === 'menos-golpes' ? 5 : GOLF_LEVELS.length;
   }
 
+  /**
+   * Semilla del viento, sorteada una vez por partida.
+   *
+   * Va aqui y no en los ajustes para que no la pueda enviar el cliente, y es
+   * fija durante toda la partida para que el viento de cada hoyo sea el mismo
+   * para todos los jugadores y no cambie al reconectar.
+   */
+  private readonly windSeed = Math.floor(Math.random() * 100000);
+
   constructor(
     private readonly ctx: GameContext,
     private readonly settings: GolfSettings,
@@ -65,6 +74,7 @@ export class GolfGame implements GameRunner {
       GOLF_LEVELS[0]!,
       settings,
       ctx.players().map((p) => p.id),
+      this.windSeed,
     );
   }
 
@@ -89,6 +99,7 @@ export class GolfGame implements GameRunner {
       GOLF_LEVELS[index]!,
       this.effective,
       this.ctx.players().map((p) => p.id),
+      this.windSeed,
     );
     this.deadline = Date.now() + this.effective.holeTimeLimitSeconds * 1000;
     this.push();
@@ -233,6 +244,7 @@ export class GolfGame implements GameRunner {
       levelIndex: this.levelIndex,
       totalLevels: this.levelCount,
       level: GOLF_LEVELS[this.levelIndex]!,
+      wind: this.world.wind,
       balls: snapshot.balls,
       lastSequences,
       holeResults: this.holeResults,

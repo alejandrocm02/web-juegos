@@ -6,7 +6,14 @@ import type {
   GolfSnapshot,
   Vec2,
 } from '@arcade/shared';
-import { GOLF, GOLF_SURFACE_FRICTION, PHYSICS_DT } from '@arcade/shared';
+import {
+  GOLF,
+  GOLF_HAZARD_SURFACES,
+  GOLF_SURFACE_FRICTION,
+  PHYSICS_DT,
+  golfWind,
+} from '@arcade/shared';
+
 import {
   buildLevelWalls,
   motionOffset,
@@ -15,6 +22,15 @@ import {
   type Segment,
 } from './geometry.js';
 import { closestPointOnSegment, normalize, reflect, type V2 } from './vec.js';
+
+/**
+ * Cuanto del vector de viento llega a la bola.
+ *
+ * Calibrado para que a potencia media la desviacion ronde el radio y medio de
+ * bola por rodada: se nota y obliga a corregir la punteria, pero no decide el
+ * hoyo por ti.
+ */
+const WIND_FACTOR = 0.06;
 
 export type ShotRejection =
   | 'NOT_PLAYING'
@@ -55,11 +71,20 @@ export class GolfWorld {
   clockMs = 0;
   tick = 0;
 
-  constructor(level: GolfLevel, settings: GolfSettings, playerIds: string[]) {
+  /** Semilla del viento. Fija por partida, para que no cambie a mitad de hoyo. */
+  readonly seed: number;
+
+  constructor(level: GolfLevel, settings: GolfSettings, playerIds: string[], seed = 0) {
     this.level = level;
     this.settings = settings;
+    this.seed = seed;
     this.staticWalls = buildLevelWalls(level);
     for (const id of playerIds) this.ballMap.set(id, this.createBall(id));
+  }
+
+  /** Viento que esta aplicando la simulacion, para publicarlo tal cual. */
+  get wind(): Vec2 {
+    return golfWind(this.level.id, this.seed, this.settings.windStrength ?? 1);
   }
 
   private createBall(playerId: string): InternalBall {
@@ -313,6 +338,16 @@ export class GolfWorld {
       ball.vy += dir.y * 220 * dt;
     }
 
+    // Viento: solo sobre bola rodando, y con un multiplicador deliberadamente
+    // bajo. Tiene que desviar lo justo para que merezca la pena mirar la
+    // brujula, no decidir el hoyo por su cuenta. Con windStrength a 0 el vector
+    // es nulo y la trayectoria queda identica a la de antes del cambio.
+    if (rolling) {
+      const wind = golfWind(this.level.id, this.seed, this.settings.windStrength ?? 1);
+      ball.vx += wind.x * WIND_FACTOR * dt;
+      ball.vy += wind.y * WIND_FACTOR * dt;
+    }
+
     const speed = Math.hypot(ball.vx, ball.vy);
     if (speed <= GOLF.stopSpeed) {
       ball.vx = 0;
@@ -331,6 +366,14 @@ export class GolfWorld {
       this.collideWalls(ball, time);
       this.collideCircles(ball);
       this.collideBlades(ball, time);
+      // El agua se comprueba aqui dentro y antes del hoyo: si se mirara una vez
+      // por fotograma, una bola rapida podria cruzar el estanque entero entre
+      // dos comprobaciones y salir por el otro lado sin mojarse.
+      const here = this.padAt(ball.x, ball.y, time);
+      if (here && GOLF_HAZARD_SURFACES.includes(here.surface)) {
+        this.handleHazard(ball);
+        return;
+      }
       if (this.checkHole(ball)) return;
       if (this.checkRamps(ball)) return;
       if (!this.padAt(ball.x, ball.y, time)) {
@@ -383,6 +426,33 @@ export class GolfWorld {
     } else {
       ball.outOfBounds = true;
     }
+
+    if (ball.strokes >= this.settings.maxStrokes) this.finishByStrokes(ball);
+  }
+
+  /**
+   * Bola al agua.
+   *
+   * Se parece a salir del recorrido pero con dos diferencias deliberadas: la
+   * bola vuelve al ultimo punto donde estuvo quieta y no al respawn del hoyo
+   * (caer al agua a mitad de recorrido no deberia mandarte al tee), y la
+   * penalizacion se aplica siempre, sin depender de `outOfBoundsPenalty`: un
+   * obstaculo de agua sin coste no seria un obstaculo.
+   */
+  private handleHazard(ball: InternalBall): void {
+    ball.vx = 0;
+    ball.vy = 0;
+    ball.z = 0;
+    ball.airborne = false;
+    ball.airTimeLeft = 0;
+    ball.aceEligible = false;
+
+    ball.x = ball.lastStable.x;
+    ball.y = ball.lastStable.y;
+    ball.outOfBounds = false;
+
+    ball.strokes = Math.min(this.settings.maxStrokes, ball.strokes + GOLF.outPenalty);
+    this.pushEvent('penalty', ball);
 
     if (ball.strokes >= this.settings.maxStrokes) this.finishByStrokes(ball);
   }

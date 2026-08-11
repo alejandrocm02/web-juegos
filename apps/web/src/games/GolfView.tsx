@@ -219,7 +219,14 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
     gestureCameraRef.current = camera;
     dragRef.current = point;
     setDrag(point);
-    (event.target as HTMLElement).setPointerCapture(event.pointerId);
+    // La captura es una mejora, no un requisito: si el navegador la rechaza
+    // (pasa en algunos moviles y con lapiz) el gesto tiene que seguir siendo
+    // valido, porque el final lo resuelven los listeners de window.
+    try {
+      (event.target as HTMLElement).setPointerCapture(event.pointerId);
+    } catch {
+      // Sin captura el puntero puede salirse del lienzo; no rompe nada.
+    }
   };
 
   const onPointerMove = (event: React.PointerEvent) => {
@@ -262,6 +269,36 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
     setDrag(null);
     setHint('El gesto se canceló. Vuelve a arrastrar para lanzar.');
   };
+
+  // El final del gesto se escucha en window y no en el lienzo.
+  //
+  // Atado solo al canvas, soltar el dedo fuera de el (o que el navegador
+  // rechace la captura del puntero) dejaba el golpe sin enviar: el arrastre
+  // seguia abierto y la bola parecia muerta hasta recargar. Es el fallo que
+  // motivo esta revision. Los handlers viajan en refs para registrar los
+  // listeners una sola vez sin que se queden con estado viejo, y el guardia
+  // sobre dragRef hace que sean inocuos cuando no hay gesto en curso.
+  const finishGestureRef = useRef(onPointerUp);
+  finishGestureRef.current = onPointerUp;
+  const cancelGestureRef = useRef(onPointerCancel);
+  cancelGestureRef.current = onPointerCancel;
+
+  useEffect(() => {
+    const finish = () => {
+      if (dragRef.current) finishGestureRef.current();
+    };
+    const cancel = () => {
+      if (dragRef.current) cancelGestureRef.current();
+    };
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', cancel);
+    window.addEventListener('blur', cancel);
+    return () => {
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', cancel);
+      window.removeEventListener('blur', cancel);
+    };
+  }, []);
 
   useEffect(() => {
     if (!session?.playerId || pendingSeq === null) return;
@@ -329,8 +366,6 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
             className={'block w-full touch-none ' + (canShoot ? 'cursor-crosshair' : '')}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={onPointerCancel}
             aria-label={'Nivel de minigolf: ' + level.name}
           />
 
