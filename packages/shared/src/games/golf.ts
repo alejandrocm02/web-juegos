@@ -16,7 +16,7 @@ export interface Rect {
   h: number;
 }
 
-export type GolfSurface = 'green' | 'sand' | 'ice' | 'turbo' | 'stone';
+export type GolfSurface = 'green' | 'sand' | 'ice' | 'turbo' | 'stone' | 'rough' | 'water';
 
 export type PadSide = 'top' | 'bottom' | 'left' | 'right';
 
@@ -150,6 +150,10 @@ export const GOLF_SURFACE_FRICTION: Record<GolfSurface, number> = {
   ice: 0.75,
   turbo: 0.5,
   stone: 0.7,
+  /** Frena rapido pero deja rodar, a diferencia de la arena. */
+  rough: 2.2,
+  /** Solo cuenta el instante anterior a la penalizacion. */
+  water: 6.0,
 };
 
 export const GOLF_SURFACE_COLORS: Record<GolfSurface, string> = {
@@ -158,7 +162,27 @@ export const GOLF_SURFACE_COLORS: Record<GolfSurface, string> = {
   ice: '#7dd3fc',
   turbo: '#a855f7',
   stone: '#5b6472',
+  rough: '#2b5a2c',
+  water: '#1f5f80',
 };
+
+/** Superficies que penalizan y devuelven la bola al ultimo punto estable. */
+export const GOLF_HAZARD_SURFACES: readonly GolfSurface[] = ['water'];
+
+/**
+ * Viento del hoyo, deducido del nivel y la semilla de la partida.
+ *
+ * Es determinista a proposito: servidor y cliente llegan al mismo vector sin
+ * necesidad de replicarlo por la red, asi que la flecha del HUD no puede
+ * desincronizarse de la fuerza que aplica la simulacion.
+ */
+export function golfWind(levelId: number, seed: number, strength = 1): Vec2 {
+  const h = Math.sin(levelId * 12.9898 + seed * 78.233) * 43758.5453;
+  const frac = h - Math.floor(h);
+  const angle = frac * Math.PI * 2;
+  const speed = (0.4 + ((frac * 7919) % 1) * 1.9) * strength * 26;
+  return { x: Math.cos(angle) * speed, y: Math.sin(angle) * speed };
+}
 
 export interface GolfBallState {
   playerId: string;

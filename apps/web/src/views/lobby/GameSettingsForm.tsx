@@ -435,6 +435,18 @@ export function GameSettingsForm({
           onChange={(outOfBoundsPenalty) => onChange('golf', { ...golf, outOfBoundsPenalty })}
         />
       </Field>
+      <Field label="Viento">
+        <Segmented
+          disabled={disabled}
+          value={golf.windStrength}
+          options={[
+            { label: 'Sin viento', value: 0 },
+            { label: 'Normal', value: 1 },
+            { label: 'Fuerte', value: 2 },
+          ]}
+          onChange={(windStrength) => onChange('golf', { ...golf, windStrength })}
+        />
+      </Field>
     </div>
   );
 }

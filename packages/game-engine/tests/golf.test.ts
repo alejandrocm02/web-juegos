@@ -8,6 +8,10 @@ const baseSettings: GolfSettings = {
   maxStrokes: 10,
   autoResetOutOfBounds: true,
   outOfBoundsPenalty: true,
+  // Sin viento por defecto: asi las trayectorias que comprueban los casos de
+  // siempre siguen siendo exactamente las de antes de introducirlo, y el viento
+  // se activa solo en las pruebas que lo estudian.
+  windStrength: 0,
 };
 
 function settings(patch: Partial<GolfSettings> = {}): GolfSettings {

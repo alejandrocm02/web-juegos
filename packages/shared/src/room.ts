@@ -67,6 +67,12 @@ export interface GolfSettings {
   maxStrokes: 8 | 10 | 12;
   autoResetOutOfBounds: boolean;
   outOfBoundsPenalty: boolean;
+  /**
+   * Intensidad del viento. 0 lo desactiva y deja la fisica exactamente igual
+   * que antes de introducirlo, que es lo que protege a los niveles ya
+   * existentes de cambiar de comportamiento.
+   */
+  windStrength: number;
 }
 
 export interface BowlingSettings {
@@ -167,6 +173,7 @@ export const DEFAULT_SETTINGS: GameSettings = {
     maxStrokes: 10,
     autoResetOutOfBounds: true,
     outOfBoundsPenalty: true,
+    windStrength: 1,
   },
 };
 
