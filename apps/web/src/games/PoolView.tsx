@@ -376,6 +376,35 @@ function draw(
     ctx.moveTo(cue.x, cue.y);
     ctx.lineTo(drag.x, drag.y);
     ctx.stroke();
+
+    // Taco visible detrás de la blanca: refuerza la dirección y la fuerza
+    // del disparo sin cambiar las reglas ni la simulación autoritativa.
+    const ux = dx / Math.max(1, Math.hypot(dx, dy));
+    const uy = dy / Math.max(1, Math.hypot(dx, dy));
+    const start = POOL_TABLE.ballRadius + 3 + length * 0.06;
+    const end = start + 66;
+    const stick = ctx.createLinearGradient(
+      cue.x - ux * start, cue.y - uy * start,
+      cue.x - ux * end, cue.y - uy * end,
+    );
+    stick.addColorStop(0, '#e9d9b3');
+    stick.addColorStop(0.18, '#c28a4c');
+    stick.addColorStop(0.8, '#784521');
+    stick.addColorStop(1, '#151c2b');
+    ctx.beginPath();
+    ctx.moveTo(cue.x - ux * start, cue.y - uy * start);
+    ctx.lineTo(cue.x - ux * end, cue.y - uy * end);
+    ctx.lineWidth = 3.2;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = 'rgba(0,0,0,0.65)';
+    ctx.shadowColor = 'rgba(0,0,0,0.65)';
+    ctx.shadowBlur = 3;
+    ctx.stroke();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = stick;
+    ctx.shadowBlur = 0;
+    ctx.stroke();
+    ctx.lineCap = 'butt';
   }
 
   for (const ball of balls) {
