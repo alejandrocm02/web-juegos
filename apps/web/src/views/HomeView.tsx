@@ -60,7 +60,7 @@ export default function HomeView() {
         : 'Entrar en la sala';
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-7xl px-4 pb-12 pt-5 sm:px-6 lg:px-8">
+    <main className="arcade-home mx-auto min-h-screen w-full max-w-7xl px-4 pb-12 pt-5 sm:px-6 lg:px-8">
       <nav className="flex items-center justify-between border-b border-white/[0.07] pb-5">
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-neon-cyan/25 bg-neon-cyan/10 font-display text-sm font-black text-neon-cyan shadow-glow">
@@ -74,15 +74,15 @@ export default function HomeView() {
         </span>
       </nav>
 
-      <section className="grid items-center gap-10 py-14 lg:grid-cols-[minmax(0,1.15fr)_420px] lg:gap-16 lg:py-20">
+      <section className="arcade-hero grid items-center gap-10 py-14 lg:grid-cols-[minmax(0,1.15fr)_420px] lg:gap-16 lg:py-20">
         <header>
           <p className="eyebrow mb-5 flex items-center gap-3">
             <span className="h-px w-8 bg-neon-cyan/70" />
             Tu sala recreativa, estés donde estés
           </p>
           <h1 className="hero-title">
-            La noche de juegos,
-            <span className="text-gradient block">sin instalar nada.</span>
+            Entra en el arcade,
+            <span className="text-gradient block">vive cada partida.</span>
           </h1>
           <p className="mt-6 max-w-2xl text-base leading-7 text-slate-400 sm:text-lg">
             Reúne de 2 a 5 amigos en una sala privada y competid en {GAME_IDS.length} juegos en
@@ -229,7 +229,7 @@ export default function HomeView() {
           {GAME_IDS.map((id) => (
             <article
               key={id}
-              className="game-card flex min-h-52 flex-col justify-between"
+              className="game-card arcade-machine flex min-h-64 flex-col justify-between"
               style={
                 {
                   '--game-accent': GAME_META[id].accent,
