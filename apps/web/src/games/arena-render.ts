@@ -5,7 +5,7 @@ import {
   type ArenaFighterState,
   type ArenaPublicState,
 } from '@arcade/shared';
-import type { Viewport } from '../lib/canvas.js';
+import { resetToViewport, type Viewport } from '../lib/canvas.js';
 
 /**
  * Interpolacion y dibujo del Battle Royale.
@@ -47,7 +47,7 @@ export function draw(
   myId?: string,
 ): void {
   const scale = view.width / ARENA.width;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  resetToViewport(ctx, view);
   ctx.clearRect(0, 0, view.width, view.height);
   ctx.save();
   ctx.scale(scale, scale);

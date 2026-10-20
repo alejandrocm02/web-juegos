@@ -23,10 +23,11 @@ export default function QuizView({ state }: { state: QuizPublicState }) {
   const remaining = Math.max(0, state.deadline - now);
   const secondsLeft = Math.ceil(remaining / 1000);
   const answered = new Set(state.answeredPlayerIds);
+  const alreadyAnswered = Boolean(session && answered.has(session.playerId));
   const myAnswer = state.breakdown.find((entry) => entry.playerId === session?.playerId) ?? null;
 
   const choose = (index: number) => {
-    if (state.phase !== 'question' || picked !== null) return;
+    if (state.phase !== 'question' || picked !== null || alreadyAnswered) return;
     setPicked(index);
     sendAction({ type: 'quiz:answer', questionIndex: state.questionIndex, answerIndex: index });
   };
@@ -91,7 +92,7 @@ export default function QuizView({ state }: { state: QuizPublicState }) {
                     <button
                       key={index}
                       onClick={() => choose(index)}
-                      disabled={state.phase !== 'question' || picked !== null}
+                      disabled={state.phase !== 'question' || picked !== null || alreadyAnswered}
                       style={
                         {
                           '--answer-accent': ['#38bdf8', '#f472b6', '#fbbf24', '#a78bfa'][index],

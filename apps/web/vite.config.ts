@@ -47,11 +47,17 @@ const sharedEnv = readSharedViteEnv();
 export default defineConfig({
   plugins: [react()],
   define: {
-    'import.meta.env.VITE_SERVER_URL': JSON.stringify(sharedEnv.VITE_SERVER_URL ?? ''),
+    'import.meta.env.VITE_SERVER_URL': JSON.stringify(
+      process.env.VITE_SERVER_URL ?? sharedEnv.VITE_SERVER_URL ?? '',
+    ),
   },
   server: {
     port: 5173,
-    strictPort: false,
+    strictPort: true,
+    proxy: {
+      '/socket.io': { target: 'http://127.0.0.1:3001', ws: true },
+      '/api': { target: 'http://127.0.0.1:3001' },
+    },
     host: true,
   },
   build: {

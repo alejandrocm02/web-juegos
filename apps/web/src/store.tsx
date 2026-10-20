@@ -103,6 +103,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const pendingName = useRef<string>('');
   const sessionRef = useRef<SessionInfo | null>(null);
   const sessionRecoveryRef = useRef(false);
+  const sessionReplacedRef = useRef(false);
   // El perfil se resuelve una sola vez: crea el identificador si aún no existe.
   const profileId = useRef<string>('');
   if (!profileId.current) profileId.current = loadProfileId();
@@ -116,6 +117,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Esta referencia debe ser estable: varios juegos la usan como dependencia
   // de efectos de entrada o sincronización.
   const sendAction = useCallback((action: GameAction) => {
+    // Socket.IO buffers offline emissions, which would replay stale controls.
+    if (!socket.connected) return;
     socket.emit(CLIENT_EVENTS.gameAction, action);
   }, []);
 
@@ -125,7 +128,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const stored = loadSession();
       // La sesión en memoria pertenece a esta pestaña y tiene prioridad sobre
       // localStorage, que puede haber sido modificado por otra pestaña.
-      const active = sessionRef.current ?? stored;
+      const active = sessionReplacedRef.current ? null : (sessionRef.current ?? stored);
       if (active) {
         sessionRecoveryRef.current = true;
         socket.emit(CLIENT_EVENTS.rejoin, { code: active.code, token: active.token });
@@ -135,6 +138,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const onDisconnect = () => setConnected(false);
 
     const onSession = (payload: SessionInfo) => {
+      sessionReplacedRef.current = false;
       sessionRef.current = payload;
       sessionRecoveryRef.current = false;
       setSession(payload);
@@ -184,6 +188,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       });
     };
     const onStarted = (payload: { game: GameId; state: GamePublicState }) => {
+      setLastGameEvent(null);
       setResult(null);
       setSoloOutcome(null);
       setGolfEvents([]);
@@ -215,9 +220,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setError({ code: 'NOT_IN_ROOM', message: 'El anfitrión te ha expulsado de la sala.' });
     };
     const onSessionReplaced = () => {
+      sessionReplacedRef.current = true;
       sessionRef.current = null;
       sessionRecoveryRef.current = false;
-      clearSession();
+      // Another tab now owns this token. Keep its persisted recovery session.
       setSession(null);
       setRoom(null);
       setGameState(null);
@@ -288,11 +294,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       records,
       soloOutcome,
       createRoom: (name) => {
+        sessionReplacedRef.current = false;
         pendingName.current = name;
         saveName(name);
         socket.emit(CLIENT_EVENTS.createRoom, { name });
       },
       createSoloRoom: (name, game, config) => {
+        sessionReplacedRef.current = false;
         pendingName.current = name;
         saveName(name);
         setSoloOutcome(null);
@@ -307,6 +315,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       refreshRecords: () =>
         socket.emit(CLIENT_EVENTS.requestRecords, { profileId: profileId.current }),
       joinRoom: (code, name) => {
+        sessionReplacedRef.current = false;
         pendingName.current = name;
         saveName(name);
         socket.emit(CLIENT_EVENTS.joinRoom, { code, name });

@@ -272,3 +272,27 @@ describe('eliminaciones y victoria', () => {
     expect(world.pickups).toHaveLength(ARENA.pickupCount);
   });
 });
+
+it('desactivar objetos impide recoger ventajas invisibles y reaparecer objetos', () => {
+  const enabled = new ArenaWorld(['a', 'b'], {}, 7, 1, true);
+  const disabled = new ArenaWorld(['a', 'b'], {}, 7, 1, false);
+  const spot = enabled.pickups[0]!;
+  for (const world of [enabled, disabled]) {
+    const fighter = (
+      world as unknown as { fighters: Map<string, { x: number; y: number; health: number }> }
+    ).fighters.get('a')!;
+    fighter.x = spot.x;
+    fighter.y = spot.y;
+    fighter.health = 50;
+    world.running = true;
+    run(world, 0.1);
+  }
+  expect(enabled.drainEvents().some((event) => event.kind === 'pickup')).toBe(true);
+  expect(disabled.drainEvents().some((event) => event.kind === 'pickup')).toBe(false);
+  expect(disabled.getFighter('a')!.health).toBe(50);
+  expect(disabled.getFighter('a')!.shield).toBe(0);
+  expect(disabled.getFighter('a')!.speedBuffMs).toBe(0);
+  expect(disabled.getFighter('a')!.damageBuffMs).toBe(0);
+  run(disabled, ARENA.pickupRespawnMs / 1000 + 1);
+  expect(disabled.snapshot().pickups).toEqual([]);
+});

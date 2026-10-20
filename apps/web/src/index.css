@@ -257,3 +257,32 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Keep controls available on tablets and convertible computers as well as phones. */
+.game-touch-controls {
+  display: none;
+}
+
+@media (max-width: 639px), (any-pointer: coarse) {
+  .game-touch-controls {
+    display: grid;
+  }
+}
+
+.game-hold-button {
+  min-height: 3.5rem;
+  min-width: 2.75rem;
+  touch-action: none;
+  user-select: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.07);
+  color: #e2e8f0;
+  font-weight: 700;
+}
+
+.game-hold-button[aria-pressed='true'] {
+  border-color: #67e8f9;
+  background: rgba(34, 211, 238, 0.2);
+  color: #fff;
+}

@@ -45,6 +45,24 @@ describe('carrera de karts', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
+  it('una desconexión frena el kart y conserva la plaza para reconectar', () => {
+    const { ctx } = makeContext();
+    const game = new KartsGame(ctx, DEFAULT_SETTINGS.karts);
+    game.start();
+    vi.advanceTimersByTime(KARTS_COUNTDOWN_MS + 500);
+    game.handleAction('a', { type: 'karts:input', throttle: 1, steer: 0, braking: false });
+    vi.advanceTimersByTime(200);
+    game.onPlayerDisconnected('a');
+    vi.advanceTimersByTime(1500);
+    const stopped = game.publicState().karts.find((kart) => kart.playerId === 'a')!;
+    expect(stopped).toBeDefined();
+    const position = { x: stopped.x, y: stopped.y };
+    vi.advanceTimersByTime(500);
+    const later = game.publicState().karts.find((kart) => kart.playerId === 'a')!;
+    expect(Math.hypot(later.x - position.x, later.y - position.y)).toBeLessThan(1);
+    game.dispose();
+  });
+
   it('empieza en cuenta atras y nadie corre todavia', () => {
     const { ctx, states } = makeContext();
     const game = new KartsGame(ctx, DEFAULT_SETTINGS.karts);

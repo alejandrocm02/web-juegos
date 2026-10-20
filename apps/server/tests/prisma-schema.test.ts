@@ -94,7 +94,7 @@ describe('preparacion del esquema efectivo', () => {
 });
 
 describe('anclaje de la ruta de SQLite', () => {
-  const prismaDir = path.join(path.sep, 'app', 'apps', 'server', 'prisma');
+  const prismaDir = path.resolve(path.sep, 'app', 'apps', 'server', 'prisma');
 
   it('convierte una ruta relativa en absoluta contra la carpeta prisma', () => {
     expect(resolveDatabaseUrl('file:./dev.db', prismaDir)).toBe(
@@ -104,7 +104,7 @@ describe('anclaje de la ruta de SQLite', () => {
 
   it('resuelve tambien los saltos hacia arriba', () => {
     expect(resolveDatabaseUrl('file:../datos/arcade.db', prismaDir)).toBe(
-      'file:' + path.join(path.sep, 'app', 'apps', 'server', 'datos', 'arcade.db'),
+      'file:' + path.resolve(path.sep, 'app', 'apps', 'server', 'datos', 'arcade.db'),
     );
   });
 
@@ -112,6 +112,12 @@ describe('anclaje de la ruta de SQLite', () => {
     expect(resolveDatabaseUrl('file:/var/data/arcade.db', prismaDir)).toBe(
       'file:/var/data/arcade.db',
     );
+  });
+
+  it('deja intactas las rutas absolutas de Windows', () => {
+    if (process.platform !== 'win32') return;
+    const url = 'file:C:/datos/arcade.db';
+    expect(resolveDatabaseUrl(url, prismaDir)).toBe(url);
   });
 
   it('no toca las URL de PostgreSQL', () => {

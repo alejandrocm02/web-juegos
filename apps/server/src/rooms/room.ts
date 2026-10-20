@@ -401,6 +401,7 @@ export class Room {
     player.connection = 'disconnected';
     player.socketId = null;
     player.disconnectedAt = Date.now();
+    this.runner?.onPlayerDisconnected?.(playerId);
     const humans = this.humans();
     if (humans.length > 0 && humans.every((p) => p.connection === 'disconnected')) {
       this.emptySince = Date.now();
@@ -476,7 +477,8 @@ export class Room {
   }
 
   private resetReady(): void {
-    for (const player of this.players.values()) player.ready = Boolean(player.isBot);
+    // La práctica no muestra un control «Estoy listo»: siempre permite otra partida.
+    for (const player of this.players.values()) player.ready = this.solo || Boolean(player.isBot);
   }
 
   selectGame(game: GameId): void {
@@ -689,6 +691,8 @@ export class Room {
     })
       .then((outcome) => {
         if (!outcome) return;
+        // Saving may finish after the host has already started another match.
+        if (this.phase !== 'results' || this.lastResult !== result) return;
         this.lastSoloOutcome = outcome;
         this.deps.broadcast(SERVER_EVENTS.soloOutcome, outcome);
         if (outcome.improved)

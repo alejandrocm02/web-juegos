@@ -117,6 +117,10 @@ export class KartsGame implements GameRunner {
     });
   }
 
+  onPlayerDisconnected(playerId: string): void {
+    this.world.setInput(playerId, { throttle: 0, steer: 0, braking: true });
+  }
+
   onPlayerLeft(playerId: string): void {
     this.world.removePlayer(playerId);
     delete this.teams[playerId];

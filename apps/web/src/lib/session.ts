@@ -12,9 +12,24 @@ export function loadSession(): StoredSession | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as StoredSession;
-    if (!parsed.code || !parsed.token || !parsed.playerId) return null;
-    return parsed;
+    const parsed = JSON.parse(raw) as Partial<StoredSession> | null;
+    if (
+      !parsed ||
+      typeof parsed.code !== 'string' ||
+      !parsed.code ||
+      typeof parsed.token !== 'string' ||
+      !parsed.token ||
+      typeof parsed.playerId !== 'string' ||
+      !parsed.playerId ||
+      (parsed.name !== undefined && typeof parsed.name !== 'string')
+    )
+      return null;
+    return {
+      code: parsed.code,
+      token: parsed.token,
+      playerId: parsed.playerId,
+      name: parsed.name ?? '',
+    };
   } catch {
     return null;
   }
@@ -67,7 +82,11 @@ function createProfileId(): string {
 }
 
 export function loadName(): string {
-  return loadSession()?.name ?? localStorage.getItem('arcade.name') ?? '';
+  try {
+    return loadSession()?.name ?? localStorage.getItem('arcade.name') ?? '';
+  } catch {
+    return '';
+  }
 }
 
 export function saveName(name: string): void {

@@ -1,13 +1,11 @@
 import { io, type ManagerOptions, type Socket, type SocketOptions } from 'socket.io-client';
 
 /**
- * En desarrollo el servidor vive en otro puerto (VITE_SERVER_URL).
- * En produccion el mismo servicio sirve cliente y sockets, asi que se usa el
- * mismo origen y no hace falta configurar nada.
+ * El cliente usa el mismo origen: Vite reenvía sockets/API en desarrollo y
+ * el servidor sirve ambos en producción. VITE_SERVER_URL permite otro servidor.
  */
 const configured = import.meta.env.VITE_SERVER_URL?.trim();
-const fallback = import.meta.env.DEV ? 'http://localhost:3001' : '';
-const url = configured || fallback;
+const url = configured || '';
 
 const options: Partial<ManagerOptions & SocketOptions> = {
   autoConnect: true,

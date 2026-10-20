@@ -12,6 +12,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 import { syncCanvasResolution } from '../lib/canvas.js';
+import { listenGameKeys } from '../lib/game-input.js';
 import { useApp } from '../store.js';
 
 interface RenderState {
@@ -79,6 +80,7 @@ export default function ArcadeSportView({ state }: { state: ArcadeSportPublicSta
   useEffect(
     () => () => {
       if (pendingPublishRef.current !== null) window.clearTimeout(pendingPublishRef.current);
+      pendingPublishRef.current = null;
     },
     [state.game, state.phase],
   );
@@ -94,21 +96,15 @@ export default function ArcadeSportView({ state }: { state: ArcadeSportPublicSta
       ArrowRight: 'right',
       KeyD: 'right',
     };
-    const onDown = (event: KeyboardEvent) => {
-      const action = map[event.code];
-      if (!action) return;
-      event.preventDefault();
-      keysRef.current.add(action);
-    };
-    const onUp = (event: KeyboardEvent) => {
-      const action = map[event.code];
-      if (!action) return;
-      keysRef.current.delete(action);
-    };
-    const onBlur = () => keysRef.current.clear();
-    window.addEventListener('keydown', onDown);
-    window.addEventListener('keyup', onUp);
-    window.addEventListener('blur', onBlur);
+    const stopKeys = listenGameKeys(
+      map,
+      (keys) => {
+        keysRef.current = keys;
+      },
+      () => {
+        keysRef.current.clear();
+      },
+    );
 
     let frame = 0;
     let last = performance.now();
@@ -133,9 +129,7 @@ export default function ArcadeSportView({ state }: { state: ArcadeSportPublicSta
     frame = requestAnimationFrame(loop);
     return () => {
       cancelAnimationFrame(frame);
-      window.removeEventListener('keydown', onDown);
-      window.removeEventListener('keyup', onUp);
-      window.removeEventListener('blur-sm', onBlur);
+      stopKeys();
     };
   }, [publish]);
 

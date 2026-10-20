@@ -57,6 +57,7 @@ export class ArenaWorld {
     seed = 1,
     /** Multiplicador del tiempo de cierre de la zona. */
     private readonly zonePaceScale = 1,
+    pickupsEnabled = true,
   ) {
     this.rng = createRng(seed);
     const spawns = arenaSpawnPoints(playerIds.length);
@@ -81,7 +82,7 @@ export class ArenaWorld {
       });
     });
     this.nextPlacement = playerIds.length;
-    this.spawnPickups();
+    if (pickupsEnabled) this.spawnPickups();
   }
 
   private spawnPickups(): void {

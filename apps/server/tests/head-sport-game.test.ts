@@ -47,6 +47,28 @@ describe('partidas de Head Soccer y Head Basketball', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
+  it('desconectar libera movimiento y conserva al jugador', () => {
+    const { game } = setup();
+    game.start();
+    vi.advanceTimersByTime(3500);
+    game.handleAction('a', {
+      type: 'head-sport:input',
+      game: 'head-soccer',
+      moveX: 1,
+      jump: false,
+      kick: false,
+    });
+    vi.advanceTimersByTime(200);
+    game.onPlayerDisconnected('a');
+    vi.advanceTimersByTime(500);
+    const before = game.publicState().players.find((player) => player.playerId === 'a')!;
+    vi.advanceTimersByTime(300);
+    expect(
+      Math.abs(game.publicState().players.find((player) => player.playerId === 'a')!.x - before.x),
+    ).toBeLessThan(0.1);
+    game.dispose();
+  });
+
   it('reparte equipos y empieza tras la cuenta atrás', () => {
     const { game } = setup();
     game.start();

@@ -39,6 +39,23 @@ describe('partida de battle royale', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
+  it('desconectar libera movimiento y ataque sin eliminar al jugador', () => {
+    const { ctx } = makeContext();
+    const game = new ArenaGame(ctx, DEFAULT_SETTINGS.arena);
+    game.start();
+    vi.advanceTimersByTime(3500);
+    game.handleAction('a', { type: 'arena:input', moveX: 1, moveY: 0, facing: 0, attack: true });
+    vi.advanceTimersByTime(200);
+    game.onPlayerDisconnected('a');
+    const before = game.publicState().fighters.find((fighter) => fighter.playerId === 'a')!;
+    vi.advanceTimersByTime(500);
+    const after = game.publicState().fighters.find((fighter) => fighter.playerId === 'a')!;
+    expect(after.x).toBe(before.x);
+    expect(after.y).toBe(before.y);
+    expect(after.alive).toBe(true);
+    game.dispose();
+  });
+
   it('empieza en cuenta atras con todos vivos y a maxima vida', () => {
     const { ctx, states } = makeContext();
     const game = new ArenaGame(ctx, DEFAULT_SETTINGS.arena);
@@ -111,6 +128,13 @@ describe('partida de battle royale', () => {
     const game = new ArenaGame(ctx, { ...DEFAULT_SETTINGS.arena, pickups: false });
     game.start();
     expect(game.publicState().pickups).toHaveLength(0);
+    const snapshots: unknown[] = [];
+    ctx.broadcastSnapshot = (snapshot) => snapshots.push(snapshot);
+    vi.advanceTimersByTime(3500);
+    expect(snapshots.length).toBeGreaterThan(0);
+    expect(
+      snapshots.every((snapshot) => (snapshot as { pickups: unknown[] }).pickups.length === 0),
+    ).toBe(true);
     game.dispose();
   });
 

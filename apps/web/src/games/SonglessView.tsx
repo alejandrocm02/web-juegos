@@ -12,6 +12,8 @@ export default function SonglessView({ state }: { state: SonglessPublicState }) 
   const [picked, setPicked] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const stopAudio = useRef<(() => void) | null>(null);
+  const playbackId = useRef(0);
+  const playbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 120);
@@ -20,17 +22,21 @@ export default function SonglessView({ state }: { state: SonglessPublicState }) 
 
   useEffect(() => {
     setPicked(null);
+  }, [state.roundIndex]);
+
+  useEffect(() => {
+    playbackId.current += 1;
     stopAudio.current?.();
     stopAudio.current = null;
     setPlaying(false);
-  }, [state.roundIndex]);
-
-  useEffect(
-    () => () => {
+    return () => {
+      playbackId.current += 1;
+      if (playbackTimer.current !== null) clearTimeout(playbackTimer.current);
+      playbackTimer.current = null;
       stopAudio.current?.();
-    },
-    [],
-  );
+      stopAudio.current = null;
+    };
+  }, [state.roundIndex, state.phase]);
 
   const remaining = Math.max(0, state.deadline - now);
   const seconds = Math.ceil(remaining / 1000);
@@ -41,13 +47,26 @@ export default function SonglessView({ state }: { state: SonglessPublicState }) 
 
   const play = async () => {
     if (!state.track || playing) return;
+    const id = ++playbackId.current;
     stopAudio.current?.();
     try {
       setPlaying(true);
-      stopAudio.current = await playSonglessClip(state.track.notes, state.track.bpm);
+      const stop = await playSonglessClip(state.track.notes, state.track.bpm);
+      if (id !== playbackId.current) {
+        stop();
+        return;
+      }
+      stopAudio.current = stop;
       const stepMs = (60 / state.track.bpm) * 500;
-      window.setTimeout(() => setPlaying(false), state.track.notes.length * stepMs + 350);
+      playbackTimer.current = setTimeout(
+        () => {
+          playbackTimer.current = null;
+          if (id === playbackId.current) setPlaying(false);
+        },
+        state.track.notes.length * stepMs + 350,
+      );
     } catch {
+      if (id !== playbackId.current) return;
       setPlaying(false);
       pushToast('El navegador no pudo iniciar el audio. Revisa que el sonido esté activado.');
     }

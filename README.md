@@ -10,17 +10,17 @@ El servidor es **autoritativo**: valida jugadores, turnos, golpes, posiciones, p
 
 ## 1. Puesta en marcha
 
-Requisitos: **Node.js 20.19 o superior** (o 22.12+) y npm 10+. Vite 7 no arranca con versiones anteriores.
+Requisitos: **Node.js 20.19 o superior** (o 22.12+) y npm 10+. Vite 8 no arranca con versiones anteriores.
 
 ```bash
 # 1. Instalar dependencias de todo el monorepo (npm workspaces)
-npm install
+npm ci
 
 # 2. Copiar la configuración de ejemplo
 cp .env.example .env          # en Windows PowerShell: copy .env.example .env
 
 # 3. Preparar la base de datos SQLite (opcional pero recomendado)
-npm run db:push               # crea apps/server/dev.db y genera el cliente Prisma
+npm run db:push               # crea apps/server/prisma/dev.db y genera el cliente Prisma
 
 # 4. Arrancar servidor + cliente a la vez
 npm run dev
@@ -29,7 +29,7 @@ npm run dev
 - Cliente: <http://localhost:5173>
 - Servidor y API: <http://localhost:3001> (`/api/health`, `/api/games`, `/api/leaderboard`)
 
-Para jugar entre varios ordenadores de la misma red, arranca con `npm run dev` y ajusta en `.env`:
+Para jugar entre varios ordenadores de la misma red, arranca con `npm run dev`, permite el acceso en el cortafuegos y abre la dirección de red de Vite. Deja `VITE_SERVER_URL` vacío: el cliente usa el mismo origen y Vite reenvía `/api` y `/socket.io` al servidor local. Si necesitas separar cliente y servidor, configura ambos valores:
 
 ```env
 CORS_ORIGINS=http://192.168.1.50:5173
@@ -41,7 +41,7 @@ VITE_SERVER_URL=http://192.168.1.50:3001
 **Un único `.env`, en la raíz.** Los tres consumidores lo leen desde ahí:
 
 - el servidor, porque `apps/server/src/env.ts` carga `apps/server/.env` y después el de la raíz;
-- el cliente, porque `vite.config.ts` usa `envDir` apuntando a la raíz (por eso `VITE_SERVER_URL` funciona);
+- el cliente, porque `vite.config.ts` lee únicamente las variables `VITE_*` de la raíz, sin heredar el `NODE_ENV` del servidor;
 - Prisma, a través de `apps/server/scripts/run-prisma.mjs`, que carga el `.env` antes de invocar la CLI. La CLI de Prisma solo mira el directorio del esquema, así que sin ese envoltorio daría `Environment variable not found: DATABASE_URL`.
 
 ### Ejecución con Docker (opcional)
@@ -439,11 +439,11 @@ Se guardan en la tabla `SoloRecord` de SQLite, indexadas por un **identificador 
 ## 7. Pruebas
 
 ```bash
-npm test             # Vitest: 376 tests
+npm test             # Vitest: pruebas unitarias y de integración
 npm run test:e2e  # Playwright: dos navegadores compartiendo sala
 ```
 
-Actualmente hay **376 tests Vitest** y 9 flujos E2E (5 multijugador en `e2e/multiplayer.spec.ts` y 4 de modo individual en `e2e/solo.spec.ts`). GitHub Actions ejecuta el control completo
+La suite incluye pruebas unitarias y de integración, 9 flujos E2E originales y 14 recorridos de inicio, acción y reinicio en tableta en `e2e/game-review.spec.ts`, con comprobaciones a 320, 768 y 1440 píxeles y densidad 2x. Consulta [la revisión local](REVISION.md) para los resultados y límites de la última ejecución. GitHub Actions ejecuta el control completo
 en cada pull request y cada actualización de `main`, y conserva las trazas de Playwright si falla.
 
 Cobertura de los tests exigidos del minigolf:
@@ -564,7 +564,7 @@ de CI para ver qué se ha dejado de probar.
 
 ## 10. Limitaciones conocidas
 
-- Sin cuentas de usuario ni chat de voz o texto: el diseño es "abre el enlace y juega".
+- Sin cuentas de usuario ni chat de voz: el diseño es "abre el enlace y juega". Las salas multijugador sí incluyen chat de texto.
 - Las salas viven en memoria y en un único proceso: al reiniciar el servidor se pierden las partidas en curso, y no hay escalado horizontal (haría falta un adaptador Redis para Socket.IO).
 - El billar casual no implementa efecto (spin) ni faltas por no tocar bola. El modo bola 8 sí está completo en grupos, negra y faltas de blanca, pero no cubre bola cantada, falta por no tocar banda ni bola en mano libre.
 - Los dardos 301/501 no exigen cierre a doble. El modo cricket sí implementa marcas, cierres, números muertos y la condición de ganar por puntos.
@@ -574,7 +574,7 @@ de CI para ver qué se ha dejado de probar.
 - Los bots del modo individual son deterministas por diseño dentro de cada dificultad: no aprenden ni se adaptan al rival entre partidas.
 - Las marcas personales viven en el navegador (identificador anónimo en `localStorage`) y en el SQLite del servidor. No se sincronizan entre dispositivos ni sobreviven a borrar los datos del navegador.
 - Playwright necesita descargar Chromium la primera vez (`npx playwright install chromium`).
-- `npm audit --omit=dev` da **cero vulnerabilidades**: la superficie que llega a producción está limpia. El `npm audit` completo sí puede avisar de algo en las herramientas de desarrollo (hoy, `brace-expansion` a través de `eslint → minimatch@3`, pese al `override` fijado en `package.json`). No afecta a lo desplegado, pero conviene revisarlo en cada actualización de ESLint.
+- La auditoría de dependencias todavía registra avisos: consulta `npm audit` y `npm audit --omit=dev` antes de desplegar. La revisión local aplica actualizaciones compatibles, pero no fuerza cambios de versión mayor de Prisma ni declara el árbol libre de vulnerabilidades.
 - Prisma descarga sus motores nativos durante `npm install`; si no hay red, la aplicación cae automáticamente al almacén en memoria.
 
 ---
