@@ -7,7 +7,9 @@ import {
   clamp,
 } from '@arcade/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { syncCanvasResolution, type Viewport } from '../lib/canvas.js';
+import { resetToViewport, syncCanvasResolution, type Viewport } from '../lib/canvas.js';
+import { HoldButton } from '../components/HoldButton.js';
+import { listenGameKeys } from '../lib/game-input.js';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 
@@ -23,8 +25,9 @@ interface DriveInput {
 const NEUTRAL: DriveInput = { throttle: 0, steer: 0, braking: false };
 
 export default function KartsView({ state }: { state: KartsPublicState }) {
-  const { sendAction, session, room, snapshotRef } = useApp();
+  const { sendAction, session, room, snapshotRef, connected } = useApp();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const phaseRef = useRef(state.phase);
   const keysRef = useRef(new Set<string>());
   const touchRef = useRef<DriveInput>({ ...NEUTRAL });
   const lastSentRef = useRef<DriveInput>({ ...NEUTRAL });
@@ -39,26 +42,31 @@ export default function KartsView({ state }: { state: KartsPublicState }) {
    * Mandar un mensaje por fotograma superaria el limite de mensajes por socket
    * y no aportaria nada: el servidor mantiene la ultima intencion recibida.
    */
-  const publish = useCallback(() => {
-    const keys = keysRef.current;
-    const touch = touchRef.current;
-    const throttle = clamp(
-      (keys.has('up') ? 1 : 0) - (keys.has('down') ? 1 : 0) + touch.throttle,
-      -1,
-      1,
-    );
-    const steer = clamp(
-      (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0) + touch.steer,
-      -1,
-      1,
-    );
-    const braking = keys.has('brake') || touch.braking;
+  const publish = useCallback(
+    (force = false) => {
+      if (phaseRef.current !== 'racing') return;
+      const keys = keysRef.current;
+      const touch = touchRef.current;
+      const throttle = clamp(
+        (keys.has('up') ? 1 : 0) - (keys.has('down') ? 1 : 0) + touch.throttle,
+        -1,
+        1,
+      );
+      const steer = clamp(
+        (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0) + touch.steer,
+        -1,
+        1,
+      );
+      const braking = keys.has('brake') || touch.braking;
 
-    const last = lastSentRef.current;
-    if (last.throttle === throttle && last.steer === steer && last.braking === braking) return;
-    lastSentRef.current = { throttle, steer, braking };
-    sendAction({ type: 'karts:input', throttle, steer, braking });
-  }, [sendAction]);
+      const last = lastSentRef.current;
+      if (!force && last.throttle === throttle && last.steer === steer && last.braking === braking)
+        return;
+      lastSentRef.current = { throttle, steer, braking };
+      sendAction({ type: 'karts:input', throttle, steer, braking });
+    },
+    [sendAction],
+  );
 
   useEffect(() => {
     const map: Record<string, string> = {
@@ -72,32 +80,28 @@ export default function KartsView({ state }: { state: KartsPublicState }) {
       KeyD: 'right',
       Space: 'brake',
     };
-    const onDown = (event: KeyboardEvent) => {
-      const action = map[event.code];
-      if (!action) return;
-      event.preventDefault();
-      keysRef.current.add(action);
-      publish();
-    };
-    const onUp = (event: KeyboardEvent) => {
-      const action = map[event.code];
-      if (!action) return;
-      keysRef.current.delete(action);
-      publish();
-    };
-    const onBlur = () => {
-      keysRef.current.clear();
-      publish();
-    };
-    window.addEventListener('keydown', onDown);
-    window.addEventListener('keyup', onUp);
-    window.addEventListener('blur', onBlur);
+    const stopKeys = listenGameKeys(
+      map,
+      (keys) => {
+        keysRef.current = keys;
+        publish();
+      },
+      () => {
+        keysRef.current.clear();
+        touchRef.current = { ...NEUTRAL };
+        setTouchState({ ...NEUTRAL });
+        publish();
+      },
+    );
     return () => {
-      window.removeEventListener('keydown', onDown);
-      window.removeEventListener('keyup', onUp);
-      window.removeEventListener('blur-sm', onBlur);
+      stopKeys();
     };
   }, [publish]);
+
+  useEffect(() => {
+    phaseRef.current = state.phase;
+    if (connected && state.phase === 'racing') publish(true);
+  }, [connected, state.phase, publish]);
 
   const setTouch = (patch: Partial<DriveInput>) => {
     touchRef.current = { ...touchRef.current, ...patch };
@@ -196,7 +200,7 @@ export default function KartsView({ state }: { state: KartsPublicState }) {
         </p>
 
         {/* Controles tactiles: objetivo minimo de 44 px por boton. */}
-        <div className="grid grid-cols-4 gap-2 sm:hidden">
+        <div className="grid grid-cols-4 gap-2 game-touch-controls">
           <TouchButton
             label="Izquierda"
             active={touchState.steer < 0}
@@ -286,26 +290,9 @@ function TouchButton({
   children: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-pressed={active}
-      className={
-        'min-h-14 rounded-xl border text-sm font-semibold transition ' +
-        (active
-          ? 'border-(--accent-blue) bg-(--accent-blue)/25 text-white'
-          : 'border-white/15 bg-white/5 text-slate-200')
-      }
-      onPointerDown={(event) => {
-        event.preventDefault();
-        onPress();
-      }}
-      onPointerUp={onRelease}
-      onPointerLeave={onRelease}
-      onPointerCancel={onRelease}
-    >
+    <HoldButton label={label} active={active} onChange={(held) => (held ? onPress() : onRelease())}>
       {children}
-    </button>
+    </HoldButton>
   );
 }
 
@@ -343,7 +330,7 @@ function draw(
   myId?: string,
 ): void {
   const gates = state.track.gates;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  resetToViewport(ctx, view);
   ctx.clearRect(0, 0, view.width, view.height);
   const ground = ctx.createLinearGradient(0, 0, view.width, view.height);
   ground.addColorStop(0, '#0a231e');

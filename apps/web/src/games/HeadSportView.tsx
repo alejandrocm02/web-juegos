@@ -11,6 +11,8 @@ import {
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 import { syncCanvasResolution } from '../lib/canvas.js';
+import { HoldButton } from '../components/HoldButton.js';
+import { listenGameKeys } from '../lib/game-input.js';
 import { useApp } from '../store.js';
 
 interface RenderState {
@@ -25,9 +27,11 @@ interface Controls {
 }
 
 export default function HeadSportView({ state }: { state: HeadSportPublicState }) {
-  const { room, session, sendAction, snapshotRef } = useApp();
+  const { room, session, sendAction, snapshotRef, connected } = useApp();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keysRef = useRef(new Set<string>());
+  const phaseRef = useRef(state.phase);
+  const touchRef = useRef<Controls>({ moveX: 0, jump: false, kick: false });
   const controlsRef = useRef<Controls>({ moveX: 0, jump: false, kick: false });
   const renderRef = useRef<RenderState>({
     ball: { x: state.ball.x, y: state.ball.y, spin: state.ball.spin },
@@ -41,24 +45,31 @@ export default function HeadSportView({ state }: { state: HeadSportPublicState }
   const publish = useCallback(
     (next: Controls) => {
       controlsRef.current = next;
-      if (state.phase !== 'playing') return;
+      if (phaseRef.current !== 'playing') return;
       sendAction({ type: 'head-sport:input', game: state.game, ...next });
     },
-    [sendAction, state.game, state.phase],
+    [sendAction, state.game],
   );
 
   const syncKeyboard = useCallback(() => {
     const keys = keysRef.current;
     publish({
-      moveX: (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0),
-      jump: keys.has('jump'),
-      kick: keys.has('kick'),
+      moveX: Math.max(
+        -1,
+        Math.min(
+          1,
+          (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0) + touchRef.current.moveX,
+        ),
+      ),
+      jump: keys.has('jump') || touchRef.current.jump,
+      kick: keys.has('kick') || touchRef.current.kick,
     });
   }, [publish]);
 
   useEffect(() => {
-    if (state.phase === 'playing') publish(controlsRef.current);
-  }, [publish, state.phase]);
+    phaseRef.current = state.phase;
+    if (connected && state.phase === 'playing') publish(controlsRef.current);
+  }, [connected, publish, state.phase]);
 
   useEffect(() => {
     const map: Record<string, 'left' | 'right' | 'jump' | 'kick'> = {
@@ -72,32 +83,20 @@ export default function HeadSportView({ state }: { state: HeadSportPublicState }
       Enter: 'kick',
       KeyK: 'kick',
     };
-    const onDown = (event: KeyboardEvent) => {
-      const action = map[event.code];
-      if (!action) return;
-      event.preventDefault();
-      if (event.repeat || keysRef.current.has(action)) return;
-      keysRef.current.add(action);
-      syncKeyboard();
-    };
-    const onUp = (event: KeyboardEvent) => {
-      const action = map[event.code];
-      if (!action) return;
-      event.preventDefault();
-      keysRef.current.delete(action);
-      syncKeyboard();
-    };
-    const onBlur = () => {
-      keysRef.current.clear();
-      publish({ moveX: 0, jump: false, kick: false });
-    };
-    window.addEventListener('keydown', onDown);
-    window.addEventListener('keyup', onUp);
-    window.addEventListener('blur', onBlur);
+    const stopKeys = listenGameKeys(
+      map,
+      (keys) => {
+        keysRef.current = keys;
+        syncKeyboard();
+      },
+      () => {
+        keysRef.current.clear();
+        touchRef.current = { moveX: 0, jump: false, kick: false };
+        publish({ moveX: 0, jump: false, kick: false });
+      },
+    );
     return () => {
-      window.removeEventListener('keydown', onDown);
-      window.removeEventListener('keyup', onUp);
-      window.removeEventListener('blur-sm', onBlur);
+      stopKeys();
     };
   }, [publish, syncKeyboard]);
 
@@ -128,7 +127,8 @@ export default function HeadSportView({ state }: { state: HeadSportPublicState }
   }, [meId, room?.players, snapshotRef, state]);
 
   const setTouch = (patch: Partial<Controls>) => {
-    publish({ ...controlsRef.current, ...patch });
+    touchRef.current = { ...touchRef.current, ...patch };
+    syncKeyboard();
   };
   const redPlayers = teamPlayers(room?.players ?? [], state.teams, 'rojo');
   const bluePlayers = teamPlayers(room?.players ?? [], state.teams, 'azul');
@@ -175,7 +175,7 @@ export default function HeadSportView({ state }: { state: HeadSportPublicState }
           )}
         </div>
 
-        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 sm:hidden">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 game-touch-controls">
           <div className="grid grid-cols-2 gap-2">
             <ControlButton
               label="Mover izquierda"
@@ -238,19 +238,9 @@ function ControlButton({
   onChange: (active: boolean) => void;
 }) {
   return (
-    <button
-      type="button"
-      className="min-h-12 touch-none rounded-xl border border-white/15 bg-white/[0.07] font-display text-lg font-black text-white active:border-neon-cyan active:bg-neon-cyan/20"
-      aria-label={label}
-      onPointerDown={(event) => {
-        event.currentTarget.setPointerCapture(event.pointerId);
-        onChange(true);
-      }}
-      onPointerUp={() => onChange(false)}
-      onPointerCancel={() => onChange(false)}
-    >
+    <HoldButton label={label} onChange={onChange}>
       {text}
-    </button>
+    </HoldButton>
   );
 }
 

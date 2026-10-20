@@ -91,6 +91,24 @@ describe('configuracion compartida del modo individual', () => {
 });
 
 describe('sala de practica', () => {
+  it('permite reiniciar y cambiar de juego sin un control de preparado oculto', () => {
+    const { room } = makeRoom({ game: 'quiz' });
+    const player = room.addPlayer('Alejandro', 'socket-1');
+    room.setReady(player.id, true);
+    room.prepareSolo();
+    try {
+      expect(room.startGame().ok).toBe(true);
+      room.backToLobby();
+      expect(room.canStart().ok).toBe(true);
+      expect(room.startGame().ok).toBe(true);
+      room.backToLobby();
+      room.selectGame('pool');
+      expect(room.canStart().ok).toBe(true);
+    } finally {
+      room.dispose();
+    }
+  });
+
   it('arranca con un unico jugador humano', () => {
     const { room } = makeRoom({ game: 'quiz' });
     expect(room.solo).toBe(true);

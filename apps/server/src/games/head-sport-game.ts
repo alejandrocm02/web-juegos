@@ -67,6 +67,10 @@ export class HeadSportGame implements GameRunner {
     });
   }
 
+  onPlayerDisconnected(playerId: string): void {
+    this.world.setInput(playerId, { moveX: 0, jump: false, kick: false });
+  }
+
   onPlayerLeft(playerId: string): void {
     this.world.removePlayer(playerId);
     if (this.phase === 'playing' && (!this.world.hasTeam('rojo') || !this.world.hasTeam('azul'))) {

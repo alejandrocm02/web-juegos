@@ -10,6 +10,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 import { syncCanvasResolution } from '../lib/canvas.js';
+import { acceptsGameKeys } from '../lib/game-input.js';
 import { useApp } from '../store.js';
 
 export default function TanksView({ state }: { state: TanksPublicState }) {
@@ -59,7 +60,7 @@ export default function TanksView({ state }: { state: TanksPublicState }) {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (!isMyTurn || event.repeat) return;
+      if (!isMyTurn || event.repeat || !acceptsGameKeys(event)) return;
       if (event.code === 'ArrowLeft' || event.code === 'KeyA') {
         event.preventDefault();
         move(-1);

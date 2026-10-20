@@ -1,7 +1,12 @@
 /** Reproduce una melodía con síntesis local. No descarga ni usa archivos de audio. */
 export async function playSonglessClip(notes: (number | null)[], bpm: number): Promise<() => void> {
   const context = new AudioContext();
-  await context.resume();
+  try {
+    await context.resume();
+  } catch (error) {
+    if (context.state !== 'closed') void context.close();
+    throw error;
+  }
   const master = context.createGain();
   master.gain.setValueAtTime(0.42, context.currentTime);
   master.connect(context.destination);

@@ -86,7 +86,7 @@ export function resolveDatabaseUrl(databaseUrl, prismaDir) {
   if (!url.startsWith('file:')) return url;
 
   const target = url.slice('file:'.length);
-  if (target === '' || target.startsWith('/')) return url;
+  if (target === '' || path.isAbsolute(target) || target.startsWith('/')) return url;
 
   return 'file:' + path.resolve(prismaDir, target);
 }

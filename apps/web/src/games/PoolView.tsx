@@ -90,6 +90,11 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
     setDrag(point);
   };
 
+  const cancelShot = () => {
+    dragRef.current = null;
+    setDrag(null);
+  };
+
   const onPointerUp = () => {
     const point = dragRef.current;
     dragRef.current = null;
@@ -167,7 +172,8 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
-            onPointerCancel={onPointerUp}
+            onPointerCancel={cancelShot}
+            onLostPointerCapture={cancelShot}
             aria-label="Mesa de billar"
           />
           {state.phase === 'simulating' && (

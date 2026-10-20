@@ -8,6 +8,8 @@ import {
 } from '@arcade/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { syncCanvasResolution } from '../lib/canvas.js';
+import { HoldButton } from '../components/HoldButton.js';
+import { listenGameKeys } from '../lib/game-input.js';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 import { draw, interpolate } from './arena-render.js';
@@ -22,10 +24,13 @@ interface Intent {
 }
 
 export default function ArenaView({ state }: { state: ArenaPublicState }) {
-  const { sendAction, session, room, snapshotRef } = useApp();
+  const { sendAction, session, room, snapshotRef, connected } = useApp();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const keysRef = useRef(new Set<string>());
   const touchRef = useRef({ moveX: 0, moveY: 0, attack: false });
+  const phaseRef = useRef(state.phase);
+  const pendingPublishRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastPublishRef = useRef(0);
   const facingRef = useRef(0);
   const lastSentRef = useRef<Intent>({ moveX: 0, moveY: 0, facing: 0, attack: false });
   const renderRef = useRef(new Map<string, { x: number; y: number; facing: number }>());
@@ -36,32 +41,67 @@ export default function ArenaView({ state }: { state: ArenaPublicState }) {
   const modeInfo = GAME_MODE_CATALOG.arena.find((mode) => mode.id === state.mode);
 
   /** La intencion se envia solo cuando cambia, igual que en karts. */
-  const publish = useCallback(() => {
-    const keys = keysRef.current;
-    const touch = touchRef.current;
-    const moveX = clamp(
-      (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0) + touch.moveX,
-      -1,
-      1,
-    );
-    const moveY = clamp((keys.has('down') ? 1 : 0) - (keys.has('up') ? 1 : 0) + touch.moveY, -1, 1);
-    const attack = keys.has('attack') || touch.attack;
-    const facing = facingRef.current;
+  const publish = useCallback(
+    (force = false) => {
+      if (phaseRef.current !== 'fighting') return;
+      const keys = keysRef.current;
+      const touch = touchRef.current;
+      const moveX = clamp(
+        (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0) + touch.moveX,
+        -1,
+        1,
+      );
+      const moveY = clamp(
+        (keys.has('down') ? 1 : 0) - (keys.has('up') ? 1 : 0) + touch.moveY,
+        -1,
+        1,
+      );
+      const attack = keys.has('attack') || touch.attack;
+      const facing = facingRef.current;
 
-    const last = lastSentRef.current;
-    const facingChanged = Math.abs(last.facing - facing) > 0.08;
-    if (
-      last.moveX === moveX &&
-      last.moveY === moveY &&
-      last.attack === attack &&
-      !facingChanged &&
-      !attack
-    ) {
-      return;
-    }
-    lastSentRef.current = { moveX, moveY, facing, attack };
-    sendAction({ type: 'arena:input', moveX, moveY, facing, attack });
-  }, [sendAction]);
+      const last = lastSentRef.current;
+      const facingChanged = Math.abs(last.facing - facing) > 0.08;
+      if (
+        last.moveX === moveX &&
+        last.moveY === moveY &&
+        last.attack === attack &&
+        !facingChanged &&
+        !force
+      ) {
+        return;
+      }
+      const wait = 110 - (performance.now() - lastPublishRef.current);
+      const onlyAim = last.moveX === moveX && last.moveY === moveY && last.attack === attack;
+      if (!force && onlyAim && wait > 0) {
+        if (pendingPublishRef.current === null) {
+          pendingPublishRef.current = setTimeout(() => {
+            pendingPublishRef.current = null;
+            publish();
+          }, wait);
+        }
+        return;
+      }
+      if (pendingPublishRef.current !== null) clearTimeout(pendingPublishRef.current);
+      pendingPublishRef.current = null;
+      lastPublishRef.current = performance.now();
+      lastSentRef.current = { moveX, moveY, facing, attack };
+      sendAction({ type: 'arena:input', moveX, moveY, facing, attack });
+    },
+    [sendAction],
+  );
+
+  useEffect(() => {
+    phaseRef.current = state.phase;
+    if (connected && state.phase === 'fighting') publish(true);
+  }, [connected, state.phase, publish]);
+
+  useEffect(
+    () => () => {
+      if (pendingPublishRef.current !== null) clearTimeout(pendingPublishRef.current);
+      pendingPublishRef.current = null;
+    },
+    [],
+  );
 
   useEffect(() => {
     if (spectating) return;
@@ -76,30 +116,20 @@ export default function ArenaView({ state }: { state: ArenaPublicState }) {
       KeyD: 'right',
       Space: 'attack',
     };
-    const onDown = (event: KeyboardEvent) => {
-      const action = map[event.code];
-      if (!action) return;
-      event.preventDefault();
-      keysRef.current.add(action);
-      publish();
-    };
-    const onUp = (event: KeyboardEvent) => {
-      const action = map[event.code];
-      if (!action) return;
-      keysRef.current.delete(action);
-      publish();
-    };
-    const onBlur = () => {
-      keysRef.current.clear();
-      publish();
-    };
-    window.addEventListener('keydown', onDown);
-    window.addEventListener('keyup', onUp);
-    window.addEventListener('blur', onBlur);
+    const stopKeys = listenGameKeys(
+      map,
+      (keys) => {
+        keysRef.current = keys;
+        publish();
+      },
+      () => {
+        keysRef.current.clear();
+        touchRef.current = { moveX: 0, moveY: 0, attack: false };
+        publish();
+      },
+    );
     return () => {
-      window.removeEventListener('keydown', onDown);
-      window.removeEventListener('keyup', onUp);
-      window.removeEventListener('blur-sm', onBlur);
+      stopKeys();
     };
   }, [publish, spectating]);
 
@@ -206,11 +236,13 @@ export default function ArenaView({ state }: { state: ArenaPublicState }) {
             height={VIEW}
             onPointerMove={onPointerMove}
             onPointerDown={(event) => {
+              event.currentTarget.setPointerCapture(event.pointerId);
               onPointerMove(event);
               if (!spectating) setTouch({ attack: true });
             }}
             onPointerUp={() => setTouch({ attack: false })}
-            onPointerLeave={() => setTouch({ attack: false })}
+            onPointerCancel={() => setTouch({ attack: false })}
+            onLostPointerCapture={() => setTouch({ attack: false })}
             className="w-full touch-none bg-black"
             aria-label="Arena de Battle Royale"
           />
@@ -239,7 +271,7 @@ export default function ArenaView({ state }: { state: ArenaPublicState }) {
         </p>
 
         {!spectating && (
-          <div className="grid grid-cols-5 gap-2 sm:hidden">
+          <div className="grid grid-cols-5 gap-2 game-touch-controls">
             <TouchPad
               label="Arriba"
               onPress={() => setTouch({ moveY: -1 })}
@@ -382,19 +414,8 @@ function TouchPad({
   children: React.ReactNode;
 }) {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      className="min-h-14 rounded-xl border border-white/15 bg-white/5 text-sm font-semibold text-slate-100"
-      onPointerDown={(event) => {
-        event.preventDefault();
-        onPress();
-      }}
-      onPointerUp={onRelease}
-      onPointerLeave={onRelease}
-      onPointerCancel={onRelease}
-    >
+    <HoldButton label={label} onChange={(held) => (held ? onPress() : onRelease())}>
       {children}
-    </button>
+    </HoldButton>
   );
 }

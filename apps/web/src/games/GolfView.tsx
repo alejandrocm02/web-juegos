@@ -1,6 +1,7 @@
 import type { GolfBallState, GolfPublicState, GolfSnapshot } from '@arcade/shared';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { syncCanvasResolution } from '../lib/canvas.js';
+import { acceptsGameKeys } from '../lib/game-input.js';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph, Scoreboard } from '../components/ui.js';
 import { playAceSound, playHoledSound, playOutSound } from '../lib/sound.js';
@@ -65,6 +66,7 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (event.repeat || !acceptsGameKeys(event)) return;
       if (event.key === 'z' || event.key === 'Z') setOverview((prev) => !prev);
       if (event.key === 'r' || event.key === 'R') sendAction({ type: 'golf:reset' });
     };

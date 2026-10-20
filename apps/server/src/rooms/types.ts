@@ -43,6 +43,8 @@ export interface GameRunner {
   start(): void;
   handleAction(playerId: string, action: GameAction): void;
   onPlayerLeft(playerId: string): void;
+  /** Release continuous controls without removing the reconnectable player. */
+  onPlayerDisconnected?(playerId: string): void;
   onPlayerRejoined(playerId: string): void;
   publicState(): GamePublicState;
   dispose(): void;

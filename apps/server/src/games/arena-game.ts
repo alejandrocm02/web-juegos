@@ -47,6 +47,7 @@ export class ArenaGame implements GameRunner {
       this.teams,
       Date.now() % 2147483647,
       ARENA_ZONE_PACE[settings.zonePace],
+      settings.pickups,
     );
   }
 
@@ -130,6 +131,12 @@ export class ArenaGame implements GameRunner {
       facing: action.facing,
       attack: action.attack,
     });
+  }
+
+  onPlayerDisconnected(playerId: string): void {
+    const fighter = this.world.getFighter(playerId);
+    if (fighter)
+      this.world.setInput(playerId, { moveX: 0, moveY: 0, facing: fighter.facing, attack: false });
   }
 
   onPlayerLeft(playerId: string): void {

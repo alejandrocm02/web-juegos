@@ -5,7 +5,7 @@ import {
   type BowlingSnapshot,
 } from '@arcade/shared';
 import { useEffect, useRef, useState } from 'react';
-import { syncCanvasResolution, type Viewport } from '../lib/canvas.js';
+import { resetToViewport, syncCanvasResolution, type Viewport } from '../lib/canvas.js';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 
@@ -248,7 +248,7 @@ function drawLane(
   const scaleX = view.width / BOWLING_LANE.width;
   const scaleY = view.height / (BOWLING_LANE.length + 120);
 
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  resetToViewport(ctx, view);
   ctx.clearRect(0, 0, view.width, view.height);
   const room = ctx.createLinearGradient(0, 0, 0, view.height);
   room.addColorStop(0, '#070a11');
