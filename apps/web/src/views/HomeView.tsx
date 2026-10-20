@@ -229,7 +229,7 @@ export default function HomeView() {
           {GAME_IDS.map((id) => (
             <article
               key={id}
-              className="game-card arcade-machine flex min-h-64 flex-col justify-between"
+              className={"game-card arcade-machine arcade-machine-" + id + " flex min-h-64 flex-col justify-between"}
               style={
                 {
                   '--game-accent': GAME_META[id].accent,
@@ -237,7 +237,12 @@ export default function HomeView() {
                 } as React.CSSProperties
               }
             >
-              <div className="flex items-start justify-between">
+              <div className="arcade-machine-screen" aria-hidden="true">
+                <span className="arcade-machine-orb arcade-machine-orb-a" />
+                <span className="arcade-machine-orb arcade-machine-orb-b" />
+                <span className="arcade-machine-horizon" />
+              </div>
+              <div className="relative z-10 flex items-start justify-between">
                 <span className="game-icon-shell">
                   <GameIcon game={id} />
                 </span>
@@ -245,7 +250,7 @@ export default function HomeView() {
                   0{GAME_IDS.indexOf(id) + 1}
                 </span>
               </div>
-              <div className="mt-8">
+              <div className="relative z-10 mt-8">
                 <h3 className="font-display text-xl font-bold">{GAME_META[id].name}</h3>
                 <p className="mt-1 text-sm text-slate-400">{GAME_META[id].tagline}</p>
                 <p className="mt-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
