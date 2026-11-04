@@ -12,6 +12,7 @@ import { Panel, PlayerIconGlyph } from '../components/ui.js';
 import { syncCanvasResolution } from '../lib/canvas.js';
 import { acceptsGameKeys } from '../lib/game-input.js';
 import { useApp } from '../store.js';
+import { serverNow } from '../lib/clock.js';
 
 export default function TanksView({ state }: { state: TanksPublicState }) {
   const { room, session, sendAction } = useApp();
@@ -27,7 +28,7 @@ export default function TanksView({ state }: { state: TanksPublicState }) {
   const modeInfo = GAME_MODE_CATALOG.tanks.find((mode) => mode.id === state.mode);
   const mapInfo = TANK_MAPS.find((map) => map.id === state.map);
   const secondsLeft = state.deadline
-    ? Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000))
+    ? Math.max(0, Math.ceil((state.deadline - serverNow()) / 1000))
     : 0;
 
   useEffect(() => {

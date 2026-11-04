@@ -138,6 +138,7 @@ export class PoolWorld {
   }
 
   shoot(angle: number, power: number): boolean {
+    if (!Number.isFinite(angle) || !Number.isFinite(power) || power <= 0) return false;
     if (!this.settled()) return false;
     const cue = this.cueBall;
     if (cue.pocketed) return false;
@@ -154,28 +155,35 @@ export class PoolWorld {
     return out;
   }
 
+  /**
+   * Avanza todas las bolas con el mismo subpaso temporal.
+   * Resolver choques solo al final del fotograma permite que dos bolas rápidas
+   * se atraviesen sin contacto; hacerlo en cada subpaso evita ese efecto.
+   */
   step(dt: number = PHYSICS_DT): void {
+    if (!Number.isFinite(dt) || dt <= 0) return;
     this.tick += 1;
     const { ballRadius, width, height } = POOL_TABLE;
-    const damping = Math.exp(-this.frictionCoef * dt);
+    const active = this.balls.filter((ball) => !ball.pocketed);
+    const maxSpeed = active.reduce((max, ball) => Math.max(max, Math.hypot(ball.vx, ball.vy)), 0);
+    const steps = Math.max(1, Math.ceil((maxSpeed * dt) / MAX_STEP));
+    const sub = dt / steps;
+    const damping = Math.exp(-this.frictionCoef * sub);
 
-    for (const ball of this.balls) {
-      if (ball.pocketed) continue;
-      ball.vx *= damping;
-      ball.vy *= damping;
-      const speed = Math.hypot(ball.vx, ball.vy);
-      if (speed <= POOL_STOP_SPEED) {
-        ball.vx = 0;
-        ball.vy = 0;
-        continue;
-      }
-      const steps = Math.max(1, Math.ceil((speed * dt) / MAX_STEP));
-      const sub = dt / steps;
-      for (let s = 0; s < steps; s++) {
+    for (let s = 0; s < steps; s++) {
+      for (const ball of this.balls) {
+        if (ball.pocketed) continue;
+        ball.vx *= damping;
+        ball.vy *= damping;
+        if (Math.hypot(ball.vx, ball.vy) <= POOL_STOP_SPEED) {
+          ball.vx = 0;
+          ball.vy = 0;
+          continue;
+        }
+
         ball.x += ball.vx * sub;
         ball.y += ball.vy * sub;
-
-        if (this.checkPocket(ball)) break;
+        if (this.checkPocket(ball)) continue;
 
         if (ball.x < ballRadius) {
           ball.x = ballRadius;
@@ -192,9 +200,8 @@ export class PoolWorld {
           ball.vy = -Math.abs(ball.vy) * CUSHION_RESTITUTION;
         }
       }
+      this.resolveCollisions();
     }
-
-    this.resolveCollisions();
   }
 
   private checkPocket(ball: PoolBallState): boolean {
@@ -221,9 +228,11 @@ export class PoolWorld {
         const dx = b.x - a.x;
         const dy = b.y - a.y;
         const dist = Math.hypot(dx, dy);
-        if (dist >= r2 || dist < 1e-9) continue;
-        const nx = dx / dist;
-        const ny = dy / dist;
+        if (dist >= r2) continue;
+        // Coincidencia exacta: elegir una normal estable evita que las bolas
+        // queden superpuestas indefinidamente por división entre cero.
+        const nx = dist < 1e-9 ? 1 : dx / dist;
+        const ny = dist < 1e-9 ? 0 : dy / dist;
         const overlap = (r2 - dist) / 2 + 0.01;
         a.x -= nx * overlap;
         a.y -= ny * overlap;

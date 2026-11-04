@@ -8,6 +8,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
+import { serverNow } from '../lib/clock.js';
 
 const SIZE = 420;
 
@@ -15,10 +16,10 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
   const { sendAction, session, room } = useApp();
   const boardRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(serverNow());
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 250);
+    const id = setInterval(() => setNow(serverNow()), 250);
     return () => clearInterval(id);
   }, []);
 

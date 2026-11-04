@@ -1,6 +1,15 @@
 import { expect, test } from '@playwright/test';
 import { GAME_IDS, GAME_META, type GamePublicState } from '@arcade/shared';
 
+/**
+ * Lee un paquete de evento de Socket.IO (`42` + id de acuse opcional + JSON).
+ * Los eventos con acuse, como `clock:sync`, llevan el id entre el tipo y el JSON.
+ */
+function parseEventFrame(raw: string): [string, ReturnType<typeof JSON.parse>] | null {
+  const match = /^42\d*(\[[\s\S]*\])$/.exec(raw);
+  return match ? JSON.parse(match[1]!) : null;
+}
+
 /** Real server + tablet input; each game must accept an action and restart cleanly. */
 for (const game of GAME_IDS) {
   test(`revisión: ${game} se juega y reinicia en tableta`, async ({ browser }, testInfo) => {
@@ -28,9 +37,9 @@ for (const game of GAME_IDS) {
     });
     page.on('websocket', (socket) => {
       socket.on('framereceived', ({ payload }) => {
-        const raw = payload.toString();
-        if (!raw.startsWith('42')) return;
-        const [event, value] = JSON.parse(raw.slice(2));
+        const frame = parseEventFrame(payload.toString());
+        if (!frame) return;
+        const [event, value] = frame;
         if (event === 'session') playerId = value.playerId;
         if (event === 'game:state') state = value;
         if (event === 'game:started') {
@@ -40,9 +49,9 @@ for (const game of GAME_IDS) {
         if (event === 'app:error') errors.push(value.message);
       });
       socket.on('framesent', ({ payload }) => {
-        const raw = payload.toString();
-        if (!raw.startsWith('42')) return;
-        const [event, value] = JSON.parse(raw.slice(2));
+        const frame = parseEventFrame(payload.toString());
+        if (!frame) return;
+        const [event, value] = frame;
         if (event === 'game:action') actions.push(value.type);
       });
     });
@@ -180,12 +189,33 @@ for (const game of GAME_IDS) {
           .toBe(true);
       }
       await page.screenshot({ path: testInfo.outputPath(`${game}.png`), fullPage: true });
-      await page.getByRole('button', { name: 'Volver al lobby' }).click();
-      const dialog = page.getByRole('alertdialog');
-      await expect(dialog).toBeVisible();
-      await page.keyboard.press('Tab');
-      await expect(dialog.getByRole('button', { name: 'Cancelar' })).toBeFocused();
-      await dialog.getByRole('button', { name: 'Terminar y volver' }).click();
+      const exitFromMenu = async () => {
+        // Con tiempo propio: si la partida termina sola, el botón desaparece y un
+        // clic sin límite agotaría la prueba entera en vez de pasar al plan B.
+        await page.getByRole('button', { name: 'Volver al lobby' }).click({ timeout: 10_000 });
+        const dialog = page.getByRole('alertdialog');
+        await expect(dialog).toBeVisible();
+        await page.keyboard.press('Tab');
+        await expect(dialog.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+        await dialog.getByRole('button', { name: 'Terminar y volver' }).click({ timeout: 10_000 });
+      };
+      if (game === 'arena') {
+        // Los bots de Arena pueden eliminar al jugador (quieto durante la prueba)
+        // y terminar la partida en cualquier momento, también con el diálogo de
+        // salida abierto. Si pasa, se vuelve desde la pantalla de resultados:
+        // lleva al mismo lobby y el segundo inicio se comprueba igual.
+        const retry = page.getByRole('button', { name: 'Volver a intentarlo' });
+        if (await retry.isVisible()) {
+          await retry.click();
+        } else {
+          await exitFromMenu().catch(async (error: unknown) => {
+            if (!(await retry.isVisible())) throw error;
+            await retry.click();
+          });
+        }
+      } else {
+        await exitFromMenu();
+      }
       await expect(start).toBeVisible();
       await start.click();
       await expect.poll(() => started).toBe(2);

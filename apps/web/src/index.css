@@ -286,3 +286,116 @@
   background: rgba(34, 211, 238, 0.2);
   color: #fff;
 }
+
+/* Sala arcade: profundidad y movimiento sin bloquear controles ni lectura. */
+.arcade-home {
+  position: relative;
+  isolation: isolate;
+}
+.arcade-home::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  /* Sin márgenes negativos: en móvil desbordaban 32 px y aparecía scroll lateral. */
+  inset: 0 0 auto;
+  height: 44rem;
+  /* Solo luces sobre el fondo de la página, sin capa opaca: una capa de color
+     propio dibujaba un rectángulo con bordes visibles en escritorio. La máscara
+     funde las luces hacia los lados y hacia abajo. */
+  background:
+    radial-gradient(ellipse at 18% 18%, rgba(29, 90, 225, 0.23), transparent 48%),
+    radial-gradient(ellipse at 85% 34%, rgba(225, 29, 46, 0.16), transparent 42%);
+  -webkit-mask-image: radial-gradient(ellipse 50% 90% at 50% 25%, #000 45%, transparent 100%);
+  mask-image: radial-gradient(ellipse 50% 90% at 50% 25%, #000 45%, transparent 100%);
+}
+.arcade-hero {
+  position: relative;
+}
+.arcade-machine {
+  isolation: isolate;
+  overflow: hidden;
+  border-color: rgba(255, 255, 255, 0.14);
+  background: linear-gradient(150deg, rgba(22, 32, 55, 0.96), rgba(7, 10, 18, 0.98) 70%);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.14),
+    0 22px 36px -28px #000;
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+.arcade-machine-screen {
+  position: absolute;
+  inset: 0 0 36%;
+  z-index: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      ellipse at 50% 45%,
+      color-mix(in srgb, var(--game-accent) 32%, transparent),
+      transparent 66%
+    ),
+    repeating-linear-gradient(0deg, transparent 0 12px, rgba(255, 255, 255, 0.025) 13px 14px),
+    linear-gradient(145deg, #131d31, #050810);
+  mask-image: linear-gradient(black 70%, transparent);
+}
+.arcade-machine-screen::before {
+  content: '';
+  position: absolute;
+  inset: 16% 12%;
+  border: 1px solid color-mix(in srgb, var(--game-accent) 45%, transparent);
+  border-radius: 45% 45% 18% 18%;
+  transform: perspective(220px) rotateX(24deg);
+  box-shadow: 0 0 32px color-mix(in srgb, var(--game-accent) 22%, transparent);
+}
+.arcade-machine-orb {
+  position: absolute;
+  top: 38%;
+  left: 43%;
+  width: 2.1rem;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 26%, #fff, var(--game-accent) 38%, #09101e 90%);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--game-accent) 45%, transparent);
+  animation: arcade-orbit 4.5s ease-in-out infinite alternate;
+}
+.arcade-machine-orb-b {
+  width: 1.15rem;
+  left: 62%;
+  top: 52%;
+  animation-delay: -2.2s;
+  animation-duration: 3.2s;
+}
+.arcade-machine-horizon {
+  position: absolute;
+  inset: auto 0 12%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--game-accent), transparent);
+  opacity: 0.6;
+}
+@keyframes arcade-orbit {
+  from {
+    transform: translate(-15px, 8px) scale(0.88);
+  }
+  to {
+    transform: translate(16px, -12px) scale(1.08);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .arcade-machine:hover {
+    transform: translateY(-5px);
+    border-color: color-mix(in srgb, var(--game-accent) 58%, white 8%);
+    box-shadow:
+      inset 0 1px rgba(255, 255, 255, 0.17),
+      0 30px 52px -28px #000;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arcade-machine-orb {
+    animation: none;
+  }
+  .arcade-machine {
+    transition: none;
+  }
+}

@@ -3,12 +3,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Panel, PlayerIconGlyph, ProgressBar, Scoreboard } from '../components/ui.js';
 import { playSonglessClip } from '../lib/songless-audio.js';
 import { useApp } from '../store.js';
+import { serverNow } from '../lib/clock.js';
 
 const ANSWER_KEYS = ['A', 'B', 'C', 'D'] as const;
 
 export default function SonglessView({ state }: { state: SonglessPublicState }) {
   const { room, session, sendAction, pushToast } = useApp();
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(serverNow());
   const [picked, setPicked] = useState<number | null>(null);
   const [playing, setPlaying] = useState(false);
   const stopAudio = useRef<(() => void) | null>(null);
@@ -16,7 +17,7 @@ export default function SonglessView({ state }: { state: SonglessPublicState }) 
   const playbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 120);
+    const timer = window.setInterval(() => setNow(serverNow()), 120);
     return () => window.clearInterval(timer);
   }, []);
 

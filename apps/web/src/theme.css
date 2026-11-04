@@ -1064,10 +1064,18 @@
 
 /* Billar */
 .pool-table-frame {
-  padding: clamp(0.55rem, 1.4vw, 0.85rem);
+  isolation: isolate;
+  padding: clamp(0.65rem, 1.6vw, 1rem);
+  border-color: rgba(180, 128, 70, 0.38);
   background:
-    linear-gradient(135deg, rgba(196, 139, 70, 0.25), transparent 32%),
-    linear-gradient(315deg, rgba(34, 211, 238, 0.1), transparent 35%), #080b10;
+    linear-gradient(135deg, rgba(245, 203, 137, 0.18), transparent 28%),
+    linear-gradient(315deg, rgba(29, 90, 225, 0.12), transparent 40%),
+    linear-gradient(180deg, #302317 0%, #120f0e 54%, #090d16 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 224, 170, 0.22),
+    inset 0 0 0 3px rgba(0, 0, 0, 0.24),
+    0 24px 55px -25px rgba(0, 0, 0, 0.95),
+    0 0 36px -25px rgba(29, 90, 225, 0.35);
 }
 
 .pool-table-frame canvas {
