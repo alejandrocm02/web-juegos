@@ -53,3 +53,20 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 - Esperado / Real: fichero de texto válido / devuelve el HTML de la aplicación. Lighthouse SEO baja a 91.
 - Causa: no existen en `apps/web/public/` ni hay ruta en el servidor.
 - Estado: abierto.
+
+## [P2] Test E2E de Arena inestable (1 de cada 8 ejecuciones)
+
+- Juego/zona: `e2e/game-review.spec.ts`, Arena.
+- Pasos para reproducir: `npx playwright test game-review.spec.ts -g arena --repeat-each=10`.
+- Esperado / Real: siempre en verde / falla por tiempo agotado; también falló en el CI de la PR #44.
+- Causa: los bots eliminan al jugador, quieto durante la prueba, y la partida termina sola antes de que la prueba salga por el menú (a veces con el diálogo de salida ya abierto, y el clic esperaba sin límite).
+- Arreglo: en Arena, si la partida acaba antes, la prueba vuelve desde la pantalla de resultados (mismo lobby, mismo segundo inicio) y los clics de salida tienen tiempo propio. 14 de 14 seguidas en verde.
+- Estado: resuelto (rama `fase-1/sincronizacion-reloj`).
+
+## [P3] Arena: los bots eliminan muy rápido a un jugador inactivo
+
+- Juego/zona: Arena en práctica.
+- Pasos para reproducir: empezar Arena con los rivales por defecto (3, normal) o con 1 en fácil y no moverse.
+- Esperado / Real: margen razonable en fácil / el jugador cae en unos 10-25 s incluso con un rival fácil.
+- Causa: por revisar el balance de los bots (persecución y daño). No es necesariamente un fallo: un jugador real se mueve.
+- Estado: abierto, para revisar al migrar Arena.
