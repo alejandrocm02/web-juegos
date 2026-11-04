@@ -77,6 +77,9 @@ export const golfSettingsSchema = z.object({
   maxStrokes: z.union([z.literal(8), z.literal(10), z.literal(12)]),
   autoResetOutOfBounds: z.boolean(),
   outOfBoundsPenalty: z.boolean(),
+  // Acotado: el viento es una ayuda de ambientacion, no una palanca con la que
+  // un cliente pueda mandar un valor absurdo y desviar la bola sin control.
+  windStrength: z.number().min(0).max(2),
 });
 
 export const bowlingSettingsSchema = z.object({
