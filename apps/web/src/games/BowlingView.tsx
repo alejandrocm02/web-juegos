@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from 'react';
 import { resetToViewport, syncCanvasResolution, type Viewport } from '../lib/canvas.js';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
+import { serverNow } from '../lib/clock.js';
 
 const VIEW_W = 360;
 const VIEW_H = 620;
@@ -18,7 +19,7 @@ export default function BowlingView({ state }: { state: BowlingPublicState }) {
   const [aim, setAim] = useState(0);
   const [spin, setSpin] = useState(0);
   const [power, setPower] = useState(0.7);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(serverNow());
 
   const isMyTurn = state.activePlayerId === session?.playerId && state.phase === 'aiming';
   const activePlayer = room?.players.find((player) => player.id === state.activePlayerId);
@@ -26,7 +27,7 @@ export default function BowlingView({ state }: { state: BowlingPublicState }) {
   const modeInfo = GAME_MODE_CATALOG.bowling.find((mode) => mode.id === state.mode);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 300);
+    const id = setInterval(() => setNow(serverNow()), 300);
     return () => clearInterval(id);
   }, []);
 

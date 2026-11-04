@@ -1,6 +1,15 @@
 import { expect, test } from '@playwright/test';
 import { GAME_IDS, GAME_META, type GamePublicState } from '@arcade/shared';
 
+/**
+ * Lee un paquete de evento de Socket.IO (`42` + id de acuse opcional + JSON).
+ * Los eventos con acuse, como `clock:sync`, llevan el id entre el tipo y el JSON.
+ */
+function parseEventFrame(raw: string): [string, ReturnType<typeof JSON.parse>] | null {
+  const match = /^42\d*(\[[\s\S]*\])$/.exec(raw);
+  return match ? JSON.parse(match[1]!) : null;
+}
+
 /** Real server + tablet input; each game must accept an action and restart cleanly. */
 for (const game of GAME_IDS) {
   test(`revisión: ${game} se juega y reinicia en tableta`, async ({ browser }, testInfo) => {
@@ -28,9 +37,9 @@ for (const game of GAME_IDS) {
     });
     page.on('websocket', (socket) => {
       socket.on('framereceived', ({ payload }) => {
-        const raw = payload.toString();
-        if (!raw.startsWith('42')) return;
-        const [event, value] = JSON.parse(raw.slice(2));
+        const frame = parseEventFrame(payload.toString());
+        if (!frame) return;
+        const [event, value] = frame;
         if (event === 'session') playerId = value.playerId;
         if (event === 'game:state') state = value;
         if (event === 'game:started') {
@@ -40,9 +49,9 @@ for (const game of GAME_IDS) {
         if (event === 'app:error') errors.push(value.message);
       });
       socket.on('framesent', ({ payload }) => {
-        const raw = payload.toString();
-        if (!raw.startsWith('42')) return;
-        const [event, value] = JSON.parse(raw.slice(2));
+        const frame = parseEventFrame(payload.toString());
+        if (!frame) return;
+        const [event, value] = frame;
         if (event === 'game:action') actions.push(value.type);
       });
     });

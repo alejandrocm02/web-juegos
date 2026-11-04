@@ -3,21 +3,22 @@ import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph, ProgressBar, Scoreboard } from '../components/ui.js';
 import { quizCategoryLabel } from '../lib/format.js';
+import { serverNow } from '../lib/clock.js';
 
 export default function QuizView({ state }: { state: QuizPublicState }) {
   const { sendAction, session, room } = useApp();
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(serverNow());
   const [picked, setPicked] = useState<number | null>(null);
   const phaseDuration = useRef(1);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 120);
+    const id = setInterval(() => setNow(serverNow()), 120);
     return () => clearInterval(id);
   }, []);
 
   useEffect(() => {
     setPicked(null);
-    phaseDuration.current = Math.max(1, state.deadline - Date.now());
+    phaseDuration.current = Math.max(1, state.deadline - serverNow());
   }, [state.questionIndex, state.phase]);
 
   const remaining = Math.max(0, state.deadline - now);

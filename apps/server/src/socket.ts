@@ -17,6 +17,7 @@ import {
   targetPlayerSchema,
   updateSoloConfigSchema,
   type AppError,
+  type ClockSyncReply,
   type ErrorCode,
 } from '@arcade/shared';
 import type { ZodSchema } from 'zod';
@@ -24,6 +25,10 @@ import { logger } from './logger.js';
 import { RoomCapacityError, RoomManager } from './rooms/manager.js';
 import { listSoloRecords } from './records.js';
 import { IpQuota, SocketRateLimiter, payloadTooLarge } from './security.js';
+
+/** Muestras de reloj admitidas por socket y ventana. El cliente pide 5 al conectar. */
+const CLOCK_SYNC_LIMIT = 12;
+const CLOCK_SYNC_WINDOW_MS = 10_000;
 
 interface SocketSession {
   roomCode: string;
@@ -38,6 +43,13 @@ export function registerSocketHandlers(io: Server): RoomManager {
   manager.startSweeper();
 
   const limiter = new SocketRateLimiter();
+  /**
+   * Cupo propio para las muestras de reloj. No comparten cubo con las acciones
+   * de juego: sincronizar al volver de segundo plano no debe dejar a nadie sin
+   * poder responder en el quiz. Lo que pase del cupo se ignora sin acuse; el
+   * cliente lo trata como una muestra perdida.
+   */
+  const clockLimiter = new SocketRateLimiter(CLOCK_SYNC_LIMIT, CLOCK_SYNC_WINDOW_MS);
   const quota = new IpQuota();
   const sessions = new Map<string, SocketSession>();
 
@@ -482,10 +494,19 @@ export function registerSocketHandlers(io: Server): RoomManager {
       });
     });
 
+    socket.on(CLIENT_EVENTS.clockSync, (...args: unknown[]) => {
+      const ack = args[args.length - 1];
+      if (typeof ack !== 'function') return;
+      if (!clockLimiter.allow(socket.id)) return;
+      const reply: ClockSyncReply = { serverTime: Date.now() };
+      ack(reply);
+    });
+
     socket.on('disconnect', () => {
       const context = sessionOf(socket);
       quota.removeSocket(ipOf(socket));
       limiter.forget(socket.id);
+      clockLimiter.forget(socket.id);
       sessions.delete(socket.id);
       if (!context) return;
       context.room.markDisconnected(context.player.id, socket.id);

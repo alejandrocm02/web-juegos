@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { syncCanvasResolution, type Viewport } from '../lib/canvas.js';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
+import { serverNow } from '../lib/clock.js';
 
 const MAX_DRAG = 190;
 
@@ -24,7 +25,7 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(serverNow());
 
   const isMyTurn = state.activePlayerId === session?.playerId && state.phase === 'aiming';
   const activePlayer = room?.players.find((p) => p.id === state.activePlayerId);
@@ -37,7 +38,7 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
   const blackOnTable = state.balls.some((ball) => ball.id === EIGHT_BALL.blackId && !ball.pocketed);
 
   useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 300);
+    const id = setInterval(() => setNow(serverNow()), 300);
     return () => clearInterval(id);
   }, []);
 

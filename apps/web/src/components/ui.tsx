@@ -1,5 +1,6 @@
 import type { GameId, PlayerIcon, PublicPlayer } from '@arcade/shared';
 import React from 'react';
+import { serverNow } from '../lib/clock.js';
 
 export function Panel({
   title,
@@ -248,10 +249,11 @@ export function ErrorBanner({
   );
 }
 
+/** Cuenta atrás hasta un `deadline` del servidor, corregida con el desfase de reloj. */
 export function Countdown({ deadline }: { deadline: number }) {
-  const [now, setNow] = React.useState(Date.now());
+  const [now, setNow] = React.useState(serverNow);
   React.useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), 200);
+    const id = setInterval(() => setNow(serverNow()), 200);
     return () => clearInterval(id);
   }, []);
   const seconds = Math.max(0, Math.ceil((deadline - now) / 1000));

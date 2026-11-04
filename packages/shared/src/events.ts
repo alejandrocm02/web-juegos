@@ -419,7 +419,18 @@ export const CLIENT_EVENTS = {
   transferHost: 'room:transfer-host',
   backToLobby: 'room:back-to-lobby',
   gameAction: 'game:action',
+  /**
+   * Muestra de reloj. Se envia con acuse (`emitWithAck`) y el servidor responde
+   * con su hora; el cliente calcula el desfase con el tiempo de ida y vuelta.
+   * No necesita sala: la cuenta atras debe ser correcta desde el primer estado.
+   */
+  clockSync: 'clock:sync',
 } as const;
+
+/** Respuesta a `clock:sync`: la hora del servidor en milisegundos Unix. */
+export interface ClockSyncReply {
+  serverTime: number;
+}
 
 export const SERVER_EVENTS = {
   session: 'session',
