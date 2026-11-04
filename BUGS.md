@@ -12,6 +12,24 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 - Arreglo: el cliente estima el desfase con el servidor (evento `clock:sync` con acuse, método NTP con 5 muestras; se repite al conectar, cada minuto y al volver de segundo plano) y todas las cuentas atrás usan `serverNow()` en vez de `Date.now()`. Tests: `apps/web/tests/clock.test.tsx`, `apps/server/tests/clock-sync.test.ts` y `e2e/clock.spec.ts` (con el reloj adelantado 60 s marcaba 0 s; ahora marca el tiempo real).
 - Estado: resuelto (rama `fase-1/sincronizacion-reloj`).
 
+## [P1] Minigolf: el golpe se pierde al soltar fuera del lienzo
+
+- Juego/zona: Minigolf, sobre todo en móvil y con lápiz.
+- Pasos para reproducir: en un navegador que rechace `setPointerCapture`, arrastrar desde el campo y soltar fuera del lienzo.
+- Esperado / Real: se envía el golpe / no se envía, salta un error sin capturar y la bola parece bloqueada.
+- Causa: la excepción de `setPointerCapture` interrumpía el gesto y el final solo se escuchaba en el lienzo.
+- Arreglo: captura opcional y fin del gesto escuchado en `window` (parte de corrección de la PR #36). Prueba: `e2e/golf-gesture.spec.ts`.
+- Estado: resuelto (rama `fase-1/sincronizacion-reloj`).
+
+## [P1] Billar: una bola rápida podía atravesar a otra
+
+- Juego/zona: Billar.
+- Pasos para reproducir: golpe muy fuerte con una bola a poca distancia.
+- Esperado / Real: chocan / la blanca la cruzaba sin contacto en un solo fotograma.
+- Causa: cada bola hacía sus subpasos por separado y los choques solo se resolvían al final del fotograma.
+- Arreglo: subpasos compartidos con choques en cada subpaso (rama `feat/arcade-immersive-redesign`). Prueba: `packages/game-engine/tests/pool-sim.test.ts`, que antes ni se ejecutaba.
+- Estado: resuelto (rama `fase-1/sincronizacion-reloj`).
+
 ## [P1] Al volver de una pestaña en segundo plano se ven varias rondas de golpe
 
 - Juego/zona: partidas por rondas (Quiz, Songless, Dardos).
