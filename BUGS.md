@@ -9,7 +9,8 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 - Esperado / Real: ambos ven el mismo tiempo restante / cada uno ve un tiempo distinto, desfasado tanto como sus relojes.
 - Causa: el servidor envía `deadline` como hora absoluta de su reloj (`Date.now()` del servidor) y el cliente la resta a **su propio** `Date.now()` sin corregir el desfase. No existe ningún cálculo de offset en el cliente. Lugares: `apps/web/src/components/ui.tsx` (`Countdown`), `QuizView.tsx`, `DartsView.tsx`, `PoolView.tsx`, `BowlingView.tsx`, `SonglessView.tsx`, `TanksView.tsx`.
 - Nota: el avance de rondas lo decide el servidor (`setTimeout` en cada `GameRunner`), así que el desfase es visual y de percepción, pero hace que un jugador crea tener tiempo cuando ya no lo tiene.
-- Estado: abierto (causa identificada).
+- Arreglo: el cliente estima el desfase con el servidor (evento `clock:sync` con acuse, método NTP con 5 muestras; se repite al conectar, cada minuto y al volver de segundo plano) y todas las cuentas atrás usan `serverNow()` en vez de `Date.now()`. Tests: `apps/web/tests/clock.test.tsx`, `apps/server/tests/clock-sync.test.ts` y `e2e/clock.spec.ts` (con el reloj adelantado 60 s marcaba 0 s; ahora marca el tiempo real).
+- Estado: resuelto (rama `fase-1/sincronizacion-reloj`).
 
 ## [P1] Al volver de una pestaña en segundo plano se ven varias rondas de golpe
 
