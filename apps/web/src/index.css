@@ -297,12 +297,17 @@
   position: absolute;
   z-index: -1;
   pointer-events: none;
-  inset: 0 -2rem auto;
+  /* Sin márgenes negativos: en móvil desbordaban 32 px y aparecía scroll lateral. */
+  inset: 0 0 auto;
   height: 44rem;
+  /* Solo luces sobre el fondo de la página, sin capa opaca: una capa de color
+     propio dibujaba un rectángulo con bordes visibles en escritorio. La máscara
+     funde las luces hacia los lados y hacia abajo. */
   background:
     radial-gradient(ellipse at 18% 18%, rgba(29, 90, 225, 0.23), transparent 48%),
-    radial-gradient(ellipse at 85% 34%, rgba(225, 29, 46, 0.16), transparent 42%),
-    linear-gradient(180deg, rgba(5, 7, 12, 0), #05070c 95%);
+    radial-gradient(ellipse at 85% 34%, rgba(225, 29, 46, 0.16), transparent 42%);
+  -webkit-mask-image: radial-gradient(ellipse 50% 90% at 50% 25%, #000 45%, transparent 100%);
+  mask-image: radial-gradient(ellipse 50% 90% at 50% 25%, #000 45%, transparent 100%);
 }
 .arcade-hero {
   position: relative;
