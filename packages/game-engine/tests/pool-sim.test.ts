@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PHYSICS_DT, POOL_TABLE } from '@arcade/shared';
-import { PoolWorld } from './pool-sim.js';
+import { PoolWorld } from '../src/pool-sim.js';
 
 describe('PoolWorld: seguridad y colisiones', () => {
   it('rechaza disparos con parámetros inválidos', () => {
@@ -44,5 +44,21 @@ describe('PoolWorld: seguridad y colisiones', () => {
     world.step(PHYSICS_DT);
     expect(target.vx).toBeGreaterThan(0);
     expect(cue.vx).toBeLessThan(100);
+  });
+
+  it('una bola rápida no atraviesa a otra dentro del mismo fotograma', () => {
+    const world = new PoolWorld(1, 'normal');
+    const balls = (world as unknown as { balls: typeof world.state }).balls;
+    const cue = balls[0]!;
+    const target = balls[1]!;
+    for (const ball of balls.slice(2)) ball.pocketed = true;
+    // La blanca recorre en un solo paso más distancia que el hueco y la bola
+    // objetivo juntas: si los choques solo se miran al final, la cruza.
+    target.x = cue.x + POOL_TABLE.ballRadius * 4;
+    target.y = cue.y;
+    cue.vx = (POOL_TABLE.ballRadius * 10) / PHYSICS_DT;
+    world.step(PHYSICS_DT);
+    expect(target.vx).toBeGreaterThan(0);
+    expect(cue.x).toBeLessThan(target.x);
   });
 });
