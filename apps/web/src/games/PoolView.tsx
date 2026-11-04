@@ -385,8 +385,10 @@ function draw(
     const start = POOL_TABLE.ballRadius + 3 + length * 0.06;
     const end = start + 66;
     const stick = ctx.createLinearGradient(
-      cue.x - ux * start, cue.y - uy * start,
-      cue.x - ux * end, cue.y - uy * end,
+      cue.x - ux * start,
+      cue.y - uy * start,
+      cue.x - ux * end,
+      cue.y - uy * end,
     );
     stick.addColorStop(0, '#e9d9b3');
     stick.addColorStop(0.18, '#c28a4c');

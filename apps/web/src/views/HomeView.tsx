@@ -229,7 +229,11 @@ export default function HomeView() {
           {GAME_IDS.map((id) => (
             <article
               key={id}
-              className={"game-card arcade-machine arcade-machine-" + id + " flex min-h-64 flex-col justify-between"}
+              className={
+                'game-card arcade-machine arcade-machine-' +
+                id +
+                ' flex min-h-64 flex-col justify-between'
+              }
               style={
                 {
                   '--game-accent': GAME_META[id].accent,

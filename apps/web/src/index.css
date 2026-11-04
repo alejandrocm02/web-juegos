@@ -287,7 +287,6 @@
   color: #fff;
 }
 
-
 /* Sala arcade: profundidad y movimiento sin bloquear controles ni lectura. */
 .arcade-home {
   position: relative;
@@ -301,18 +300,25 @@
   inset: 0 -2rem auto;
   height: 44rem;
   background:
-    radial-gradient(ellipse at 18% 18%, rgba(29, 90, 225, .23), transparent 48%),
-    radial-gradient(ellipse at 85% 34%, rgba(225, 29, 46, .16), transparent 42%),
+    radial-gradient(ellipse at 18% 18%, rgba(29, 90, 225, 0.23), transparent 48%),
+    radial-gradient(ellipse at 85% 34%, rgba(225, 29, 46, 0.16), transparent 42%),
     linear-gradient(180deg, rgba(5, 7, 12, 0), #05070c 95%);
 }
-.arcade-hero { position: relative; }
+.arcade-hero {
+  position: relative;
+}
 .arcade-machine {
   isolation: isolate;
   overflow: hidden;
-  border-color: rgba(255,255,255,.14);
-  background: linear-gradient(150deg, rgba(22,32,55,.96), rgba(7,10,18,.98) 70%);
-  box-shadow: inset 0 1px rgba(255,255,255,.14), 0 22px 36px -28px #000;
-  transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+  border-color: rgba(255, 255, 255, 0.14);
+  background: linear-gradient(150deg, rgba(22, 32, 55, 0.96), rgba(7, 10, 18, 0.98) 70%);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.14),
+    0 22px 36px -28px #000;
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 .arcade-machine-screen {
   position: absolute;
@@ -320,8 +326,12 @@
   z-index: 0;
   overflow: hidden;
   background:
-    radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--game-accent) 32%, transparent), transparent 66%),
-    repeating-linear-gradient(0deg, transparent 0 12px, rgba(255,255,255,.025) 13px 14px),
+    radial-gradient(
+      ellipse at 50% 45%,
+      color-mix(in srgb, var(--game-accent) 32%, transparent),
+      transparent 66%
+    ),
+    repeating-linear-gradient(0deg, transparent 0 12px, rgba(255, 255, 255, 0.025) 13px 14px),
     linear-gradient(145deg, #131d31, #050810);
   mask-image: linear-gradient(black 70%, transparent);
 }
@@ -357,20 +367,30 @@
   inset: auto 0 12%;
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--game-accent), transparent);
-  opacity: .6;
+  opacity: 0.6;
 }
 @keyframes arcade-orbit {
-  from { transform: translate(-15px, 8px) scale(.88); }
-  to { transform: translate(16px, -12px) scale(1.08); }
+  from {
+    transform: translate(-15px, 8px) scale(0.88);
+  }
+  to {
+    transform: translate(16px, -12px) scale(1.08);
+  }
 }
-@media (hover:hover) and (pointer:fine) {
+@media (hover: hover) and (pointer: fine) {
   .arcade-machine:hover {
     transform: translateY(-5px);
     border-color: color-mix(in srgb, var(--game-accent) 58%, white 8%);
-    box-shadow: inset 0 1px rgba(255,255,255,.17), 0 30px 52px -28px #000;
+    box-shadow:
+      inset 0 1px rgba(255, 255, 255, 0.17),
+      0 30px 52px -28px #000;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .arcade-machine-orb { animation: none; }
-  .arcade-machine { transition: none; }
+  .arcade-machine-orb {
+    animation: none;
+  }
+  .arcade-machine {
+    transition: none;
+  }
 }
