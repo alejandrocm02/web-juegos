@@ -189,12 +189,33 @@ for (const game of GAME_IDS) {
           .toBe(true);
       }
       await page.screenshot({ path: testInfo.outputPath(`${game}.png`), fullPage: true });
-      await page.getByRole('button', { name: 'Volver al lobby' }).click();
-      const dialog = page.getByRole('alertdialog');
-      await expect(dialog).toBeVisible();
-      await page.keyboard.press('Tab');
-      await expect(dialog.getByRole('button', { name: 'Cancelar' })).toBeFocused();
-      await dialog.getByRole('button', { name: 'Terminar y volver' }).click();
+      const exitFromMenu = async () => {
+        // Con tiempo propio: si la partida termina sola, el botón desaparece y un
+        // clic sin límite agotaría la prueba entera en vez de pasar al plan B.
+        await page.getByRole('button', { name: 'Volver al lobby' }).click({ timeout: 10_000 });
+        const dialog = page.getByRole('alertdialog');
+        await expect(dialog).toBeVisible();
+        await page.keyboard.press('Tab');
+        await expect(dialog.getByRole('button', { name: 'Cancelar' })).toBeFocused();
+        await dialog.getByRole('button', { name: 'Terminar y volver' }).click({ timeout: 10_000 });
+      };
+      if (game === 'arena') {
+        // Los bots de Arena pueden eliminar al jugador (quieto durante la prueba)
+        // y terminar la partida en cualquier momento, también con el diálogo de
+        // salida abierto. Si pasa, se vuelve desde la pantalla de resultados:
+        // lleva al mismo lobby y el segundo inicio se comprueba igual.
+        const retry = page.getByRole('button', { name: 'Volver a intentarlo' });
+        if (await retry.isVisible()) {
+          await retry.click();
+        } else {
+          await exitFromMenu().catch(async (error: unknown) => {
+            if (!(await retry.isVisible())) throw error;
+            await retry.click();
+          });
+        }
+      } else {
+        await exitFromMenu();
+      }
       await expect(start).toBeVisible();
       await start.click();
       await expect.poll(() => started).toBe(2);
