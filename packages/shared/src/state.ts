@@ -4,7 +4,13 @@ import type { DartThrow, DartsTurnHistoryEntry } from './games/darts.js';
 import type { PublicQuizQuestion, QuizAnswerBreakdown } from './games/quiz.js';
 import type { CricketBoard } from './games/cricket.js';
 import type { PoolBallState, PoolGroup } from './games/pool.js';
-import type { GolfBallState, GolfFeedEvent, GolfHoleResult, GolfLevel } from './games/golf.js';
+import type {
+  GolfBallState,
+  GolfFeedEvent,
+  GolfHoleResult,
+  GolfLevel,
+  Vec2,
+} from './games/golf.js';
 import type { BowlingBallState, BowlingPinState, BowlingScorecard } from './games/bowling.js';
 import type { KartState, KartTrack } from './games/karts.js';
 import type { ArenaFighterState, ArenaPickup, ArenaZone } from './games/arena.js';
@@ -98,6 +104,15 @@ export interface GolfPublicState {
   levelIndex: number;
   totalLevels: number;
   level: GolfLevel;
+  /**
+   * Viento del hoyo, ya resuelto por el servidor.
+   *
+   * Se publica en lugar de dejar que el cliente lo recalcule: la funcion es
+   * determinista, pero replicar la formula en los dos lados es una via abierta
+   * a que la flecha del HUD apunte a un sitio distinto del que empuja la bola
+   * en cuanto uno de los dos cambie.
+   */
+  wind: Vec2;
   balls: GolfBallState[];
   /** Ultima secuencia de golpe aceptada por jugador para restaurar el cliente al reconectar. */
   lastSequences: Record<string, number>;
