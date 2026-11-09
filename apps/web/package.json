@@ -13,8 +13,7 @@
     "@arcade/shared": "1.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "socket.io-client": "^4.8.4",
-    "zod": "^3.23.8"
+    "socket.io-client": "^4.8.4"
   },
   "devDependencies": {
     "@types/react": "^18.3.12",
