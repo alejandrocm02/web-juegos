@@ -83,7 +83,7 @@ export function registerSocketHandlers(io: Server): RoomManager {
     }
     const parsed = schema.safeParse(payload);
     if (!parsed.success) {
-      const first = parsed.error.errors[0];
+      const first = parsed.error.issues[0];
       fail(socket, 'INVALID_PAYLOAD', first?.message ?? 'Datos invalidos.');
       return;
     }
