@@ -2,6 +2,11 @@ import type { Server, Socket } from 'socket.io';
 import {
   CLIENT_EVENTS,
   SERVER_EVENTS,
+  type AppError,
+  type ClockSyncReply,
+  type ErrorCode,
+} from '@arcade/shared';
+import {
   createRoomSchema,
   createSoloRoomSchema,
   gameActionSchema,
@@ -16,10 +21,7 @@ import {
   settingsPatchSchema,
   targetPlayerSchema,
   updateSoloConfigSchema,
-  type AppError,
-  type ClockSyncReply,
-  type ErrorCode,
-} from '@arcade/shared';
+} from '@arcade/shared/schemas';
 import type { ZodSchema } from 'zod';
 import { logger } from './logger.js';
 import { RoomCapacityError, RoomManager } from './rooms/manager.js';

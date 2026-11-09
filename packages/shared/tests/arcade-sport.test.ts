@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gameActionSchema, settingsPatchSchema } from '../src/events.js';
+import { gameActionSchema, settingsPatchSchema } from '../src/schemas.js';
 
 describe('contratos de deportes de pala', () => {
   it('acepta configuraciones válidas de ambos juegos', () => {

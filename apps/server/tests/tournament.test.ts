@@ -8,10 +8,10 @@ import {
   isValidTournamentGames,
   pointsForRank,
   pointsFromResult,
-  tournamentModeSchema,
   type MatchResult,
   type ScoreRow,
 } from '@arcade/shared';
+import { tournamentModeSchema } from '@arcade/shared/schemas';
 import { Tournament } from '../src/rooms/tournament.js';
 
 const PLAYERS = [
