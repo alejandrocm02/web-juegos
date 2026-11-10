@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * Vista 3D de billar y bolos.
+ * Vista 3D de billar, bolos, minigolf y dardos.
  *
  * La 3D es optativa y convive con la 2D. Aquí se comprueba lo que no puede
  * romperse: que `?mode=3d` la activa, que la partida sigue llegando del
@@ -79,6 +79,47 @@ test('bolos: la pista 3D pinta el lanzamiento que resuelve el servidor', async (
   await expect(page.locator('canvas[data-render="3d"]')).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: /Lanzar/ }).click();
   await expect(page.locator('.bowling-result')).toBeVisible({ timeout: 30_000 });
+  expect(errors).toEqual([]);
+});
+
+test('minigolf: el recorrido 3D acepta un golpe por teclado y el servidor lo cuenta', async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await practise(page, 'Minigolf', '?mode=3d');
+  test.skip(!(await hasWebGL2(page)), 'Este navegador de pruebas no tiene WebGL2');
+
+  const board = page.locator('canvas[data-render="3d"]');
+  await expect(board).toBeVisible({ timeout: 20_000 });
+  const strokes = page.locator('.hud-stat', { hasText: 'Golpes' }).locator('.hud-stat-value');
+  await expect(strokes).toHaveText('0');
+
+  // La bola tarda un instante en estar lista tras la cuenta atrás: se reintenta.
+  await expect(async () => {
+    await board.focus();
+    await page.keyboard.press('ArrowUp');
+    await page.keyboard.press('Space');
+    await expect(strokes).toHaveText('1', { timeout: 3_000 });
+  }).toPass({ timeout: 30_000 });
+  expect(errors).toEqual([]);
+});
+
+test('dardos: un toque en la diana 3D lanza y el servidor puntúa', async ({ page }) => {
+  const errors = collectErrors(page);
+  await practise(page, 'Dardos', '?mode=3d');
+  test.skip(!(await hasWebGL2(page)), 'Este navegador de pruebas no tiene WebGL2');
+
+  const board = page.locator('canvas[data-render="3d"]');
+  await expect(board).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText('3 disponibles')).toBeVisible();
+  await board.click({ position: { x: 150, y: 150 } });
+  await expect(page.getByText('2 disponibles')).toBeVisible({ timeout: 15_000 });
+
+  // Y con teclado: mover la mira y lanzar.
+  await board.focus();
+  await page.keyboard.press('ArrowUp');
+  await page.keyboard.press('Space');
+  await expect(page.getByText(/1 disponible/)).toBeVisible({ timeout: 15_000 });
   expect(errors).toEqual([]);
 });
 

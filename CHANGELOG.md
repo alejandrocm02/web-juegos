@@ -14,6 +14,7 @@ Cambios visibles para quien juega o despliega, del más reciente al más antiguo
 ### Añadido
 
 - **Vista 3D de Billar y Bolos (beta):** optativa, con el botón «Probar la vista 3D» o `?mode=3d`. La 2D sigue siendo la vista por defecto y la partida la sigue resolviendo el servidor. Si el dispositivo no puede con ella, vuelve sola a 2D sin salir de la partida. Ver `docs/VISTA-3D.md`.
+- **Vista 3D de Minigolf y Dardos (beta):** mismas reglas y mismo servidor; el minigolf levanta en 3D los diez niveles con sus obstáculos móviles. Ambos se pueden jugar con teclado.
 - **Billar con teclado** en la vista 3D: flechas para apuntar y dar potencia, espacio para golpear.
 
 - **Portada estilo sala recreativa:** cada juego aparece como una máquina con pantalla animada (se detiene con «reducir movimiento»).
