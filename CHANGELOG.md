@@ -20,6 +20,13 @@ Cambios visibles para quien juega o despliega, del más reciente al más antiguo
 - **Tenis de mesa y Head Basketball:** el marcador Rojo · VS · Azul cabe en una fila en móvil.
 - **Lobby de práctica:** el título ya no se corta en móvil. **Dardos:** «1 disponible».
 
+### Corregido (bolos)
+
+- **Triángulo como en una bolera:** el bolo 1 va delante y la fila de cuatro al fondo.
+- **Turnos:** en partidas de varios jugadores se alterna frame a frame; antes cada uno jugaba la partida entera seguida.
+- **Plenos:** se celebran como pleno, no como «10 bolos».
+- **Efecto y potencia:** la línea de puntería muestra la curva real, y hasta el lanzamiento más flojo llega a los bolos.
+
 ### Añadido
 
 - **Vista 3D de Billar y Bolos (beta):** optativa, con el botón «Probar la vista 3D» o `?mode=3d`. La 2D sigue siendo la vista por defecto y la partida la sigue resolviendo el servidor. Si el dispositivo no puede con ella, vuelve sola a 2D sin salir de la partida. Ver `docs/VISTA-3D.md`.
