@@ -1,5 +1,7 @@
 import {
   BOWLING_LANE,
+  BOWLING_PIT_Y,
+  bowlingHookOffset,
   bowlingPinLayout,
   type BowlingBallState,
   type BowlingPinState,
@@ -162,7 +164,7 @@ export default function BowlingBoard3D(props: Props) {
       lastX = bx;
       lastY = by;
       ballMesh.position.set(toX(bx), ball.gutter ? RB - 0.035 : RB, toZ(by));
-      ballMesh.visible = by < BOWLING_LANE.length + 130;
+      ballMesh.visible = by < BOWLING_PIT_Y + 20;
 
       for (const visual of pins.values()) visual.pivot.visible = false;
       for (const pin of livePins) {
@@ -193,20 +195,12 @@ export default function BowlingBoard3D(props: Props) {
 
       const showPath = state.aim !== null && !ball.rolling;
       const startX = START_X(state.aim ?? 0);
-      // Mismos desvíos que la 2D (90 y 150 px sobre 360 de ancho), en centímetros.
-      const scale = BOWLING_LANE.width / 360;
+      // Puntos sobre la trayectoria real: la misma fórmula que usa el servidor.
       dots.forEach((dot, index) => {
         dot.visible = showPath;
         if (!showPath) return;
-        const t = (index + 1) / (dots.length + 1);
-        const controlX = startX + state.spin * 90 * scale;
-        const endX = startX + state.spin * 150 * scale;
-        const x = (1 - t) * (1 - t) * startX + 2 * (1 - t) * t * controlX + t * t * endX;
-        const y =
-          (1 - t) * (1 - t) * 20 +
-          2 * (1 - t) * t * BOWLING_LANE.length * 0.55 +
-          t * t * BOWLING_LANE.length;
-        dot.position.set(toX(x), 0.03, toZ(y));
+        const y = (BOWLING_LANE.length * (index + 1)) / (dots.length + 1);
+        dot.position.set(toX(startX + bowlingHookOffset(state.spin, y)), 0.03, toZ(y));
       });
 
       // Cámara detrás de la bola: la acompaña y se detiene antes de los bolos.
@@ -242,7 +236,7 @@ export default function BowlingBoard3D(props: Props) {
 
 function buildLane(scene: THREE.Scene): void {
   const from = toZ(-140);
-  const to = toZ(BOWLING_LANE.length + 110);
+  const to = toZ(BOWLING_PIT_Y + 50);
   const length = from - to;
   const centre = (from + to) / 2;
   const playable = HALF - GUTTER;
@@ -277,7 +271,7 @@ function buildLane(scene: THREE.Scene): void {
       ctx.fill();
     }
     ctx.fillStyle = '#c81e1e';
-    ctx.fillRect(0, h * (1 - 140 / (BOWLING_LANE.length + 250)) - 2, w, 4);
+    ctx.fillRect(0, h * (1 - 140 / (BOWLING_PIT_Y + 190)) - 2, w, 4);
   });
   scene.add(
     mesh(
@@ -339,7 +333,7 @@ function buildLane(scene: THREE.Scene): void {
     }
   }
   // Plataforma de bolos a todo el ancho: la fila más ancha no cabe en la calle.
-  const deckFrom = toZ(BOWLING_LANE.length - 3 * BOWLING_LANE.pinSpacing - 25);
+  const deckFrom = toZ(BOWLING_LANE.length - 40);
   scene.add(
     mesh(
       new THREE.BoxGeometry(HALF * 2, 0.064, deckFrom - to),

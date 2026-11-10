@@ -1,5 +1,7 @@
 import {
   BOWLING_LANE,
+  BOWLING_RACK_DEPTH,
+  bowlingHookOffset,
   GAME_MODE_CATALOG,
   type BowlingPublicState,
   type BowlingSnapshot,
@@ -275,8 +277,8 @@ function drawLane(
   // sola franja. Se reparte el alto en dos tramos: la zona de bolos, casi a la
   // misma escala que el ancho (algo achatada, como vista en perspectiva), y el
   // resto de la pista comprimido en el espacio sobrante.
-  const deckFrom = BOWLING_LANE.length - 3 * BOWLING_LANE.pinSpacing - 14;
-  const deckTop = BOWLING_LANE.length + 36;
+  const deckFrom = BOWLING_LANE.length - 30;
+  const deckTop = BOWLING_LANE.length + BOWLING_RACK_DEPTH + 30;
   const deckScale = scaleX * 0.55;
   const deckPx = (deckTop - deckFrom) * deckScale;
   const laneScale = (view.height - deckPx) / (deckFrom + 60);
@@ -373,13 +375,13 @@ function drawLane(
     ctx.shadowBlur = 8;
     ctx.setLineDash([6, 6]);
     ctx.beginPath();
-    ctx.moveTo(startX, view.height - 20);
-    ctx.quadraticCurveTo(
-      startX + spin * 90,
-      view.height * 0.45,
-      startX + spin * 150,
-      toY(BOWLING_LANE.length),
-    );
+    // La curva sale de la misma fórmula con la que el servidor mueve la bola.
+    for (let step = 0; step <= 24; step++) {
+      const y = (BOWLING_LANE.length * step) / 24;
+      const x = startX + bowlingHookOffset(spin, y) * scaleX;
+      if (step === 0) ctx.moveTo(x, Math.min(toY(y), view.height - 20));
+      else ctx.lineTo(x, toY(y));
+    }
     ctx.stroke();
     ctx.shadowBlur = 0;
     ctx.setLineDash([]);
