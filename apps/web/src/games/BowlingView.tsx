@@ -65,7 +65,7 @@ export default function BowlingView({ state }: { state: BowlingPublicState }) {
   const seconds = Math.max(0, Math.ceil((state.deadline - now) / 1000));
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl gap-5 px-2 py-3 sm:px-4 lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
+    <div className="mx-auto grid w-full max-w-6xl grid-cols-[minmax(0,1fr)] gap-5 px-2 py-3 sm:px-4 lg:grid-cols-[minmax(0,440px)_minmax(0,1fr)]">
       <div className="space-y-3">
         <div className="game-hud text-sm">
           <span className="hud-stat">
@@ -247,7 +247,16 @@ function drawLane(
   spin: number,
 ): void {
   const scaleX = view.width / BOWLING_LANE.width;
-  const scaleY = view.height / (BOWLING_LANE.length + 120);
+  // La pista mide 18 m de largo por 1 m de ancho: con una única escala vertical
+  // las cuatro filas de bolos quedaban a 8 px unas de otras y se apilaban en una
+  // sola franja. Se reparte el alto en dos tramos: la zona de bolos, casi a la
+  // misma escala que el ancho (algo achatada, como vista en perspectiva), y el
+  // resto de la pista comprimido en el espacio sobrante.
+  const deckFrom = BOWLING_LANE.length - 3 * BOWLING_LANE.pinSpacing - 14;
+  const deckTop = BOWLING_LANE.length + 36;
+  const deckScale = scaleX * 0.55;
+  const deckPx = (deckTop - deckFrom) * deckScale;
+  const laneScale = (view.height - deckPx) / (deckFrom + 60);
 
   resetToViewport(ctx, view);
   ctx.clearRect(0, 0, view.width, view.height);
@@ -259,7 +268,10 @@ function drawLane(
   ctx.fillRect(0, 0, view.width, view.height);
 
   // La pista se dibuja con el fondo abajo: el jugador lanza desde la parte inferior.
-  const toY = (y: number) => view.height - (y + 60) * scaleY;
+  const toY = (y: number) =>
+    y >= deckFrom ? (deckTop - y) * deckScale : deckPx + (deckFrom - y) * laneScale;
+  /** Tamaño aparente: lo lejano se dibuja más pequeño que lo cercano. */
+  const depth = (py: number) => 0.62 + 0.38 * Math.min(1, Math.max(0, py / view.height));
 
   // Luz del pin deck.
   const laneGlow = ctx.createLinearGradient(0, 0, 0, view.height);
@@ -271,9 +283,9 @@ function drawLane(
   ctx.fillStyle = laneGlow;
   ctx.fillRect(
     BOWLING_LANE.gutterWidth * scaleX,
-    toY(BOWLING_LANE.length + 40),
+    0,
     (BOWLING_LANE.width - BOWLING_LANE.gutterWidth * 2) * scaleX,
-    (BOWLING_LANE.length + 100) * scaleY,
+    view.height,
   );
   ctx.shadowBlur = 0;
 
@@ -290,6 +302,16 @@ function drawLane(
     view.height,
   );
 
+  // Plataforma de bolos: ocupa todo el ancho, porque la fila del fondo es más
+  // ancha que la calle y sin ella los bolos de las esquinas flotaban sobre el canal.
+  const deck = ctx.createLinearGradient(0, 0, 0, toY(deckFrom));
+  deck.addColorStop(0, '#f7dfae');
+  deck.addColorStop(1, '#e2b773');
+  ctx.fillStyle = deck;
+  ctx.fillRect(0, 0, view.width, toY(deckFrom + 10));
+  ctx.fillStyle = 'rgba(77, 42, 20, 0.35)';
+  ctx.fillRect(0, toY(deckFrom + 10), view.width, 1.5);
+
   // Lamas de madera y reflejos longitudinales.
   ctx.strokeStyle = 'rgba(77, 42, 20, 0.28)';
   ctx.lineWidth = 0.8;
@@ -298,13 +320,13 @@ function drawLane(
       BOWLING_LANE.gutterWidth * scaleX +
       ((BOWLING_LANE.width - BOWLING_LANE.gutterWidth * 2) / 15) * i * scaleX;
     ctx.beginPath();
-    ctx.moveTo(x, toY(BOWLING_LANE.length));
+    ctx.moveTo(x, toY(deckFrom + 10));
     ctx.lineTo(x, view.height);
     ctx.stroke();
   }
 
   // Línea de falta, marcas de objetivo y puntos de salida.
-  const foulY = toY(80);
+  const foulY = Math.min(toY(80), view.height - BOWLING_LANE.ballRadius * scaleX * 2 - 16);
   ctx.fillStyle = 'rgba(225, 29, 46, 0.9)';
   ctx.fillRect(BOWLING_LANE.gutterWidth * scaleX, foulY, (BOWLING_LANE.width - 24) * scaleX, 2);
   ctx.fillStyle = 'rgba(42, 52, 64, 0.72)';
@@ -340,11 +362,12 @@ function drawLane(
     ctx.setLineDash([]);
   }
 
-  for (const pin of pins) {
+  // De atrás hacia delante, para que los bolos cercanos tapen a los lejanos.
+  for (const pin of [...pins].sort((a, b) => b.y - a.y)) {
     if (!pin.standing) continue;
     const px = pin.x * scaleX;
     const py = toY(pin.y);
-    const radius = Math.max(3.4, BOWLING_LANE.pinRadius * scaleX);
+    const radius = Math.max(3.4, BOWLING_LANE.pinRadius * scaleX * 0.78);
     ctx.beginPath();
     ctx.ellipse(px + 1, py + radius * 0.72, radius * 0.95, radius * 0.42, 0, 0, Math.PI * 2);
     ctx.fillStyle = 'rgba(0,0,0,0.45)';
@@ -376,8 +399,11 @@ function drawLane(
   }
 
   const ballX = ball.x * scaleX;
-  const ballY = toY(ball.y);
-  const ballRadius = Math.max(4.5, BOWLING_LANE.ballRadius * scaleX);
+  const rawBallY = toY(ball.y);
+  const ballRadius = Math.max(4.5, BOWLING_LANE.ballRadius * scaleX * depth(rawBallY));
+  // En la salida la bola queda pegada al borde inferior: se sube lo justo para
+  // que se vea entera en vez de cortada por el marco.
+  const ballY = Math.min(rawBallY, view.height - ballRadius - 5);
   ctx.beginPath();
   ctx.ellipse(ballX + 2, ballY + ballRadius * 0.8, ballRadius, ballRadius * 0.4, 0, 0, Math.PI * 2);
   ctx.fillStyle = 'rgba(0,0,0,0.45)';
