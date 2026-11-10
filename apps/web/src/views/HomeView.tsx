@@ -272,7 +272,9 @@ export default function HomeView() {
                     onClick={() => practice(id)}
                   >
                     {GAME_META[id].name}
-                    <span className="sr-only">: practicar en solitario</span>
+                    {/* Sin la palabra «practicar»: los E2E buscan el botón «Practicar» por nombre
+                        parcial y catorce coincidencias más lo volvían ambiguo. */}
+                    <span className="sr-only">: jugar en solitario</span>
                   </button>
                 </h3>
                 <p className="mt-1 text-xs leading-5 text-slate-400 sm:text-sm">
