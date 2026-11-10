@@ -137,3 +137,37 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 - Real: la cámara centra la bola y, con la bola en la salida, la mitad izquierda del lienzo queda vacía y el recorrido se corta por la derecha hasta pulsar «Ver el nivel (Z)».
 - Propuesta: limitar la cámara a los bordes del hoyo, o mostrar el hoyo entero un segundo al empezar.
 - Estado: abierto.
+
+## [P1] Bolos: en multijugador cada jugador jugaba la partida entera seguida
+
+- Juego/zona: Bolos, salas de dos o más jugadores.
+- Pasos para reproducir: empezar una partida con dos jugadores y completar el primer frame.
+- Esperado / Real: tras cada frame lanza el siguiente jugador / el mismo jugador seguía lanzando hasta acabar sus diez frames.
+- Causa: para saber si el jugador seguía en el mismo frame se comparaban dos tarjetas calculadas después de anotar la tirada, así que siempre coincidían.
+- Arreglo: se compara con el frame de antes de la tirada. Test: «los jugadores se alternan frame a frame» (falla con el código anterior).
+- Estado: resuelto (rama `fix/bolos-triangulo`).
+
+## [P1] Bolos: el triángulo estaba al revés
+
+- Juego/zona: Bolos, física del servidor y las dos vistas.
+- Esperado / Real: bolo 1 delante y fila de cuatro al fondo, como en una bolera / la fila de cuatro quedaba delante y el bolo 1 al fondo, así que una bola centrada chocaba contra un muro de cuatro bolos.
+- Arreglo: `bowlingPinLayout` coloca las filas hacia el fondo; el foso se desplaza con ellas (`BOWLING_PIT_Y`).
+- Estado: resuelto (rama `fix/bolos-triangulo`).
+
+## [P2] Bolos: un pleno se anunciaba como «10 bolos»
+
+- Causa: el suceso se leía de la tarjeta, que tras un pleno ya apunta al frame siguiente, vacío.
+- Arreglo: se decide por los bolos en pie antes y después de la tirada.
+- Estado: resuelto (rama `fix/bolos-triangulo`).
+
+## [P2] Bolos: los lanzamientos flojos se quedaban a media pista
+
+- Real: por debajo de un 46 % de potencia la bola no llegaba a los bolos y el turno tardaba hasta 20 s en acabar con cero.
+- Arreglo: la potencia mínima ya alcanza los bolos (`bowlingLaunchSpeed`).
+- Estado: resuelto (rama `fix/bolos-triangulo`).
+
+## [P2] Bolos: la trayectoria dibujada no coincidía con la real
+
+- Real: la curva del efecto que se veía al apuntar era una aproximación distinta de la que aplicaba el servidor, y además el efecto dependía de la potencia.
+- Arreglo: una sola fórmula (`bowlingHookOffset`) que usan el servidor y las dos vistas.
+- Estado: resuelto (rama `fix/bolos-triangulo`).

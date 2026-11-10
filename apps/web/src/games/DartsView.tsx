@@ -5,10 +5,15 @@ import {
   DART_SECTORS,
   type DartsPublicState,
 } from '@arcade/shared';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, useEffect, useRef, useState } from 'react';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 import { serverNow } from '../lib/clock.js';
+import { fallBackTo2D, useRenderMode } from '../lib/renderMode.js';
+import { Board3D, RenderModeToggle } from '../components/RenderMode.js';
+
+// Three.js solo se descarga si alguien abre la vista 3D.
+const DartsBoard3D = lazy(() => import('../three/DartsBoard3D.js'));
 
 const SIZE = 420;
 
@@ -17,6 +22,7 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
   const boardRef = useRef<HTMLDivElement>(null);
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null);
   const [now, setNow] = useState(serverNow());
+  const render = useRenderMode();
 
   useEffect(() => {
     const id = setInterval(() => setNow(serverNow()), 250);
@@ -61,50 +67,61 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
           <div className="relative w-full max-w-[500px] py-3">
             <div className="pointer-events-none absolute inset-[12%] rounded-full bg-neon-amber/10 blur-3xl" />
             <div className="darts-cabinet">
-              <div
-                ref={boardRef}
-                onPointerUp={throwDart}
-                onPointerMove={(event) => setHover(toNormalized(event))}
-                onPointerLeave={() => setHover(null)}
-                role="button"
-                tabIndex={0}
-                aria-label="Diana de dardos"
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && isMyTurn) {
-                    sendAction({ type: 'darts:throw', x: 0, y: 0 });
-                  }
-                }}
-                className={
-                  'darts-board relative mx-auto touch-none select-none rounded-full ' +
-                  (isMyTurn ? 'cursor-crosshair' : 'cursor-default opacity-80')
-                }
-                style={{ width: SIZE, maxWidth: '100%', aspectRatio: '1' }}
-              >
-                <Dartboard />
-                {state.currentThrows.map((dart, index) => (
-                  <span
-                    key={index}
-                    className="dart-impact absolute -translate-x-1/2 -translate-y-1/2"
-                    style={{
-                      left: ((dart.x + 1) / 2) * 100 + '%',
-                      top: ((dart.y + 1) / 2) * 100 + '%',
-                      transform: `translate(-50%, -50%) rotate(${index * 38 - 22}deg)`,
-                    }}
-                    title={dart.ring + ' ' + dart.points}
-                  >
-                    <span />
-                  </span>
-                ))}
-                {hover && isMyTurn && (
-                  <span
-                    className="darts-reticle pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
-                    style={{
-                      left: ((hover.x + 1) / 2) * 100 + '%',
-                      top: ((hover.y + 1) / 2) * 100 + '%',
-                    }}
+              {render.mode === '3d' ? (
+                <Board3D loading={<div className="mx-auto aspect-square w-full max-w-[420px]" />}>
+                  <DartsBoard3D
+                    throws={state.currentThrows}
+                    isMyTurn={isMyTurn}
+                    onThrow={(x, y) => sendAction({ type: 'darts:throw', x, y })}
+                    onGiveUp={fallBackTo2D}
                   />
-                )}
-              </div>
+                </Board3D>
+              ) : (
+                <div
+                  ref={boardRef}
+                  onPointerUp={throwDart}
+                  onPointerMove={(event) => setHover(toNormalized(event))}
+                  onPointerLeave={() => setHover(null)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Diana de dardos"
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && isMyTurn) {
+                      sendAction({ type: 'darts:throw', x: 0, y: 0 });
+                    }
+                  }}
+                  className={
+                    'darts-board relative mx-auto touch-none select-none rounded-full ' +
+                    (isMyTurn ? 'cursor-crosshair' : 'cursor-default opacity-80')
+                  }
+                  style={{ width: SIZE, maxWidth: '100%', aspectRatio: '1' }}
+                >
+                  <Dartboard />
+                  {state.currentThrows.map((dart, index) => (
+                    <span
+                      key={index}
+                      className="dart-impact absolute -translate-x-1/2 -translate-y-1/2"
+                      style={{
+                        left: ((dart.x + 1) / 2) * 100 + '%',
+                        top: ((dart.y + 1) / 2) * 100 + '%',
+                        transform: `translate(-50%, -50%) rotate(${index * 38 - 22}deg)`,
+                      }}
+                      title={dart.ring + ' ' + dart.points}
+                    >
+                      <span />
+                    </span>
+                  ))}
+                  {hover && isMyTurn && (
+                    <span
+                      className="darts-reticle pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 rounded-full"
+                      style={{
+                        left: ((hover.x + 1) / 2) * 100 + '%',
+                        top: ((hover.y + 1) / 2) * 100 + '%',
+                      }}
+                    />
+                  )}
+                </div>
+              )}
               <div className="darts-throw-lights" aria-label={state.throwsLeft + ' lanzamientos'}>
                 {[0, 1, 2].map((index) => (
                   <span key={index} className={index < state.throwsLeft ? 'is-ready' : ''} />
@@ -112,6 +129,8 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
               </div>
             </div>
           </div>
+
+          <RenderModeToggle />
 
           <div className="game-hud justify-center text-sm">
             <span className="hud-stat">

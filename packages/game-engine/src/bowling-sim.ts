@@ -2,6 +2,9 @@ import {
   BOWLING_LANE,
   BOWLING_PINS,
   PHYSICS_DT,
+  BOWLING_PIT_Y,
+  bowlingHookOffset,
+  bowlingLaunchSpeed,
   bowlingPinLayout,
   type BowlingBallState,
   type BowlingPinState,
@@ -99,7 +102,7 @@ export class BowlingWorld {
     this.ball.x = BOWLING_LANE.width / 2 + aim * (usable / 2 - BOWLING_LANE.ballRadius);
     this.ball.y = 0;
     this.ball.vx = 0;
-    this.ball.vy = BOWLING_LANE.maxSpeed * power;
+    this.ball.vy = bowlingLaunchSpeed(power);
     this.ball.spin = spin;
     this.ball.rolling = true;
     this.ball.gutter = false;
@@ -127,10 +130,6 @@ export class BowlingWorld {
       return;
     }
 
-    if (!this.ball.gutter) {
-      // El efecto empuja lateralmente mientras la bola conserva velocidad.
-      this.ball.vx += this.ball.spin * 150 * dt * (this.ball.vy / BOWLING_LANE.maxSpeed);
-    }
     const damping = Math.exp(-BALL_FRICTION * dt);
     this.ball.vx *= damping;
     this.ball.vy *= damping;
@@ -138,8 +137,17 @@ export class BowlingWorld {
     const steps = Math.max(1, Math.ceil((speed * dt) / MAX_STEP));
     const sub = dt / steps;
     for (let i = 0; i < steps; i++) {
+      const before = this.ball.y;
       this.ball.x += this.ball.vx * sub;
       this.ball.y += this.ball.vy * sub;
+      if (!this.ball.gutter) {
+        // El efecto desplaza la bola segun la distancia recorrida, no segun el
+        // tiempo: asi el gancho es el mismo a cualquier potencia y coincide con
+        // la trayectoria que se dibuja al apuntar.
+        this.ball.x +=
+          bowlingHookOffset(this.ball.spin, this.ball.y) -
+          bowlingHookOffset(this.ball.spin, before);
+      }
 
       const min = BOWLING_LANE.gutterWidth + BOWLING_LANE.ballRadius;
       const max = BOWLING_LANE.width - BOWLING_LANE.gutterWidth - BOWLING_LANE.ballRadius;
@@ -154,7 +162,7 @@ export class BowlingWorld {
       }
       if (!this.ball.gutter) this.collideBallWithPins();
 
-      if (this.ball.y > BOWLING_LANE.length + BOWLING_LANE.pinSpacing * 2) {
+      if (this.ball.y > BOWLING_PIT_Y) {
         this.ball.rolling = false;
         this.ball.vx = 0;
         this.ball.vy = 0;

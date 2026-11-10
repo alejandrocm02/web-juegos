@@ -1,14 +1,21 @@
 import {
   BOWLING_LANE,
+  BOWLING_RACK_DEPTH,
+  bowlingHookOffset,
   GAME_MODE_CATALOG,
   type BowlingPublicState,
   type BowlingSnapshot,
 } from '@arcade/shared';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, useEffect, useRef, useState } from 'react';
 import { resetToViewport, syncCanvasResolution, type Viewport } from '../lib/canvas.js';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 import { serverNow } from '../lib/clock.js';
+import { fallBackTo2D, useRenderMode } from '../lib/renderMode.js';
+import { Board3D, RenderModeToggle } from '../components/RenderMode.js';
+
+// Three.js solo se descarga si alguien abre la vista 3D.
+const BowlingBoard3D = lazy(() => import('../three/BowlingBoard3D.js'));
 
 const VIEW_W = 360;
 const VIEW_H = 620;
@@ -20,6 +27,7 @@ export default function BowlingView({ state }: { state: BowlingPublicState }) {
   const [spin, setSpin] = useState(0);
   const [power, setPower] = useState(0.7);
   const [now, setNow] = useState(serverNow());
+  const render = useRenderMode();
 
   const isMyTurn = state.activePlayerId === session?.playerId && state.phase === 'aiming';
   const activePlayer = room?.players.find((player) => player.id === state.activePlayerId);
@@ -87,13 +95,28 @@ export default function BowlingView({ state }: { state: BowlingPublicState }) {
         </div>
 
         <div className="game-board-frame bowling-lane-frame">
-          <canvas
-            ref={canvasRef}
-            width={VIEW_W}
-            height={VIEW_H}
-            className="w-full bg-black"
-            aria-label="Pista de bolos"
-          />
+          {render.mode === '3d' ? (
+            <Board3D loading={<div className="aspect-[360/520] w-full bg-black" />}>
+              <BowlingBoard3D
+                getLive={() => {
+                  const snapshot = snapshotRef.current as BowlingSnapshot | null;
+                  const live = snapshot && 'pins' in snapshot ? snapshot : null;
+                  return { ball: live?.ball ?? state.ball, pins: live?.pins ?? state.pins };
+                }}
+                aim={isMyTurn ? aim : null}
+                spin={isMyTurn ? spin : 0}
+                onGiveUp={fallBackTo2D}
+              />
+            </Board3D>
+          ) : (
+            <canvas
+              ref={canvasRef}
+              width={VIEW_W}
+              height={VIEW_H}
+              className="w-full bg-black"
+              aria-label="Pista de bolos"
+            />
+          )}
           {state.lastEvent && (
             <div className={'bowling-result is-' + state.lastEvent}>
               <span className="bowling-result-label">Último lanzamiento</span>
@@ -109,6 +132,8 @@ export default function BowlingView({ state }: { state: BowlingPublicState }) {
             </div>
           )}
         </div>
+
+        <RenderModeToggle />
 
         <div className="bowling-console">
           <p className="mb-3 text-sm font-semibold text-white">
@@ -252,8 +277,8 @@ function drawLane(
   // sola franja. Se reparte el alto en dos tramos: la zona de bolos, casi a la
   // misma escala que el ancho (algo achatada, como vista en perspectiva), y el
   // resto de la pista comprimido en el espacio sobrante.
-  const deckFrom = BOWLING_LANE.length - 3 * BOWLING_LANE.pinSpacing - 14;
-  const deckTop = BOWLING_LANE.length + 36;
+  const deckFrom = BOWLING_LANE.length - 30;
+  const deckTop = BOWLING_LANE.length + BOWLING_RACK_DEPTH + 30;
   const deckScale = scaleX * 0.55;
   const deckPx = (deckTop - deckFrom) * deckScale;
   const laneScale = (view.height - deckPx) / (deckFrom + 60);
@@ -350,13 +375,13 @@ function drawLane(
     ctx.shadowBlur = 8;
     ctx.setLineDash([6, 6]);
     ctx.beginPath();
-    ctx.moveTo(startX, view.height - 20);
-    ctx.quadraticCurveTo(
-      startX + spin * 90,
-      view.height * 0.45,
-      startX + spin * 150,
-      toY(BOWLING_LANE.length),
-    );
+    // La curva sale de la misma fórmula con la que el servidor mueve la bola.
+    for (let step = 0; step <= 24; step++) {
+      const y = (BOWLING_LANE.length * step) / 24;
+      const x = startX + bowlingHookOffset(spin, y) * scaleX;
+      if (step === 0) ctx.moveTo(x, Math.min(toY(y), view.height - 20));
+      else ctx.lineTo(x, toY(y));
+    }
     ctx.stroke();
     ctx.shadowBlur = 0;
     ctx.setLineDash([]);

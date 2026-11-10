@@ -56,9 +56,45 @@ export interface BowlingSnapshot {
   settled: boolean;
 }
 
+/** Fondo del triangulo: del bolo delantero a la ultima fila. */
+export const BOWLING_RACK_DEPTH = 3 * BOWLING_LANE.pinSpacing * 0.87;
+
+/** Pasado este punto la bola cae al foso: queda dos separaciones tras la ultima fila. */
+export const BOWLING_PIT_Y = BOWLING_LANE.length + BOWLING_RACK_DEPTH + BOWLING_LANE.pinSpacing * 2;
+
+/** Desvio lateral maximo (cm) que produce el efecto al llegar al bolo delantero. */
+export const BOWLING_HOOK = 44;
+
 /**
- * Posicion de los diez bolos en formacion triangular.
- * El bolo 1 queda al fondo y las filas crecen hacia el jugador.
+ * Desvio lateral de la bola por el efecto cuando ha recorrido `y` centimetros.
+ *
+ * Crece con el cuadrado de la distancia: la bola sale casi recta y rompe al
+ * final, como un gancho real. Es la unica formula del efecto: la usa el
+ * servidor para mover la bola y las vistas para dibujar la trayectoria
+ * prevista, asi que lo que se ve al apuntar es lo que ocurre.
+ */
+export function bowlingHookOffset(spin: number, y: number): number {
+  const progress = Math.max(0, Math.min(1, y / BOWLING_LANE.length));
+  return spin * BOWLING_HOOK * progress * progress;
+}
+
+/** Velocidad de salida (cm/s) para una potencia entre 0 y 1. */
+export function bowlingLaunchSpeed(power: number): number {
+  // Incluso el lanzamiento mas flojo llega a los bolos: con la escala lineal
+  // anterior, por debajo del 46 % la bola se paraba a media pista y habia que
+  // esperar hasta 20 segundos a que el turno terminara con cero bolos.
+  return BOWLING_LANE.maxSpeed * (0.5 + 0.5 * Math.max(0, Math.min(1, power)));
+}
+
+/**
+ * Posicion de los diez bolos en formacion triangular, como en una bolera real:
+ * el bolo 1 es el delantero, el mas cercano al jugador y el primero que
+ * encuentra la bola, y las filas se ensanchan hacia el fondo (2-3, 4-5-6 y
+ * 7-8-9-10).
+ *
+ * Hasta noviembre de 2026 el triangulo estaba al reves: la fila de cuatro
+ * quedaba delante y el bolo 1 al fondo, de modo que una bola centrada chocaba
+ * contra un muro de cuatro bolos en vez de abrir la formacion por la punta.
  */
 export function bowlingPinLayout(): { id: number; x: number; y: number }[] {
   const { width, length, pinSpacing } = BOWLING_LANE;
@@ -70,7 +106,7 @@ export function bowlingPinLayout(): { id: number; x: number; y: number }[] {
       pins.push({
         id: id++,
         x: centerX + (i - row / 2) * pinSpacing,
-        y: length - row * pinSpacing * 0.87,
+        y: length + row * pinSpacing * 0.87,
       });
     }
   }
