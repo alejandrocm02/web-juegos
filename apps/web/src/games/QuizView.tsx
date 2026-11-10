@@ -34,7 +34,7 @@ export default function QuizView({ state }: { state: QuizPublicState }) {
   };
 
   return (
-    <div className="mx-auto grid w-full max-w-7xl gap-5 px-2 py-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)] gap-5 px-2 py-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_320px]">
       <div className="space-y-4">
         <Panel className="quiz-show-card overflow-hidden">
           <div className="pointer-events-none absolute -right-24 -top-28 h-64 w-64 rounded-full bg-neon-pink/10 blur-3xl" />

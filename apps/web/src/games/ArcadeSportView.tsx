@@ -176,11 +176,11 @@ export default function ArcadeSportView({ state }: { state: ArcadeSportPublicSta
   const serving = state.phase === 'playing' && state.serveMs > 0;
 
   return (
-    <div className="mx-auto grid w-full max-w-[1440px] gap-5 px-2 py-3 sm:px-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+    <div className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-5 px-2 py-3 sm:px-4 xl:grid-cols-[minmax(0,1fr)_300px]">
       <div className="space-y-3">
-        <div className="game-hud justify-center text-sm">
+        <div className="game-hud sport-scoreboard text-sm">
           <TeamScore team="rojo" value={state.scores.rojo} />
-          <span className="rounded-xl border border-white/10 bg-black/35 px-4 py-2 text-center">
+          <span className="rounded-xl border border-white/10 bg-black/35 px-3 py-2 text-center sm:px-4">
             <span className="block text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
               {modeInfo?.name ?? state.mode} · a {state.targetScore}
             </span>
@@ -246,7 +246,7 @@ export default function ArcadeSportView({ state }: { state: ArcadeSportPublicSta
 function TeamScore({ team, value }: { team: TeamId; value: number }) {
   return (
     <span
-      className="min-w-24 rounded-2xl border px-5 py-2 text-center"
+      className="min-w-0 rounded-2xl border px-3 py-2 text-center sm:px-5"
       style={{
         borderColor: TEAM_META[team].color + '66',
         background: TEAM_META[team].color + '16',

@@ -95,7 +95,7 @@ export default function SonglessView({ state }: { state: SonglessPublicState }) 
   }
 
   return (
-    <div className="mx-auto grid w-full max-w-7xl gap-5 px-2 py-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_310px]">
+    <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)] gap-5 px-2 py-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_310px]">
       <div className="space-y-4">
         <Panel className="relative overflow-hidden">
           <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-violet-500/15 blur-3xl" />
@@ -191,6 +191,11 @@ export default function SonglessView({ state }: { state: SonglessPublicState }) 
                       type="button"
                       onClick={() => choose(index)}
                       disabled={state.phase !== 'listening' || picked !== null || alreadyAnswered}
+                      style={
+                        {
+                          '--answer-accent': ['#a78bfa', '#38bdf8', '#f472b6', '#fbbf24'][index],
+                        } as React.CSSProperties
+                      }
                       className={
                         'quiz-answer group ' +
                         (state.phase === 'reveal' && correct

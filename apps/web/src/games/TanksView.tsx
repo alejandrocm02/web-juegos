@@ -113,7 +113,7 @@ export default function TanksView({ state }: { state: TanksPublicState }) {
   );
 
   return (
-    <div className="mx-auto grid w-full max-w-[1440px] gap-5 px-2 py-3 sm:px-4 xl:grid-cols-[minmax(0,1fr)_310px]">
+    <div className="mx-auto grid w-full max-w-[1440px] grid-cols-[minmax(0,1fr)] gap-5 px-2 py-3 sm:px-4 xl:grid-cols-[minmax(0,1fr)_310px]">
       <div className="space-y-3">
         <div className="game-hud justify-center">
           <span className="hud-stat">

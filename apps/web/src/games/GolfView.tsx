@@ -346,7 +346,7 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
   const level = state.level;
 
   return (
-    <div className="mx-auto grid w-full max-w-[1500px] gap-5 px-2 py-3 sm:px-4 xl:grid-cols-[minmax(0,1fr)_330px]">
+    <div className="mx-auto grid w-full max-w-[1500px] grid-cols-[minmax(0,1fr)] gap-5 px-2 py-3 sm:px-4 xl:grid-cols-[minmax(0,1fr)_330px]">
       <div className="space-y-3">
         <div className="game-hud text-sm">
           <span className="hud-stat">

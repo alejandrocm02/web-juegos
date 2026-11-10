@@ -11,11 +11,21 @@ Cambios visibles para quien juega o despliega, del más reciente al más antiguo
 - **Minigolf: el golpe ya no se pierde al soltar fuera del campo.** En algunos móviles y con lápiz, soltar el dedo fuera del lienzo dejaba la bola bloqueada.
 - **Billar: las bolas rápidas ya no se atraviesan.** Los choques se comprueban en cada subpaso de la física, y la simulación descarta golpes y pasos con valores no válidos.
 
+### Corregido (auditoría visual de noviembre)
+
+- **Bolos en móvil:** la pista y los controles ya caben en pantalla; antes quedaban cortados por la derecha.
+- **Bolos:** los diez bolos se ven en triángulo y la bola ya no sale cortada.
+- **Songless:** las respuestas vuelven a ser tarjetas con borde y color.
+- **Billar:** fila de puntuación alineada.
+- **Tenis de mesa y Head Basketball:** el marcador Rojo · VS · Azul cabe en una fila en móvil.
+- **Lobby de práctica:** el título ya no se corta en móvil. **Dardos:** «1 disponible».
+
 ### Añadido
 
 - **Vista 3D de Billar y Bolos (beta):** optativa, con el botón «Probar la vista 3D» o `?mode=3d`. La 2D sigue siendo la vista por defecto y la partida la sigue resolviendo el servidor. Si el dispositivo no puede con ella, vuelve sola a 2D sin salir de la partida. Ver `docs/VISTA-3D.md`.
 - **Vista 3D de Minigolf y Dardos (beta):** mismas reglas y mismo servidor; el minigolf levanta en 3D los diez niveles con sus obstáculos móviles. Ambos se pueden jugar con teclado.
 - **Billar con teclado** en la vista 3D: flechas para apuntar y dar potencia, espacio para golpear.
+- **Portada nueva:** cada máquina muestra una escena de su juego, sus modos reales y, al pulsarla, abre la práctica de ese juego. En móvil van en dos columnas. Dos accesos nuevos: «Sorpréndeme» (juego al azar) y «Modo torneo».
 
 - **Portada estilo sala recreativa:** cada juego aparece como una máquina con pantalla animada (se detiene con «reducir movimiento»).
 - **Billar:** taco visible al apuntar y mesa con acabado de madera.

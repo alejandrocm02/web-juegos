@@ -117,7 +117,16 @@ export default function LobbyView() {
                 {isSolo ? 'Práctica en solitario' : 'Sala privada'} ·{' '}
                 {GAME_META[room.selectedGame].name}
               </p>
-              <h1 className="mt-1 font-display text-3xl font-black tracking-[0.24em] sm:text-4xl">
+              <h1
+                className={
+                  'mt-1 font-display font-black ' +
+                  // El código de sala (5 caracteres) admite mucho interletrado; la
+                  // palabra «ENTRENAMIENTO» con el mismo se salía en móvil.
+                  (isSolo
+                    ? 'text-2xl tracking-[0.08em] sm:text-4xl sm:tracking-[0.24em]'
+                    : 'text-3xl tracking-[0.24em] sm:text-4xl')
+                }
+              >
                 {isSolo ? 'ENTRENAMIENTO' : room.code}
               </h1>
             </div>
