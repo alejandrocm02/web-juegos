@@ -45,7 +45,7 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
   const seconds = Math.max(0, Math.ceil((state.deadline - now) / 1000));
 
   return (
-    <div className="mx-auto grid w-full max-w-7xl gap-5 px-2 py-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+    <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)] gap-5 px-2 py-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_320px]">
       <Panel
         title={'Turno de ' + (activePlayer?.name ?? '...')}
         subtitle={isMyTurn ? 'Haz clic en la diana para lanzar' : 'Espera tu turno'}
@@ -116,7 +116,9 @@ export default function DartsView({ state }: { state: DartsPublicState }) {
           <div className="game-hud justify-center text-sm">
             <span className="hud-stat">
               <span className="hud-stat-label">Dardos</span>
-              <span className="hud-stat-value">{state.throwsLeft} disponibles</span>
+              <span className="hud-stat-value">
+                {state.throwsLeft} {state.throwsLeft === 1 ? 'disponible' : 'disponibles'}
+              </span>
             </span>
             <span className="hud-stat">
               <span className="hud-stat-label">Inicio de turno</span>

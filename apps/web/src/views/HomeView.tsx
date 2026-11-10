@@ -1,6 +1,8 @@
 import {
   GAME_META,
   GAME_IDS,
+  GAME_MODE_CATALOG,
+  type GameId,
   NAME_MAX_LENGTH,
   NAME_MIN_LENGTH,
   botRangeFor,
@@ -10,6 +12,7 @@ import { useEffect, useState } from 'react';
 import { useApp } from '../store.js';
 import { loadName } from '../lib/session.js';
 import { ErrorBanner, GameIcon } from '../components/ui.js';
+import { GameScene } from '../components/GameScene.js';
 import { SoloSetup, type SoloSetupValue } from './SoloSetup.js';
 import { RecordsPanel } from './RecordsPanel.js';
 
@@ -52,6 +55,21 @@ export default function HomeView() {
     } else if (codeValid) joinRoom(code.trim().toUpperCase(), name.trim());
   };
 
+  /** Lleva al formulario con el modo ya elegido y el nombre listo para escribir. */
+  const openForm = (next: HomeMode) => {
+    setMode(next);
+    const input = document.getElementById('name');
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    input?.scrollIntoView?.({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+    input?.focus({ preventScroll: true });
+  };
+
+  /** Las máquinas de la portada abren la práctica de su juego. */
+  const practice = (game: GameId) => {
+    setSolo({ game, config: defaultSoloConfig(game) });
+    openForm('solo');
+  };
+
   const submitLabel =
     mode === 'create'
       ? 'Crear sala privada'
@@ -77,7 +95,7 @@ export default function HomeView() {
       <section className="arcade-hero grid items-center gap-10 py-14 lg:grid-cols-[minmax(0,1.15fr)_420px] lg:gap-16 lg:py-20">
         <header>
           <p className="eyebrow mb-5 flex items-center gap-3">
-            <span className="h-px w-8 bg-neon-cyan/70" />
+            <span className="h-px w-8 flex-none bg-neon-cyan/70" />
             Tu sala recreativa, estés donde estés
           </p>
           <h1 className="hero-title">
@@ -225,15 +243,11 @@ export default function HomeView() {
           </p>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {GAME_IDS.map((id) => (
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-4">
+          {GAME_IDS.map((id, index) => (
             <article
               key={id}
-              className={
-                'game-card arcade-machine arcade-machine-' +
-                id +
-                ' flex min-h-64 flex-col justify-between'
-              }
+              className="game-card arcade-machine flex flex-col"
               style={
                 {
                   '--game-accent': GAME_META[id].accent,
@@ -241,38 +255,94 @@ export default function HomeView() {
                 } as React.CSSProperties
               }
             >
-              <div className="arcade-machine-screen" aria-hidden="true">
-                <span className="arcade-machine-orb arcade-machine-orb-a" />
-                <span className="arcade-machine-orb arcade-machine-orb-b" />
-                <span className="arcade-machine-horizon" />
-              </div>
-              <div className="relative z-10 flex items-start justify-between">
-                <span className="game-icon-shell">
-                  <GameIcon game={id} />
-                </span>
-                <span className="font-display text-xs font-bold text-white/20">
-                  0{GAME_IDS.indexOf(id) + 1}
+              <div className="arcade-machine-screen">
+                <GameScene game={id} />
+                <span className="arcade-machine-number" aria-hidden="true">
+                  {String(index + 1).padStart(2, '0')}
                 </span>
               </div>
-              <div className="relative z-10 mt-8">
-                <h3 className="font-display text-xl font-bold">{GAME_META[id].name}</h3>
-                <p className="mt-1 text-sm text-slate-400">{GAME_META[id].tagline}</p>
-                <p className="mt-4 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-600">
+              <div className="flex flex-1 flex-col p-3.5 sm:p-5">
+                <h3 className="flex items-center gap-2 font-display text-base font-bold sm:text-xl">
+                  <span className="arcade-machine-icon" aria-hidden="true">
+                    <GameIcon game={id} />
+                  </span>
+                  <button
+                    type="button"
+                    className="arcade-machine-link"
+                    onClick={() => practice(id)}
+                  >
+                    {GAME_META[id].name}
+                    {/* Sin la palabra «practicar»: los E2E buscan el botón «Practicar» por nombre
+                        parcial y catorce coincidencias más lo volvían ambiguo. */}
+                    <span className="sr-only">: jugar en solitario</span>
+                  </button>
+                </h3>
+                <p className="mt-1 text-xs leading-5 text-slate-400 sm:text-sm">
+                  {GAME_META[id].tagline}
+                </p>
+                <p className="mt-auto hidden items-center gap-2 pt-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:flex">
                   <span
-                    className="h-1 w-1 rounded-full"
+                    className="h-1 w-1 flex-none rounded-full"
                     style={{ background: GAME_META[id].accent }}
                   />
-                  {id === 'golf'
-                    ? '10 hoyos originales'
-                    : id === 'quiz'
-                      ? 'Bonificación por rapidez'
-                      : id === 'darts'
-                        ? '301 · triples · bust'
-                        : 'Física autoritativa'}
+                  <span className="truncate">
+                    {GAME_MODE_CATALOG[id]
+                      .slice(0, 3)
+                      .map((entry) => entry.name)
+                      .join(' · ')}
+                  </span>
                 </p>
               </div>
             </article>
           ))}
+
+          <article
+            className="game-card arcade-machine arcade-machine-extra flex flex-col justify-between p-3.5 sm:p-5"
+            style={{ '--game-accent': '#a78bfa' } as React.CSSProperties}
+          >
+            <span className="arcade-machine-glyph" aria-hidden="true">
+              ?
+            </span>
+            <div>
+              <h3 className="font-display text-base font-bold sm:text-xl">
+                <button
+                  type="button"
+                  className="arcade-machine-link"
+                  onClick={() =>
+                    practice(GAME_IDS[Math.floor(Math.random() * GAME_IDS.length)] ?? 'karts')
+                  }
+                >
+                  Sorpréndeme
+                </button>
+              </h3>
+              <p className="mt-1 text-xs leading-5 text-slate-400 sm:text-sm">
+                ¿No sabes a qué jugar? Elegimos un juego al azar para practicar.
+              </p>
+            </div>
+          </article>
+
+          <article
+            className="game-card arcade-machine arcade-machine-extra flex flex-col justify-between p-3.5 sm:p-5"
+            style={{ '--game-accent': '#fbbf24' } as React.CSSProperties}
+          >
+            <span className="arcade-machine-glyph" aria-hidden="true">
+              ★
+            </span>
+            <div>
+              <h3 className="font-display text-base font-bold sm:text-xl">
+                <button
+                  type="button"
+                  className="arcade-machine-link"
+                  onClick={() => openForm('create')}
+                >
+                  Modo torneo
+                </button>
+              </h3>
+              <p className="mt-1 text-xs leading-5 text-slate-400 sm:text-sm">
+                De 3 a 5 pruebas encadenadas con clasificación general. Crea una sala y actívalo.
+              </p>
+            </div>
+          </article>
         </div>
       </section>
     </main>

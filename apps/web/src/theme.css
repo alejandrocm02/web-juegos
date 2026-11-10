@@ -699,6 +699,14 @@
   backdrop-filter: blur(12px);
 }
 
+/* Marcador de dos equipos: tres columnas fijas para que «Azul» no salte a
+   una segunda fila en móvil cuando el rótulo central es largo. */
+.sport-scoreboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: stretch;
+}
+
 .hud-stat {
   display: flex;
   flex-direction: column;

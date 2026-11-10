@@ -119,7 +119,7 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
     drag && cue ? Math.min(1, Math.hypot(cue.x - drag.x, cue.y - drag.y) / MAX_DRAG) : 0;
 
   return (
-    <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_310px] lg:px-8">
+    <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)] gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_310px] lg:px-8">
       <Panel
         title={'Turno de ' + (activePlayer?.name ?? '...')}
         subtitle={
@@ -232,13 +232,15 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
                   (playerId === state.activePlayerId ? 'border-neon-cyan/60 bg-neon-cyan/10' : '')
                 }
               >
-                <span className="score-row-leading">
+                <span className="flex min-w-0 items-center gap-2.5">
                   <span className="score-avatar">
                     <PlayerIconGlyph icon={player.icon} color={player.color} size={15} />
                   </span>
-                  <span className="score-row-player">
-                    <strong>{player.name}</strong>
-                    <small>{playerId === state.activePlayerId ? 'En la mesa' : 'Esperando'}</small>
+                  <span className="min-w-0 leading-tight">
+                    <strong className="block truncate">{player.name}</strong>
+                    <small className="block text-xs text-slate-400">
+                      {playerId === state.activePlayerId ? 'En la mesa' : 'Esperando'}
+                    </small>
                   </span>
                 </span>
                 {eightBall ? (

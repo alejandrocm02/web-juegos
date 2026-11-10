@@ -187,6 +187,18 @@ for (const game of GAME_IDS) {
         await expect
           .poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1))
           .toBe(true);
+        // La página puede no desbordar y aun así recortar el juego: en Bolos la
+        // rejilla crecía hasta 501 px en un móvil de 390 y un `overflow: hidden`
+        // lo ocultaba. Se mide el tablero y los controles, no solo el documento.
+        await expect
+          .poll(() =>
+            page.evaluate(() =>
+              [...document.querySelectorAll('canvas, .game-hud, button, input')]
+                .filter((element) => element.getBoundingClientRect().width > 0)
+                .every((element) => element.getBoundingClientRect().right <= innerWidth + 1),
+            ),
+          )
+          .toBe(true);
       }
       await page.screenshot({ path: testInfo.outputPath(`${game}.png`), fullPage: true });
       const exitFromMenu = async () => {

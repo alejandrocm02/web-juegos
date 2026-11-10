@@ -60,7 +60,7 @@ export default function BlackjackView({ state }: { state: BlackjackPublicState }
         : 'Mano revelada';
 
   return (
-    <div className="mx-auto grid w-full max-w-7xl gap-5 px-2 py-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_300px]">
+    <div className="mx-auto grid w-full max-w-7xl grid-cols-[minmax(0,1fr)] gap-5 px-2 py-3 sm:px-4 lg:grid-cols-[minmax(0,1fr)_300px]">
       <section
         className="relative overflow-hidden rounded-[1.6rem] border border-emerald-300/15 p-4 shadow-2xl sm:p-6"
         style={{
