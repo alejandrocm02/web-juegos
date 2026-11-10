@@ -70,3 +70,70 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 - Esperado / Real: margen razonable en fácil / el jugador cae en unos 10-25 s incluso con un rival fácil.
 - Causa: por revisar el balance de los bots (persecución y daño). No es necesariamente un fallo: un jugador real se mueve.
 - Estado: abierto, para revisar al migrar Arena.
+
+## [P1] Bolos: en móvil el juego se sale de la pantalla y queda recortado
+
+- Juego/zona: Bolos, móviles (comprobado a 390 px).
+- Pasos para reproducir: practicar Bolos en un móvil en vertical.
+- Esperado / Real: pista, deslizadores y botón «Lanzar bola» caben en pantalla / la columna medía 501 px, así que la pista y los controles quedaban cortados por la derecha sin poder desplazarse.
+- Causa: la rejilla de la vista no declaraba columna en móvil; la columna implícita crece hasta el contenido más ancho (la tira de diez frames). `document.scrollWidth` no lo delataba porque un `overflow: hidden` lo ocultaba, y por eso el E2E pasaba.
+- Arreglo: columna base `minmax(0, 1fr)` en las doce vistas de juego (todas compartían el patrón) y nueva comprobación en `e2e/game-review.spec.ts` que mide tablero y controles.
+- Estado: resuelto (rama `visual/auditoria-noviembre`).
+
+## [P2] Bolos: los bolos se apilan en una franja y la bola sale cortada
+
+- Juego/zona: Bolos, todas las pantallas.
+- Esperado / Real: triángulo de diez bolos reconocible / las cuatro filas quedaban a 8 px y parecían una sola fila de bolos montados; los de las esquinas flotaban sobre el canal y la bola asomaba cortada por abajo.
+- Causa: una única escala vertical para una pista de 18 m dibujada con el ancho a escala 10 veces mayor.
+- Arreglo: zona de bolos con escala propia y plataforma a todo el ancho, tamaño aparente según la distancia, bolos pintados de atrás hacia delante y bola siempre entera. Solo cambia el dibujo: la física sigue en el servidor.
+- Estado: resuelto (rama `visual/auditoria-noviembre`).
+
+## [P2] Songless: las cuatro respuestas no parecen botones
+
+- Juego/zona: Songless.
+- Esperado / Real: tarjetas con borde y color como en el Quiz / texto suelto sin borde ni fondo.
+- Causa: `.quiz-answer` calcula borde y fondo con `--answer-accent`, que solo definía `QuizView`. Sin la variable, las declaraciones son inválidas y el navegador las descarta.
+- Estado: resuelto (rama `visual/auditoria-noviembre`).
+
+## [P2] Billar: fila de puntuación descolocada
+
+- Juego/zona: Billar, panel «Puntuación».
+- Esperado / Real: icono, nombre y estado alineados / icono encima del nombre y un recuadro degradado a medias.
+- Causa: se usaba `score-row-leading` (el resaltado del primer clasificado) como contenedor.
+- Estado: resuelto (rama `visual/auditoria-noviembre`).
+
+## [P2] Marcador de equipos partido en dos filas en móvil
+
+- Juego/zona: Tenis de mesa y Head Basketball (cualquier modo con rótulo central largo).
+- Esperado / Real: Rojo · VS · Azul en una fila / «Azul» caía a una segunda fila.
+- Causa: `flex-wrap` con anchos mínimos fijos. Ahora es una rejilla de tres columnas.
+- Estado: resuelto (rama `visual/auditoria-noviembre`).
+
+## [P3] Portada: títulos montados sobre el dibujo, «010» y etiquetas falsas
+
+- Juego/zona: tarjetas de juego de la portada.
+- Real: con descripción de dos líneas (Blackjack, Songless, Tenis de mesa) el título pisaba la pantalla de la máquina; los juegos 10 a 14 se numeraban «010»…«014»; Blackjack, Songless o Quiz anunciaban «Física autoritativa»; en móvil la lista medía más de 5.000 px de alto; las tarjetas no hacían nada al pulsarlas.
+- Arreglo: tarjeta con pantalla y texto separados, escena propia por juego, modos reales como etiqueta, dos columnas en móvil y cada tarjeta abre la práctica de su juego.
+- Estado: resuelto (rama `visual/auditoria-noviembre`).
+
+## [P3] Lobby de práctica: «ENTRENAMIENTO» se corta en móvil
+
+- Causa: interletrado pensado para el código de sala de 5 caracteres.
+- Estado: resuelto (rama `visual/auditoria-noviembre`).
+
+## [P3] Dardos: «1 disponibles»
+
+- Estado: resuelto (rama `visual/auditoria-noviembre`).
+
+## [P3] Aviso «¡GOL!» tapa la cabecera de la partida en móvil
+
+- Juego/zona: Head Soccer (y demás avisos destacados).
+- Real: el aviso aparece sobre la píldora «Partida simultánea» en vez de sobre el campo.
+- Estado: abierto.
+
+## [P3] Minigolf: medio lienzo vacío al empezar el hoyo
+
+- Juego/zona: Minigolf, escritorio y móvil.
+- Real: la cámara centra la bola y, con la bola en la salida, la mitad izquierda del lienzo queda vacía y el recorrido se corta por la derecha hasta pulsar «Ver el nivel (Z)».
+- Propuesta: limitar la cámara a los bordes del hoyo, o mostrar el hoyo entero un segundo al empezar.
+- Estado: abierto.
