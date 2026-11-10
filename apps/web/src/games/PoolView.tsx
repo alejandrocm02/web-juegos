@@ -8,11 +8,16 @@ import {
   type PoolPublicState,
   type PoolSnapshot,
 } from '@arcade/shared';
-import { useEffect, useRef, useState } from 'react';
+import { lazy, useEffect, useRef, useState } from 'react';
 import { syncCanvasResolution, type Viewport } from '../lib/canvas.js';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 import { serverNow } from '../lib/clock.js';
+import { fallBackTo2D, useRenderMode } from '../lib/renderMode.js';
+import { Board3D, RenderModeToggle } from '../components/RenderMode.js';
+
+// Three.js solo se descarga si alguien abre la vista 3D.
+const PoolBoard3D = lazy(() => import('../three/PoolBoard3D.js'));
 
 const MAX_DRAG = 190;
 
@@ -26,6 +31,8 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
   const [now, setNow] = useState(serverNow());
+  const render = useRenderMode();
+  const [power3d, setPower3d] = useState(0);
 
   const isMyTurn = state.activePlayerId === session?.playerId && state.phase === 'aiming';
   const activePlayer = room?.players.find((p) => p.id === state.activePlayerId);
@@ -116,7 +123,18 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
   const seconds = Math.max(0, Math.ceil((state.deadline - now) / 1000));
   const cue = state.balls.find((b) => b.id === 0);
   const dragPower =
-    drag && cue ? Math.min(1, Math.hypot(cue.x - drag.x, cue.y - drag.y) / MAX_DRAG) : 0;
+    render.mode === '3d'
+      ? power3d
+      : drag && cue
+        ? Math.min(1, Math.hypot(cue.x - drag.x, cue.y - drag.y) / MAX_DRAG)
+        : 0;
+  /** Bolas más recientes: el snapshot en vivo si lo hay, si no el estado de sala. */
+  const liveBalls = (): PoolBallState[] => {
+    const snapshot = snapshotRef.current as PoolSnapshot | null;
+    return snapshot && 'balls' in snapshot && Array.isArray(snapshot.balls) && 'settled' in snapshot
+      ? (snapshot.balls as PoolBallState[])
+      : state.balls;
+  };
 
   return (
     <div className="mx-auto grid w-full max-w-7xl gap-5 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_310px] lg:px-8">
@@ -124,7 +142,9 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
         title={'Turno de ' + (activePlayer?.name ?? '...')}
         subtitle={
           isMyTurn
-            ? 'Arrastra desde la bola blanca hacia atras para dar potencia'
+            ? render.mode === '3d'
+              ? 'Arrastra hacia atrás en cualquier punto y suelta para golpear'
+              : 'Arrastra desde la bola blanca hacia atras para dar potencia'
             : state.phase === 'simulating'
               ? 'Bolas en movimiento...'
               : 'Espera tu turno'
@@ -165,21 +185,40 @@ export default function PoolView({ state }: { state: PoolPublicState }) {
         </div>
 
         <div className="game-board-frame pool-table-frame relative">
-          <canvas
-            ref={canvasRef}
-            width={VIEW_W}
-            height={VIEW_H}
-            className={'w-full touch-none rounded-[1.1rem] ' + (isMyTurn ? 'cursor-crosshair' : '')}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={onPointerUp}
-            onPointerCancel={cancelShot}
-            onLostPointerCapture={cancelShot}
-            aria-label="Mesa de billar"
-          />
+          {render.mode === '3d' ? (
+            <Board3D loading={<div className="aspect-[4/5] w-full sm:aspect-[2/1]" />}>
+              <PoolBoard3D
+                getBalls={liveBalls}
+                isMyTurn={isMyTurn}
+                eightBall={eightBall}
+                onShoot={(angle, power) => sendAction({ type: 'pool:shoot', angle, power })}
+                onPower={setPower3d}
+                onGiveUp={fallBackTo2D}
+              />
+            </Board3D>
+          ) : (
+            <canvas
+              ref={canvasRef}
+              width={VIEW_W}
+              height={VIEW_H}
+              className={
+                'w-full touch-none rounded-[1.1rem] ' + (isMyTurn ? 'cursor-crosshair' : '')
+              }
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              onPointerUp={onPointerUp}
+              onPointerCancel={cancelShot}
+              onLostPointerCapture={cancelShot}
+              aria-label="Mesa de billar"
+            />
+          )}
           {state.phase === 'simulating' && (
             <div className="game-overlay pool-status-overlay">Bolas en movimiento</div>
           )}
+        </div>
+
+        <div className="mt-3">
+          <RenderModeToggle />
         </div>
 
         <div className="pool-console mt-4">
