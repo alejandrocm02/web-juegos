@@ -136,17 +136,16 @@ export class BowlingGame implements GameRunner {
     const standingNow = this.world.standingPins.length;
     const knocked = Math.max(0, this.pinsBeforeRoll - standingNow);
     const history = this.rolls.get(shooter)!;
+    // Frame en el que estaba el jugador antes de anotar esta tirada.
+    const frameBefore = scoreBowling(history, this.totalFrames).currentFrame;
     history.push(knocked);
     this.lastKnocked = knocked;
 
-    const card = scoreBowling(history, this.totalFrames);
-    const frame = card.frames[Math.min(card.currentFrame, this.totalFrames - 1)];
-    const frameRolls = frame?.rolls ?? [];
-
+    // El suceso se decide por los bolos que había en pie y los que quedan, no
+    // por la tarjeta: tras un pleno la tarjeta ya apunta al frame siguiente,
+    // vacío, y el pleno se anunciaba como «10 bolos» sin celebrarse.
     if (knocked === 0) this.lastEvent = 'gutter';
-    else if (frameRolls.length === 1 && knocked === 10) this.lastEvent = 'strike';
-    else if (frameRolls.length >= 2 && frameRolls[0]! + frameRolls[1]! === 10)
-      this.lastEvent = 'spare';
+    else if (standingNow === 0) this.lastEvent = this.pinsBeforeRoll === 10 ? 'strike' : 'spare';
     else this.lastEvent = 'open';
 
     // Los strikes y spares se anuncian a toda la sala como momento destacado.
@@ -161,7 +160,10 @@ export class BowlingGame implements GameRunner {
     this.timer = setTimeout(() => {
       const updated = scoreBowling(this.rolls.get(shooter) ?? [], this.totalFrames);
       // Si el jugador sigue en el mismo frame, repite lanzamiento con los bolos en pie.
-      const sameFrame = updated.currentFrame === card.currentFrame && !updated.finished;
+      // Se compara con el frame de antes de la tirada: comparando dos tarjetas
+      // calculadas después, la condición era siempre cierta y cada jugador
+      // jugaba la partida entera antes de ceder el turno.
+      const sameFrame = updated.currentFrame === frameBefore && !updated.finished;
       const continuesTenth =
         updated.currentFrame === this.totalFrames - 1 &&
         updated.currentRoll > 0 &&

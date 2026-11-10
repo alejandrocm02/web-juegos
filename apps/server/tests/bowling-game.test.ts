@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   BOWLING_LANE,
+  bowlingHookOffset,
+  bowlingPinLayout,
   DEFAULT_SETTINGS,
   type BowlingPublicState,
   type MatchResult,
@@ -86,6 +88,61 @@ describe('simulacion de la pista', () => {
     expect(run(1)).toBeGreaterThan(run(-1));
   });
 
+  it('el bolo 1 es el delantero y la fila de cuatro queda al fondo', () => {
+    const pins = bowlingPinLayout();
+    const head = pins.find((pin) => pin.id === 1)!;
+    expect(pins.filter((pin) => pin.id !== 1).every((pin) => pin.y > head.y)).toBe(true);
+    expect(head.x).toBeCloseTo(BOWLING_LANE.width / 2);
+    const farthest = Math.max(...pins.map((pin) => pin.y));
+    expect(pins.filter((pin) => Math.abs(pin.y - farthest) < 0.01).map((pin) => pin.id)).toEqual([
+      7, 8, 9, 10,
+    ]);
+  });
+
+  const settle = (world: BowlingWorld) => {
+    let steps = 0;
+    while (!world.settled() && steps < 60 * 30) {
+      world.step(1 / 60);
+      steps += 1;
+    }
+    return steps / 60;
+  };
+
+  it('hasta el lanzamiento más flojo llega a los bolos y termina pronto', () => {
+    const world = new BowlingWorld();
+    world.roll(0, 0.15, 0);
+    const seconds = settle(world);
+    expect(world.knockedCount()).toBeGreaterThan(0);
+    expect(seconds).toBeLessThan(12);
+  });
+
+  it('el efecto desvía la bola lo que anuncia la trayectoria prevista, a cualquier potencia', () => {
+    for (const power of [0.2, 0.6, 1]) {
+      const world = new BowlingWorld([]);
+      world.roll(-0.5, power, 1);
+      const startX = world.state.ball.x;
+      while (world.state.ball.y < BOWLING_LANE.length - 5 && world.state.ball.rolling) {
+        world.step(1 / 60);
+      }
+      const { x, y } = world.state.ball;
+      expect(x - startX).toBeCloseTo(bowlingHookOffset(1, y), 0);
+    }
+  });
+
+  it('un gancho a la entrada del bolo 1 puede hacer pleno', () => {
+    const world = new BowlingWorld();
+    world.roll(-0.52, 0.85, 0.2);
+    settle(world);
+    expect(world.knockedCount()).toBe(10);
+  });
+
+  it('una bola centrada y recta abre la formación pero no garantiza el pleno', () => {
+    const world = new BowlingWorld();
+    world.roll(0, 0.85, 0);
+    settle(world);
+    expect(world.knockedCount()).toBeGreaterThanOrEqual(5);
+  });
+
   it('prepareNextRoll conserva solo los bolos en pie', () => {
     const world = new BowlingWorld();
     world.roll(0, 1, 0);
@@ -157,6 +214,23 @@ describe('partida de bolos', () => {
     // Y la tirada queda registrada en la tarjeta aunque avance el turno.
     vi.advanceTimersByTime(4000);
     expect(states.at(-1)!.cards.a!.frames[0]!.rolls.length).toBeGreaterThan(0);
+    game.dispose();
+  });
+
+  it('los jugadores se alternan frame a frame, no partida a partida', () => {
+    const { ctx, states } = makeContext();
+    const game = new BowlingGame(ctx, DEFAULT_SETTINGS.bowling);
+    game.start();
+    // Ana juega su primer frame: una o dos tiradas, según haga pleno o no.
+    for (let roll = 0; roll < 2 && states.at(-1)!.activePlayerId === 'a'; roll++) {
+      game.handleAction('a', { type: 'bowling:roll', aim: 0.3, power: 0.9, spin: 0 });
+      vi.advanceTimersByTime(20000);
+    }
+    const after = states.at(-1)!;
+    expect(after.activePlayerId).toBe('b');
+    expect(after.phase).toBe('aiming');
+    // Bea empieza con los diez bolos en pie.
+    expect(after.pins.filter((pin) => pin.standing)).toHaveLength(10);
     game.dispose();
   });
 
