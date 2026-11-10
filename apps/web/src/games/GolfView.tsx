@@ -1,5 +1,5 @@
 import type { GolfBallState, GolfPublicState, GolfSnapshot } from '@arcade/shared';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, useEffect, useMemo, useRef, useState } from 'react';
 import { syncCanvasResolution } from '../lib/canvas.js';
 import { acceptsGameKeys } from '../lib/game-input.js';
 import { useApp } from '../store.js';
@@ -7,6 +7,8 @@ import { Panel, PlayerIconGlyph, Scoreboard } from '../components/ui.js';
 import { playAceSound, playHoledSound, playOutSound } from '../lib/sound.js';
 import { relativeToPar } from '../lib/format.js';
 import { canShootBall, pickLiveBall, shotFromGesture } from './golf-input.js';
+import { fallBackTo2D, useRenderMode } from '../lib/renderMode.js';
+import { Board3D, RenderModeToggle } from '../components/RenderMode.js';
 import {
   MAX_DRAG,
   drawGolfFrame,
@@ -14,6 +16,9 @@ import {
   type PlayerLook,
   type RenderBall,
 } from './golf-render.js';
+
+// Three.js solo se descarga si alguien abre la vista 3D.
+const GolfBoard3D = lazy(() => import('../three/GolfBoard3D.js'));
 
 const VIEW_W = 960;
 const VIEW_H = 560;
@@ -35,6 +40,10 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
   const [pendingSeq, setPendingSeq] = useState<number | null>(null);
   const lastEventRef = useRef<string>('');
   const [drag, setDrag] = useState<{ x: number; y: number } | null>(null);
+  const render = useRenderMode();
+  const [power3d, setPower3d] = useState(0);
+  /** Bolas del último snapshot: las lee la vista 3D, que no usa el bucle de dibujo 2D. */
+  const sourceRef = useRef<GolfBallState[]>(state.balls);
 
   const liveBallRef = useRef<GolfBallState | null>(null);
   const [, uiTick] = useState(0);
@@ -114,23 +123,26 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
     const loop = (time: number) => {
       const dt = Math.min(0.05, (time - last) / 1000);
       last = time;
+      // Lectura del servidor: se hace siempre, haya lienzo 2D o no, porque de
+      // ella dependen el botón de golpe y la vista 3D.
+      const snapshot = snapshotRef.current as GolfSnapshot | null;
+      const source =
+        snapshot && Array.isArray(snapshot.balls) && 'levelClockMs' in snapshot
+          ? snapshot.balls
+          : state.balls;
+      sourceRef.current = source;
+      if (snapshot && 'levelClockMs' in snapshot) {
+        clockRef.current = { levelClockMs: snapshot.levelClockMs, receivedAt: time };
+      }
+      liveBallRef.current = pickLiveBall(
+        snapshot && 'levelClockMs' in snapshot ? snapshot : null,
+        state.balls,
+        session?.playerId,
+      );
+
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext('2d');
       if (canvas && ctx) {
-        const snapshot = snapshotRef.current as GolfSnapshot | null;
-        const source =
-          snapshot && Array.isArray(snapshot.balls) && 'levelClockMs' in snapshot
-            ? snapshot.balls
-            : state.balls;
-        if (snapshot && 'levelClockMs' in snapshot) {
-          clockRef.current = { levelClockMs: snapshot.levelClockMs, receivedAt: time };
-        }
-        liveBallRef.current = pickLiveBall(
-          snapshot && 'levelClockMs' in snapshot ? snapshot : null,
-          state.balls,
-          session?.playerId,
-        );
-
         // Interpolacion suave hacia la ultima posicion autoritativa.
         for (const ball of source) {
           const existing = renderBalls.current.get(ball.playerId);
@@ -252,6 +264,11 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
       setHint('Arrastra un poco más para dar potencia al golpe.');
       return;
     }
+    sendShot(shot);
+  };
+
+  /** Envía un golpe ya calculado. Lo comparten el gesto 2D y la vista 3D. */
+  const sendShot = (shot: { angle: number; power: number }) => {
     setHint('Golpe enviado…');
     const shotSeq = seqRef.current + 1;
     seqRef.current = shotSeq;
@@ -320,7 +337,11 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
   }, [pendingSeq, sendAction]);
 
   const power =
-    drag && myBall ? Math.min(1, Math.hypot(myBall.x - drag.x, myBall.y - drag.y) / MAX_DRAG) : 0;
+    render.mode === '3d'
+      ? power3d
+      : drag && myBall
+        ? Math.min(1, Math.hypot(myBall.x - drag.x, myBall.y - drag.y) / MAX_DRAG)
+        : 0;
   const timeLeft = Math.max(0, Math.ceil(state.timeLeftMs / 1000));
   const level = state.level;
 
@@ -361,15 +382,40 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
             <span>Hoyo {level.id}</span>
             <strong>{level.theme}</strong>
           </div>
-          <canvas
-            ref={canvasRef}
-            width={VIEW_W}
-            height={VIEW_H}
-            className={'block w-full touch-none ' + (canShoot ? 'cursor-crosshair' : '')}
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            aria-label={'Nivel de minigolf: ' + level.name}
-          />
+          {render.mode === '3d' ? (
+            <Board3D loading={<div className="aspect-[4/5] w-full sm:aspect-[960/560]" />}>
+              <GolfBoard3D
+                level={level}
+                getBalls={() => sourceRef.current}
+                getLevelTime={() =>
+                  (clockRef.current.levelClockMs +
+                    (performance.now() - clockRef.current.receivedAt)) /
+                  1000
+                }
+                myId={session?.playerId}
+                colorOf={(playerId) => colorOf.get(playerId)?.color ?? '#94a3b8'}
+                canShoot={() =>
+                  state.phase === 'playing' &&
+                  pendingSeq === null &&
+                  canShootBall(liveBallRef.current)
+                }
+                onShoot={(angle, shotPower) => sendShot({ angle, power: shotPower })}
+                onPower={setPower3d}
+                overview={overview}
+                onGiveUp={fallBackTo2D}
+              />
+            </Board3D>
+          ) : (
+            <canvas
+              ref={canvasRef}
+              width={VIEW_W}
+              height={VIEW_H}
+              className={'block w-full touch-none ' + (canShoot ? 'cursor-crosshair' : '')}
+              onPointerDown={onPointerDown}
+              onPointerMove={onPointerMove}
+              aria-label={'Nivel de minigolf: ' + level.name}
+            />
+          )}
 
           {state.phase === 'scoreboard' && (
             <div className="absolute inset-1.5 z-4 flex items-center justify-center rounded-[0.95rem] bg-night-900/85 p-6 backdrop-blur-sm">
@@ -425,6 +471,8 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
             </div>
           )}
         </div>
+
+        <RenderModeToggle />
 
         <div className="flex flex-wrap items-center gap-3">
           <button className="btn-secondary" onClick={() => setOverview((prev) => !prev)}>
