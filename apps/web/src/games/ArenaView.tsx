@@ -192,7 +192,7 @@ export default function ArenaView({ state }: { state: ArenaPublicState }) {
   const secondsLeft = Math.max(0, Math.ceil((ARENA.maxMatchMs - state.matchMs) / 1000));
 
   return (
-    <div className="mx-auto grid w-full max-w-[1400px] gap-5 px-2 py-3 sm:px-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+    <div className="mx-auto grid w-full max-w-[1400px] grid-cols-[minmax(0,1fr)] gap-5 px-2 py-3 sm:px-4 xl:grid-cols-[minmax(0,1fr)_300px]">
       <div className="space-y-3">
         <div className="game-hud text-sm">
           <span className="hud-stat">
