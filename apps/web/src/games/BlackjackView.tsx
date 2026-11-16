@@ -1,6 +1,12 @@
 import type { BlackjackCard, BlackjackPublicState, BlackjackRoundResult } from '@arcade/shared';
+import { lazy } from 'react';
 import { Countdown, Panel, PlayerIconGlyph } from '../components/ui.js';
+import { fallBackTo2D, useRenderMode } from '../lib/renderMode.js';
+import { Board3D, RenderModeToggle } from '../components/RenderMode.js';
 import { useApp } from '../store.js';
+
+// Three.js solo se descarga si alguien abre la vista 3D.
+const BlackjackBoard3D = lazy(() => import('../three/BlackjackBoard3D.js'));
 
 const SUIT_GLYPH: Record<BlackjackCard['suit'], string> = {
   hearts: '♥',
@@ -51,6 +57,8 @@ export default function BlackjackView({ state }: { state: BlackjackPublicState }
   const { room, session, sendAction } = useApp();
   const myId = session?.playerId ?? '';
   const myHand = state.hands[myId];
+  const render = useRenderMode();
+  const in3d = render.mode === '3d';
   const isMyTurn = state.phase === 'playing' && state.activePlayerId === myId;
   const dealerMessage =
     state.phase === 'playing'
@@ -82,7 +90,38 @@ export default function BlackjackView({ state }: { state: BlackjackPublicState }
           </span>
         </header>
 
-        <div className="relative z-10 flex min-h-40 items-center justify-center gap-2 py-6 sm:gap-3">
+        {in3d && (
+          <div className="relative z-10 py-3">
+            <Board3D loading={<div className="aspect-[4/3] w-full sm:aspect-[16/9]" />}>
+              <BlackjackBoard3D
+                dealerCards={state.dealerCards}
+                seats={state.order.flatMap((playerId) => {
+                  const hand = state.hands[playerId];
+                  const player = room?.players.find((entry) => entry.id === playerId);
+                  if (!hand || !player) return [];
+                  return [
+                    {
+                      id: playerId,
+                      color: player.color,
+                      cards: hand.cards,
+                      active: playerId === state.activePlayerId && state.phase === 'playing',
+                    },
+                  ];
+                })}
+                meId={myId}
+                onGiveUp={fallBackTo2D}
+              />
+            </Board3D>
+          </div>
+        )}
+        {/* En 3D las cartas se ven sobre la mesa; aquí quedan como texto para lectores de pantalla. */}
+        <div
+          className={
+            in3d
+              ? 'sr-only'
+              : 'relative z-10 flex min-h-40 items-center justify-center gap-2 py-6 sm:gap-3'
+          }
+        >
           {state.dealerCards.map((card, index) => (
             <PlayingCard key={index} card={card} />
           ))}
@@ -113,7 +152,9 @@ export default function BlackjackView({ state }: { state: BlackjackPublicState }
                   </span>
                   <strong className="font-display text-lg text-amber-100">{hand.total}</strong>
                 </div>
-                <div className="mt-3 flex min-h-20 gap-1.5 overflow-x-auto pb-1">
+                <div
+                  className={in3d ? 'sr-only' : 'mt-3 flex min-h-20 gap-1.5 overflow-x-auto pb-1'}
+                >
                   {hand.cards.map((card, index) => (
                     <span
                       key={index}
@@ -152,7 +193,10 @@ export default function BlackjackView({ state }: { state: BlackjackPublicState }
           })}
         </div>
 
-        <div className="relative z-10 mt-5 flex min-h-16 flex-wrap items-center justify-center gap-3 rounded-2xl border border-white/10 bg-black/25 p-3">
+        <div className="relative z-10 mt-4">
+          <RenderModeToggle />
+        </div>
+        <div className="relative z-10 mt-3 flex min-h-16 flex-wrap items-center justify-center gap-3 rounded-2xl border border-white/10 bg-black/25 p-3">
           {isMyTurn ? (
             <>
               <button

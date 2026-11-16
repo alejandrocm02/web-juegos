@@ -7,9 +7,14 @@ import {
   type TankState,
   type TanksPublicState,
 } from '@arcade/shared';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 import { syncCanvasResolution } from '../lib/canvas.js';
+import { fallBackTo2D, useRenderMode } from '../lib/renderMode.js';
+import { Board3D, RenderModeToggle } from '../components/RenderMode.js';
+
+// Three.js solo se descarga si alguien abre la vista 3D.
+const TanksBoard3D = lazy(() => import('../three/TanksBoard3D.js'));
 import { acceptsGameKeys } from '../lib/game-input.js';
 import { useApp } from '../store.js';
 import { serverNow } from '../lib/clock.js';
@@ -17,6 +22,7 @@ import { serverNow } from '../lib/clock.js';
 export default function TanksView({ state }: { state: TanksPublicState }) {
   const { room, session, sendAction } = useApp();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const render3d = useRenderMode();
   const [angleDeg, setAngleDeg] = useState(45);
   const [power, setPower] = useState(68);
   const [, setClock] = useState(0);
@@ -136,14 +142,28 @@ export default function TanksView({ state }: { state: TanksPublicState }) {
           </span>
         </div>
 
+        <RenderModeToggle />
+
         <div className="game-board-frame relative overflow-hidden">
-          <canvas
-            ref={canvasRef}
-            width={TANK_FIELD.width}
-            height={TANK_FIELD.height}
-            className="w-full touch-none bg-black"
-            aria-label="Campo de batalla de Tanques"
-          />
+          {render3d.mode === '3d' ? (
+            <Board3D loading={<div className="aspect-[5/3] w-full bg-black" />}>
+              <TanksBoard3D
+                state={state}
+                players={room?.players ?? []}
+                meId={meId}
+                preview={isMyTurn && myTank ? { tank: myTank, angleDeg, power } : null}
+                onGiveUp={fallBackTo2D}
+              />
+            </Board3D>
+          ) : (
+            <canvas
+              ref={canvasRef}
+              width={TANK_FIELD.width}
+              height={TANK_FIELD.height}
+              className="w-full touch-none bg-black"
+              aria-label="Campo de batalla de Tanques"
+            />
+          )}
           {state.phase === 'countdown' && (
             <div className="absolute inset-1.5 z-4 flex items-center justify-center rounded-[0.95rem] bg-black/70 backdrop-blur-xs">
               <div className="game-countdown">

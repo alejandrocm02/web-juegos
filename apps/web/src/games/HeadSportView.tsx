@@ -8,9 +8,14 @@ import {
   type PublicPlayer,
   type TeamId,
 } from '@arcade/shared';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 import { syncCanvasResolution } from '../lib/canvas.js';
+import { fallBackTo2D, useRenderMode } from '../lib/renderMode.js';
+import { Board3D, RenderModeToggle } from '../components/RenderMode.js';
+
+// Three.js solo se descarga si alguien abre la vista 3D.
+const HeadBoard3D = lazy(() => import('../three/HeadBoard3D.js'));
 import { HoldButton } from '../components/HoldButton.js';
 import { listenGameKeys } from '../lib/game-input.js';
 import { useApp } from '../store.js';
@@ -29,6 +34,7 @@ interface Controls {
 export default function HeadSportView({ state }: { state: HeadSportPublicState }) {
   const { room, session, sendAction, snapshotRef, connected } = useApp();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const render3d = useRenderMode();
   const keysRef = useRef(new Set<string>());
   const phaseRef = useRef(state.phase);
   const touchRef = useRef<Controls>({ moveX: 0, jump: false, kick: false });
@@ -148,16 +154,35 @@ export default function HeadSportView({ state }: { state: HeadSportPublicState }
           <TeamScore team="azul" value={state.scores.azul} />
         </div>
 
+        <RenderModeToggle />
+
         <div className="game-board-frame relative overflow-hidden">
-          <canvas
-            ref={canvasRef}
-            width={HEAD_SPORT_FIELD.width}
-            height={HEAD_SPORT_FIELD.height}
-            className="w-full touch-none bg-black"
-            aria-label={
-              state.game === 'head-soccer' ? 'Campo de Head Soccer' : 'Cancha de Head Basketball'
-            }
-          />
+          {render3d.mode === '3d' ? (
+            <Board3D loading={<div className="aspect-[5/3] w-full bg-black" />}>
+              <HeadBoard3D
+                game={state.game}
+                getSnapshot={() => {
+                  const possible = snapshotRef.current;
+                  const live =
+                    possible && 'players' in possible ? (possible as HeadSportSnapshot) : null;
+                  return live?.teams ? live : state;
+                }}
+                players={room?.players ?? []}
+                meId={meId}
+                onGiveUp={fallBackTo2D}
+              />
+            </Board3D>
+          ) : (
+            <canvas
+              ref={canvasRef}
+              width={HEAD_SPORT_FIELD.width}
+              height={HEAD_SPORT_FIELD.height}
+              className="w-full touch-none bg-black"
+              aria-label={
+                state.game === 'head-soccer' ? 'Campo de Head Soccer' : 'Cancha de Head Basketball'
+              }
+            />
+          )}
           {state.phase === 'countdown' && (
             <div className="absolute inset-1.5 z-4 flex items-center justify-center rounded-[0.95rem] bg-black/70 backdrop-blur-xs">
               <div className="game-countdown">

@@ -30,6 +30,7 @@ Cambios visibles para quien juega o despliega, del más reciente al más antiguo
 ### Añadido
 
 - **Vista 3D de Billar y Bolos (beta):** optativa, con el botón «Probar la vista 3D» o `?mode=3d`. La 2D sigue siendo la vista por defecto y la partida la sigue resolviendo el servidor. Si el dispositivo no puede con ella, vuelve sola a 2D sin salir de la partida. Ver `docs/VISTA-3D.md`.
+- **Vista 3D del resto de juegos (beta):** Tanques, Blackjack, Karts, Battle Royale, Air Hockey, Tenis de mesa, Head Soccer y Head Basketball. Mismas reglas y mismo servidor; solo cambia cómo se ve. Quedan en 2D Quiz y Songless.
 - **Vista 3D de Minigolf y Dardos (beta):** mismas reglas y mismo servidor; el minigolf levanta en 3D los diez niveles con sus obstáculos móviles. Ambos se pueden jugar con teclado.
 - **Billar con teclado** en la vista 3D: flechas para apuntar y dar potencia, espacio para golpear.
 - **Portada nueva:** cada máquina muestra una escena de su juego, sus modos reales y, al pulsarla, abre la práctica de ese juego. En móvil van en dos columnas. Dos accesos nuevos: «Sorpréndeme» (juego al azar) y «Modo torneo».

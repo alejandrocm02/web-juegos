@@ -6,13 +6,18 @@ import {
   type ArenaPublicState,
   type ArenaSnapshot,
 } from '@arcade/shared';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { syncCanvasResolution } from '../lib/canvas.js';
 import { HoldButton } from '../components/HoldButton.js';
 import { listenGameKeys } from '../lib/game-input.js';
 import { useApp } from '../store.js';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 import { draw, interpolate } from './arena-render.js';
+import { fallBackTo2D, useRenderMode } from '../lib/renderMode.js';
+import { Board3D, RenderModeToggle } from '../components/RenderMode.js';
+
+// Three.js solo se descarga si alguien abre la vista 3D.
+const ArenaBoard3D = lazy(() => import('../three/ArenaBoard3D.js'));
 
 const VIEW = 720;
 
@@ -26,6 +31,7 @@ interface Intent {
 export default function ArenaView({ state }: { state: ArenaPublicState }) {
   const { sendAction, session, room, snapshotRef, connected } = useApp();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const render3d = useRenderMode();
   const keysRef = useRef(new Set<string>());
   const touchRef = useRef({ moveX: 0, moveY: 0, attack: false });
   const phaseRef = useRef(state.phase);
@@ -229,23 +235,51 @@ export default function ArenaView({ state }: { state: ArenaPublicState }) {
           )}
         </div>
 
+        <RenderModeToggle />
+
         <div className="game-board-frame relative">
-          <canvas
-            ref={canvasRef}
-            width={VIEW}
-            height={VIEW}
-            onPointerMove={onPointerMove}
-            onPointerDown={(event) => {
-              event.currentTarget.setPointerCapture(event.pointerId);
-              onPointerMove(event);
-              if (!spectating) setTouch({ attack: true });
-            }}
-            onPointerUp={() => setTouch({ attack: false })}
-            onPointerCancel={() => setTouch({ attack: false })}
-            onLostPointerCapture={() => setTouch({ attack: false })}
-            className="w-full touch-none bg-black"
-            aria-label="Arena de Battle Royale"
-          />
+          {render3d.mode === '3d' ? (
+            <Board3D loading={<div className="aspect-[4/5] w-full bg-black sm:aspect-square" />}>
+              <ArenaBoard3D
+                getLive={() => {
+                  const snapshot = snapshotRef.current as ArenaSnapshot | null;
+                  const live =
+                    snapshot && 'fighters' in snapshot && 'zone' in snapshot ? snapshot : null;
+                  return {
+                    fighters: live?.fighters ?? state.fighters,
+                    zone: live?.zone ?? state.zone,
+                    pickups: state.pickups.length > 0 ? (live?.pickups ?? state.pickups) : [],
+                  };
+                }}
+                players={room?.players ?? []}
+                myId={session?.playerId}
+                spectating={spectating}
+                onFacing={(angle) => {
+                  facingRef.current = angle;
+                  publish();
+                }}
+                onAttack={(attack) => setTouch({ attack })}
+                onGiveUp={fallBackTo2D}
+              />
+            </Board3D>
+          ) : (
+            <canvas
+              ref={canvasRef}
+              width={VIEW}
+              height={VIEW}
+              onPointerMove={onPointerMove}
+              onPointerDown={(event) => {
+                event.currentTarget.setPointerCapture(event.pointerId);
+                onPointerMove(event);
+                if (!spectating) setTouch({ attack: true });
+              }}
+              onPointerUp={() => setTouch({ attack: false })}
+              onPointerCancel={() => setTouch({ attack: false })}
+              onLostPointerCapture={() => setTouch({ attack: false })}
+              className="w-full touch-none bg-black"
+              aria-label="Arena de Battle Royale"
+            />
+          )}
 
           {state.phase === 'countdown' && (
             <div className="absolute inset-1.5 z-4 flex items-center justify-center rounded-[0.95rem] bg-black/70 backdrop-blur-xs">

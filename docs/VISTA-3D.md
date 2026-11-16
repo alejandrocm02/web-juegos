@@ -1,6 +1,7 @@
 # Vista 3D
 
-Billar, Bolos, Minigolf y Dardos tienen una vista 3D optativa que convive con la 2D. Por defecto
+Doce de los catorce juegos tienen una vista 3D optativa (todos menos Quiz y
+Songless, que son de texto y audio) que convive con la 2D. Por defecto
 se sigue viendo la 2D.
 
 ## Cómo se activa
@@ -32,6 +33,23 @@ cliente: cambiar de vista en mitad de una partida no altera nada.
   aplica la dispersión y puntúa, y el dardo vuela hasta ese impacto. Con
   teclado: flechas para mover la mira (con Mayús, ajuste fino) y espacio.
 
+- **Tanques:** diorama lateral con los tres mapas; la trayectoria prevista usa
+  los mismos números que la 2D. Controles HTML y teclado sin cambios.
+- **Blackjack:** las cartas del servidor se reparten sobre la mesa. Totales,
+  botones y resultados siguen en HTML, y las cartas se conservan como texto
+  para lectores de pantalla.
+- **Karts:** la cámara va detrás del kart propio; el asfalto sale de las mismas
+  puertas con las que el servidor cuenta vueltas. Al terminar, o como
+  espectador, se ve el circuito entero.
+- **Battle Royale:** la cámara sigue al jugador con el norte al fondo, así que
+  las teclas significan lo mismo que en 2D. El puntero se proyecta sobre el
+  suelo para orientar el ataque.
+- **Air Hockey y Tenis de mesa:** la mesa se ve desde detrás del lado propio.
+  El puntero se proyecta sobre la mesa y, con teclado, «arriba» es hacia la red.
+- **Head Soccer y Head Basketball:** el mismo partido de lado, con volumen;
+  porterías, aros y tableros usan las medidas con las que el servidor decide
+  un gol o una canasta.
+
 ## Vuelta automática a 2D
 
 La sesión vuelve a 2D, sin salir de la partida y con un aviso, cuando:
@@ -44,16 +62,22 @@ La sesión vuelve a 2D, sin salir de la partida y con un aviso, cuando:
 
 ## Código
 
-| Archivo                                  | Qué contiene                                                  |
-| ---------------------------------------- | ------------------------------------------------------------- |
-| `apps/web/src/lib/renderMode.ts`         | Vista pedida, soporte de WebGL2 y fallback de la sesión       |
-| `apps/web/src/components/RenderMode.tsx` | Botón 2D/3D y envoltorio que captura fallos de carga          |
-| `apps/web/src/three/stage.ts`            | Renderer, luces, bucle, pausa, vigilancia de fps y `dispose`  |
-| `apps/web/src/three/aim.ts`              | Puntería de tirachinas independiente de la cámara (con tests) |
-| `apps/web/src/three/PoolBoard3D.tsx`     | Mesa de billar                                                |
-| `apps/web/src/three/BowlingBoard3D.tsx`  | Pista de bolos                                                |
-| `apps/web/src/three/GolfBoard3D.tsx`     | Recorrido de minigolf                                         |
-| `apps/web/src/three/DartsBoard3D.tsx`    | Diana                                                         |
+| Archivo                                   | Qué contiene                                                  |
+| ----------------------------------------- | ------------------------------------------------------------- |
+| `apps/web/src/lib/renderMode.ts`          | Vista pedida, soporte de WebGL2 y fallback de la sesión       |
+| `apps/web/src/components/RenderMode.tsx`  | Botón 2D/3D y envoltorio que captura fallos de carga          |
+| `apps/web/src/three/stage.ts`             | Renderer, luces, bucle, pausa, vigilancia de fps y `dispose`  |
+| `apps/web/src/three/aim.ts`               | Puntería de tirachinas independiente de la cámara (con tests) |
+| `apps/web/src/three/PoolBoard3D.tsx`      | Mesa de billar                                                |
+| `apps/web/src/three/BowlingBoard3D.tsx`   | Pista de bolos                                                |
+| `apps/web/src/three/GolfBoard3D.tsx`      | Recorrido de minigolf                                         |
+| `apps/web/src/three/DartsBoard3D.tsx`     | Diana                                                         |
+| `apps/web/src/three/TanksBoard3D.tsx`     | Campo de batalla de Tanques                                   |
+| `apps/web/src/three/BlackjackBoard3D.tsx` | Mesa de blackjack                                             |
+| `apps/web/src/three/KartsBoard3D.tsx`     | Circuito de karts                                             |
+| `apps/web/src/three/ArenaBoard3D.tsx`     | Arena de Battle Royale                                        |
+| `apps/web/src/three/ArcadeBoard3D.tsx`    | Air Hockey y Tenis de mesa                                    |
+| `apps/web/src/three/HeadBoard3D.tsx`      | Head Soccer y Head Basketball                                 |
 
 ## Peso
 

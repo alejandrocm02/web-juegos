@@ -6,12 +6,18 @@ import {
   type KartState,
   clamp,
 } from '@arcade/shared';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { resetToViewport, syncCanvasResolution, type Viewport } from '../lib/canvas.js';
 import { HoldButton } from '../components/HoldButton.js';
 import { listenGameKeys } from '../lib/game-input.js';
 import { useApp } from '../store.js';
+import { fallBackTo2D, useRenderMode } from '../lib/renderMode.js';
+import { Board3D, RenderModeToggle } from '../components/RenderMode.js';
+
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
+
+// Three.js solo se descarga si alguien abre la vista 3D.
+const KartsBoard3D = lazy(() => import('../three/KartsBoard3D.js'));
 
 const VIEW_W = 1000;
 const VIEW_H = 640;
@@ -27,6 +33,7 @@ const NEUTRAL: DriveInput = { throttle: 0, steer: 0, braking: false };
 export default function KartsView({ state }: { state: KartsPublicState }) {
   const { sendAction, session, room, snapshotRef, connected } = useApp();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const render3d = useRenderMode();
   const phaseRef = useRef(state.phase);
   const keysRef = useRef(new Set<string>());
   const touchRef = useRef<DriveInput>({ ...NEUTRAL });
@@ -168,14 +175,33 @@ export default function KartsView({ state }: { state: KartsPublicState }) {
           )}
         </div>
 
+        <RenderModeToggle />
+
         <div className="game-board-frame relative">
-          <canvas
-            ref={canvasRef}
-            width={VIEW_W}
-            height={VIEW_H}
-            className="w-full bg-black"
-            aria-label={'Circuito ' + state.track.name}
-          />
+          {render3d.mode === '3d' ? (
+            <Board3D
+              loading={<div className="aspect-[4/5] w-full bg-black sm:aspect-[1000/640]" />}
+            >
+              <KartsBoard3D
+                track={state.track}
+                getKarts={() => {
+                  const snapshot = snapshotRef.current as KartsSnapshot | null;
+                  return snapshot && 'karts' in snapshot ? snapshot.karts : state.karts;
+                }}
+                players={room?.players ?? []}
+                myId={session?.playerId}
+                onGiveUp={fallBackTo2D}
+              />
+            </Board3D>
+          ) : (
+            <canvas
+              ref={canvasRef}
+              width={VIEW_W}
+              height={VIEW_H}
+              className="w-full bg-black"
+              aria-label={'Circuito ' + state.track.name}
+            />
+          )}
 
           {state.phase === 'countdown' && (
             <div className="absolute inset-1.5 z-4 flex items-center justify-center rounded-[0.95rem] bg-black/70 backdrop-blur-xs">
