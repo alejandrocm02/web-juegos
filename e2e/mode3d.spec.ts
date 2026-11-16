@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 /**
- * Vista 3D de billar, bolos, minigolf y dardos.
+ * Vista 3D de los doce juegos que la tienen.
  *
  * La 3D es optativa y convive con la 2D. Aquí se comprueba lo que no puede
  * romperse: que `?mode=3d` la activa, que la partida sigue llegando del
@@ -120,6 +120,51 @@ test('dardos: un toque en la diana 3D lanza y el servidor puntúa', async ({ pag
   await page.keyboard.press('ArrowUp');
   await page.keyboard.press('Space');
   await expect(page.getByText(/1 disponible/)).toBeVisible({ timeout: 15_000 });
+  expect(errors).toEqual([]);
+});
+
+// El resto de juegos comparte el mismo contrato: la vista 3D aparece, no da
+// errores con una partida real en marcha y se puede volver a 2D sin salir.
+for (const [game, label2d] of [
+  ['Tanques', 'Campo de batalla de Tanques'],
+  ['Karts', /^Circuito /],
+  ['Battle Royale', 'Arena de Battle Royale'],
+  ['Air Hockey', 'Mesa de Air Hockey'],
+  ['Tenis de mesa', 'Mesa de tenis'],
+  ['Head Soccer', 'Campo de Head Soccer'],
+  ['Head Basketball', 'Cancha de Head Basketball'],
+] as const) {
+  test(`${game}: la vista 3D carga con la partida en marcha y se puede volver a 2D`, async ({
+    page,
+  }) => {
+    const errors = collectErrors(page);
+    await practise(page, game, '?mode=3d');
+    test.skip(!(await hasWebGL2(page)), 'Este navegador de pruebas no tiene WebGL2');
+
+    const board = page.locator('canvas[data-render="3d"]');
+    await expect(board).toBeVisible({ timeout: 20_000 });
+    // Unos segundos de partida real: cuenta atrás, primeros snapshots y movimiento.
+    await page.waitForTimeout(4_000);
+
+    await page.getByRole('button', { name: 'Volver a la vista 2D' }).click();
+    await expect(page.getByLabel(label2d, { exact: typeof label2d === 'string' })).toBeVisible();
+    await expect(board).toHaveCount(0);
+    expect(errors).toEqual([]);
+  });
+}
+
+test('blackjack: la mesa 3D reparte y las cartas siguen disponibles como texto', async ({
+  page,
+}) => {
+  const errors = collectErrors(page);
+  await practise(page, 'Blackjack', '?mode=3d');
+  test.skip(!(await hasWebGL2(page)), 'Este navegador de pruebas no tiene WebGL2');
+
+  await expect(page.locator('canvas[data-render="3d"]')).toBeVisible({ timeout: 20_000 });
+  // El lienzo es decorativo: quien usa lector de pantalla sigue teniendo la carta oculta anunciada.
+  await expect(page.getByLabel('Carta oculta')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Plantarse' }).click();
+  await expect(page.getByLabel('Carta oculta')).toHaveCount(0, { timeout: 15_000 });
   expect(errors).toEqual([]);
 });
 
