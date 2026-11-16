@@ -26,6 +26,12 @@ RUN npm run build
 # La imagen final solo necesita dependencias de produccion. Prisma permanece
 # porque la sincronizacion de SQLite se realiza al arrancar.
 RUN npm prune --omit=dev
+# npm solo sube a la raiz una version de cada paquete. Cuando dos espacios de
+# trabajo piden versiones distintas (zod 4 en servidor y shared, zod 3 en una
+# herramienta de desarrollo), la que pierde se instala dentro del propio
+# espacio. Esas carpetas tambien hay que llevarlas a la imagen final; se crean
+# vacias si no existen para que el COPY no dependa de como reparta npm.
+RUN mkdir -p apps/server/node_modules packages/shared/node_modules packages/game-engine/node_modules
 
 FROM node:22-alpine AS runtime
 WORKDIR /app
@@ -36,10 +42,13 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/package-lock.json ./package-lock.json
 COPY --from=build /app/packages/shared/package.json ./packages/shared/package.json
+COPY --from=build /app/packages/shared/node_modules ./packages/shared/node_modules
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/packages/game-engine/package.json ./packages/game-engine/package.json
+COPY --from=build /app/packages/game-engine/node_modules ./packages/game-engine/node_modules
 COPY --from=build /app/packages/game-engine/dist ./packages/game-engine/dist
 COPY --from=build /app/apps/server/package.json ./apps/server/package.json
+COPY --from=build /app/apps/server/node_modules ./apps/server/node_modules
 COPY --from=build /app/apps/server/dist ./apps/server/dist
 COPY --from=build /app/apps/server/prisma ./apps/server/prisma
 COPY --from=build /app/apps/server/scripts ./apps/server/scripts

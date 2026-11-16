@@ -59,3 +59,35 @@ jobs:
             test-results/
           if-no-files-found: ignore
           retention-days: 7
+
+  # Los tests no ejecutan el contenedor, y ya van dos veces que un cambio pasa
+  # `check` y rompe el despliegue (Prisma 7, Zod 4). Aqui se construye la misma
+  # imagen que usa Render y se comprueba que arranca y responde.
+  imagen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v7
+
+      - name: Construir la imagen de produccion
+        run: docker build -t parque-arcade:ci .
+
+      - name: Arrancar y comprobar que responde
+        run: |
+          docker run -d --name arcade -p 3001:3001 parque-arcade:ci
+          for intento in $(seq 1 30); do
+            if curl -fsS http://localhost:3001/api/health; then
+              echo
+              echo "Arrancado en el intento $intento"
+              break
+            fi
+            sleep 2
+          done
+          docker logs arcade
+          curl -fsS http://localhost:3001/api/health > /dev/null
+          curl -fsS http://localhost:3001/ | grep -q '<div id="root"'
+          # El arranque captura los fallos de base de datos y sigue en memoria:
+          # sin esta linea la web se veria bien y las marcas no se guardarian.
+          docker logs arcade 2>&1 | grep -q 'Persistencia SQLite lista'
+
