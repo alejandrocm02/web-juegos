@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { gameActionSchema, settingsPatchSchema } from '../src/events.js';
+import { gameActionSchema, settingsPatchSchema } from '../src/schemas.js';
 
 describe('contratos de Tanques', () => {
   it('acepta modos y mapas válidos', () => {
