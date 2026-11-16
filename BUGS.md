@@ -34,9 +34,12 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 
 - Juego/zona: partidas por rondas (Quiz, Songless, Dardos).
 - Pasos para reproducir: dos clientes en la misma sala; dejar uno en segundo plano varios minutos durante la partida y volver.
-- Esperado / Real: el cliente salta directamente al estado actual / se reproducen varias rondas seguidas.
-- Causa: **sin confirmar**. Lo comprobado: el estado de juego no se encola (`store.tsx` sustituye `gameState` con el último recibido) y las rondas avanzan en el servidor. Hipótesis a verificar: los efectos de `game:event` (avisos, sonidos, destacados) sí se acumulan y se disparan juntos al volver, y los bucles de `requestAnimationFrame` reciben un `dt` enorme en el primer fotograma.
-- Estado: abierto. Siguiente paso: reproducirlo con Playwright (dos contextos, uno con `visibilityState = hidden`) antes de tocar código.
+- Esperado / Real: el cliente salta directamente al estado actual / se reproducían varias rondas seguidas (auditoría de septiembre).
+- Causa: Socket.IO guarda las emisiones hechas sin conexión y las reenvía al reconectar, así que las acciones de una pestaña que había perdido la conexión llegaban todas de golpe. Lo corrigió la PR #42 (20 oct.): `sendAction` ya no emite sin conexión.
+- Comprobado el 9 nov. sobre `main`: el estado de juego no se encola (cada mensaje sustituye al anterior), los avisos destacados tampoco (el último gana) y todos los bucles de animación limitan el salto a 50 ms por fotograma. Con el hilo del invitado bloqueado 24 s mientras la sala avanza de ronda, al soltarlo procesa los mensajes acumulados en menos de 30 ms y pinta directamente la ronda actual.
+- Descartado: la congelación por CDP (`Page.setWebLifecycleState`) no tiene efecto en headless; por eso la prueba bloquea el hilo principal.
+- Prueba: `e2e/background-tab.spec.ts`. Pasa con el código actual y falla (repetición de 1,8 s) si se simula una cola de estados.
+- Estado: resuelto (PR #42) y cubierto por prueba de regresión.
 
 ## [P1] Billar y minigolf no se pueden jugar sin ratón o pantalla táctil
 
