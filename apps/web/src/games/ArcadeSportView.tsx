@@ -9,9 +9,14 @@ import {
   type TeamId,
   clamp,
 } from '@arcade/shared';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { Panel, PlayerIconGlyph } from '../components/ui.js';
 import { syncCanvasResolution } from '../lib/canvas.js';
+import { fallBackTo2D, useRenderMode } from '../lib/renderMode.js';
+import { Board3D, RenderModeToggle } from '../components/RenderMode.js';
+
+// Three.js solo se descarga si alguien abre la vista 3D.
+const ArcadeBoard3D = lazy(() => import('../three/ArcadeBoard3D.js'));
 import { listenGameKeys } from '../lib/game-input.js';
 import { useApp } from '../store.js';
 
@@ -23,6 +28,12 @@ interface RenderState {
 export default function ArcadeSportView({ state }: { state: ArcadeSportPublicState }) {
   const { room, session, sendAction, snapshotRef } = useApp();
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const render3d = useRenderMode();
+  /**
+   * Ejes del teclado. En 3D la mesa se ve desde detrás del propio lado, así que
+   * «arriba» es hacia la red y «derecha» es a lo ancho de la mesa.
+   */
+  const keyAxesRef = useRef({ xFromX: 1, xFromY: 0, yFromX: 0, yFromY: 1 });
   const keysRef = useRef(new Set<string>());
   const targetRef = useRef({ x: 0.5, y: 0.5 });
   const lastSentRef = useRef({ x: -1, y: -1 });
@@ -116,8 +127,17 @@ export default function ArcadeSportView({ state }: { state: ArcadeSportPublicSta
       const dx = (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0);
       const dy = (keys.has('down') ? 1 : 0) - (keys.has('up') ? 1 : 0);
       if (dx || dy) {
-        targetRef.current.x = clamp(targetRef.current.x + dx * dt * 0.72, 0, 1);
-        targetRef.current.y = clamp(targetRef.current.y + dy * dt * 0.92, 0, 1);
+        const axes = keyAxesRef.current;
+        targetRef.current.x = clamp(
+          targetRef.current.x + (dx * axes.xFromX + dy * axes.xFromY) * dt * 0.72,
+          0,
+          1,
+        );
+        targetRef.current.y = clamp(
+          targetRef.current.y + (dx * axes.yFromX + dy * axes.yFromY) * dt * 0.92,
+          0,
+          1,
+        );
         sendAccumulator += dt;
         if (sendAccumulator >= 0.115) {
           sendAccumulator = 0;
@@ -159,11 +179,25 @@ export default function ArcadeSportView({ state }: { state: ArcadeSportPublicSta
     return () => cancelAnimationFrame(frame);
   }, [meId, room?.players, snapshotRef, state]);
 
+  // Rojo ve la mesa desde la izquierda y azul desde la derecha: las flechas siguen a la pantalla.
+  keyAxesRef.current =
+    render3d.mode !== '3d' || !myTeam
+      ? { xFromX: 1, xFromY: 0, yFromX: 0, yFromY: 1 }
+      : myTeam === 'rojo'
+        ? { xFromX: 0, xFromY: -1, yFromX: 1, yFromY: 0 }
+        : { xFromX: 0, xFromY: 1, yFromX: -1, yFromY: 0 };
+
   const pointAt = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!myTeam || state.phase !== 'playing') return;
     const rect = event.currentTarget.getBoundingClientRect();
-    const fieldX = clamp((event.clientX - rect.left) / rect.width, 0, 1);
-    const fieldY = clamp((event.clientY - rect.top) / rect.height, 0, 1);
+    aimAtField(
+      clamp((event.clientX - rect.left) / rect.width, 0, 1),
+      clamp((event.clientY - rect.top) / rect.height, 0, 1),
+    );
+  };
+
+  /** Coloca la pala en un punto del campo (fracciones 0..1). Lo usan las dos vistas. */
+  const aimAtField = (fieldX: number, fieldY: number) => {
+    if (!myTeam || state.phase !== 'playing') return;
     targetRef.current = {
       x: myTeam === 'rojo' ? clamp(fieldX * 2, 0, 1) : clamp((fieldX - 0.5) * 2, 0, 1),
       y: fieldY,
@@ -189,21 +223,42 @@ export default function ArcadeSportView({ state }: { state: ArcadeSportPublicSta
           <TeamScore team="azul" value={state.scores.azul} />
         </div>
 
+        <RenderModeToggle />
+
         <div className="game-board-frame relative overflow-hidden">
-          <canvas
-            ref={canvasRef}
-            width={SPORT_FIELD.width}
-            height={SPORT_FIELD.height}
-            className="w-full touch-none bg-black"
-            aria-label={state.game === 'air-hockey' ? 'Mesa de Air Hockey' : 'Mesa de tenis'}
-            onPointerDown={(event) => {
-              event.currentTarget.setPointerCapture(event.pointerId);
-              pointAt(event);
-            }}
-            onPointerMove={(event) => {
-              if (event.buttons > 0 || event.pointerType === 'touch') pointAt(event);
-            }}
-          />
+          {render3d.mode === '3d' ? (
+            <Board3D loading={<div className="aspect-[4/5] w-full bg-black sm:aspect-[5/3]" />}>
+              <ArcadeBoard3D
+                game={state.game}
+                getSnapshot={() => {
+                  const possible = snapshotRef.current;
+                  const live =
+                    possible && 'paddles' in possible ? (possible as ArcadeSportSnapshot) : null;
+                  return live?.teams ? live : state;
+                }}
+                players={room?.players ?? []}
+                meId={meId}
+                myTeam={myTeam}
+                onAim={aimAtField}
+                onGiveUp={fallBackTo2D}
+              />
+            </Board3D>
+          ) : (
+            <canvas
+              ref={canvasRef}
+              width={SPORT_FIELD.width}
+              height={SPORT_FIELD.height}
+              className="w-full touch-none bg-black"
+              aria-label={state.game === 'air-hockey' ? 'Mesa de Air Hockey' : 'Mesa de tenis'}
+              onPointerDown={(event) => {
+                event.currentTarget.setPointerCapture(event.pointerId);
+                pointAt(event);
+              }}
+              onPointerMove={(event) => {
+                if (event.buttons > 0 || event.pointerType === 'touch') pointAt(event);
+              }}
+            />
+          )}
           {state.phase === 'countdown' && (
             <div className="absolute inset-1.5 z-4 flex items-center justify-center rounded-[0.95rem] bg-black/70 backdrop-blur-xs">
               <div className="game-countdown">
