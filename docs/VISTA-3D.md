@@ -1,14 +1,18 @@
 # Vista 3D
 
-Doce de los catorce juegos tienen una vista 3D optativa (todos menos Quiz y
-Songless, que son de texto y audio) que convive con la 2D. Por defecto
-se sigue viendo la 2D.
+Doce de los catorce juegos tienen vista 3D (todos menos Quiz y Songless, que
+son de texto y audio). Desde el 18 de noviembre de 2026 **la 3D es la vista por
+defecto**; la 2D sigue en el código como alternativa y como respaldo
+automático.
 
-## Cómo se activa
+## Cómo se elige
 
-- Con el botón **«Probar la vista 3D (beta)»** de cada juego.
-- Con `?mode=3d` en la URL (y `?mode=2d` para volver). La elección se recuerda
-  en el navegador (`localStorage`, clave `arcade:render-mode`).
+- Con el botón de cada juego: **«Volver a la vista 2D»** / **«Ver en 3D»**.
+- Con `?mode=2d` o `?mode=3d` en la URL. La elección se recuerda en el
+  navegador (`localStorage`, clave `arcade:render-mode`). Solo quien eligió la
+  2D expresamente la mantiene; sin elección guardada se ve la 3D.
+- Las pruebas E2E arrancan con la 2D guardada (ver `playwright.config.ts`),
+  salvo las de `e2e/mode3d.spec.ts`, que piden la 3D.
 
 ## Qué hace y qué no
 

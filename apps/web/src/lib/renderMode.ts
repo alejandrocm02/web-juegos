@@ -3,11 +3,12 @@ import { useSyncExternalStore } from 'react';
 /**
  * Vista 2D o 3D de los juegos que tienen las dos.
  *
- * La 3D es opcional y convive con la 2D: se activa con `?mode=3d` (o con el
- * botón de cada juego) y se recuerda en este navegador. Si el dispositivo no
- * puede con ella —sin WebGL2, contexto perdido o por debajo de 25 fps— se
- * vuelve a la 2D durante esta sesión sin tocar la partida: el estado lo manda
- * el servidor y las dos vistas pintan lo mismo.
+ * La 3D es la vista por defecto desde el 18 nov. de 2026 y la 2D sigue
+ * disponible: `?mode=2d` (o el botón de cada juego) la elige y se recuerda en
+ * este navegador. Si el dispositivo no puede con la 3D —sin WebGL2, contexto
+ * perdido o por debajo de 25 fps— se vuelve a la 2D durante esta sesión sin
+ * tocar la partida: el estado lo manda el servidor y las dos vistas pintan lo
+ * mismo.
  */
 
 export type RenderMode = '2d' | '3d';
@@ -28,10 +29,11 @@ export function readRequestedMode(
     }
     return param;
   }
+  // Solo quien ha elegido la 2D expresamente la mantiene; el resto ve la 3D.
   try {
-    return storage?.getItem(STORAGE_KEY) === '3d' ? '3d' : '2d';
+    return storage?.getItem(STORAGE_KEY) === '2d' ? '2d' : '3d';
   } catch {
-    return '2d';
+    return '3d';
   }
 }
 

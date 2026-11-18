@@ -14,6 +14,19 @@ export default defineConfig({
   use: {
     baseURL: 'http://localhost:5173',
     trace: 'retain-on-failure',
+    // La 3D es la vista por defecto, pero la mayoria de las pruebas manejan los
+    // tableros 2D (arrastrar en el lienzo, leer etiquetas). Arrancan con la 2D
+    // elegida; las de e2e/mode3d.spec.ts piden la 3D con ?mode=3d o vacian el
+    // almacenamiento para comprobar el valor por defecto.
+    storageState: {
+      cookies: [],
+      origins: [
+        {
+          origin: 'http://localhost:5173',
+          localStorage: [{ name: 'arcade:render-mode', value: '2d' }],
+        },
+      ],
+    },
     ...devices['Desktop Chrome'],
   },
   webServer: [
