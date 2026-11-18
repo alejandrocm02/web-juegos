@@ -39,7 +39,7 @@ export function RenderModeToggle() {
         aria-pressed={render.mode === '3d'}
         onClick={() => setRenderMode(render.mode === '3d' ? '2d' : '3d')}
       >
-        {render.mode === '3d' ? 'Volver a la vista 2D' : 'Probar la vista 3D (beta)'}
+        {render.mode === '3d' ? 'Volver a la vista 2D' : 'Ver en 3D'}
       </button>
       <span role="status" className="text-slate-400">
         {render.fallback ? `Vista 2D: ${render.fallback}.` : ''}

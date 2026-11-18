@@ -3,8 +3,8 @@ import { expect, test, type Page } from '@playwright/test';
 /**
  * Vista 3D de los doce juegos que la tienen.
  *
- * La 3D es optativa y convive con la 2D. Aquí se comprueba lo que no puede
- * romperse: que `?mode=3d` la activa, que la partida sigue llegando del
+ * La 3D es la vista por defecto y convive con la 2D. Aquí se comprueba lo que
+ * no puede romperse: que se ve sin tocar nada, que `?mode=3d` la activa, que la partida sigue llegando del
  * servidor, que se puede volver a 2D sin salir de la partida y que un
  * navegador sin WebGL2 juega en 2D como si nada.
  */
@@ -184,5 +184,25 @@ test('sin WebGL2 se juega en 2D aunque se pida 3D', async ({ page }) => {
 
   await expect(page.getByLabel('Mesa de billar', { exact: true })).toBeVisible({ timeout: 20_000 });
   await expect(page.locator('canvas[data-render="3d"]')).toHaveCount(0);
-  await expect(page.getByRole('button', { name: /vista 3D/ })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /3D/ })).toHaveCount(0);
+});
+
+test.describe('sin preferencia guardada', () => {
+  // Navegador nuevo: sin la 2D que fija playwright.config.ts para el resto.
+  test.use({ storageState: { cookies: [], origins: [] } });
+
+  test('la 3D es la vista por defecto y la 2D sigue a un clic', async ({ page }) => {
+    const errors = collectErrors(page);
+    await practise(page, 'Billar');
+    test.skip(!(await hasWebGL2(page)), 'Este navegador de pruebas no tiene WebGL2');
+
+    const board = page.locator('canvas[data-render="3d"]');
+    await expect(board).toBeVisible({ timeout: 20_000 });
+
+    // Elegir la 2D se recuerda: al recargar sigue en 2D.
+    await page.getByRole('button', { name: 'Volver a la vista 2D' }).click();
+    await expect(page.getByRole('button', { name: 'Ver en 3D' })).toBeVisible();
+    expect(await page.evaluate(() => localStorage.getItem('arcade:render-mode'))).toBe('2d');
+    expect(errors).toEqual([]);
+  });
 });

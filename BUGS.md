@@ -166,8 +166,9 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 
 - Juego/zona: Minigolf, escritorio y móvil.
 - Real: la cámara centra la bola y, con la bola en la salida, la mitad izquierda del lienzo queda vacía y el recorrido se corta por la derecha hasta pulsar «Ver el nivel (Z)».
-- Propuesta: limitar la cámara a los bordes del hoyo, o mostrar el hoyo entero un segundo al empezar.
-- Estado: abierto.
+- Causa: la cámara se centraba en la bola tal cual, sin tener en cuenta los bordes del hoyo.
+- Arreglo: `followCamera` (`apps/web/src/games/golf-render.ts`) detiene el encuadre en los bordes del hoyo y lo centra en el eje en que cabe entero. Al empezar el hoyo 1 se ve ahora el recorrido completo. Tests en `apps/web/tests/golf-render.test.ts`.
+- Estado: resuelto (rama `fix/camara-minigolf`).
 
 ## [P1] Bolos: en multijugador cada jugador jugaba la partida entera seguida
 

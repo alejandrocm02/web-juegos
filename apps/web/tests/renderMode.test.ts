@@ -11,8 +11,12 @@ function memoryStorage(initial: Record<string, string> = {}) {
 }
 
 describe('vista pedida (2D o 3D)', () => {
-  it('por defecto es 2D: la 3D no se activa sola', () => {
-    expect(readRequestedMode('', memoryStorage())).toBe('2d');
+  it('por defecto es 3D', () => {
+    expect(readRequestedMode('', memoryStorage())).toBe('3d');
+  });
+
+  it('quien eligió la 2D la conserva', () => {
+    expect(readRequestedMode('', memoryStorage({ 'arcade:render-mode': '2d' }))).toBe('2d');
   });
 
   it('?mode=3d la activa y la recuerda para la siguiente carga', () => {
@@ -41,8 +45,8 @@ describe('vista pedida (2D o 3D)', () => {
         throw new Error('bloqueado');
       },
     };
-    expect(readRequestedMode('', broken)).toBe('2d');
-    expect(readRequestedMode('?mode=3d', broken)).toBe('3d');
+    expect(readRequestedMode('', broken)).toBe('3d');
+    expect(readRequestedMode('?mode=2d', broken)).toBe('2d');
   });
 });
 

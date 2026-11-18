@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { getGolfLevel, type GolfBallState } from '@arcade/shared';
-import { drawGolfFrame, type PlayerLook, type RenderBall } from '../src/games/golf-render.js';
+import {
+  drawGolfFrame,
+  followCamera,
+  type PlayerLook,
+  type RenderBall,
+} from '../src/games/golf-render.js';
 
 /** Contexto 2D falso que apunta el orden de las operaciones de dibujo. */
 function createRecordingContext() {
@@ -192,5 +197,38 @@ describe('render del minigolf', () => {
       return ctx.calls.filter((c) => c.startsWith('fillRect')).join('|');
     };
     expect(snapshot(0)).not.toBe(snapshot(2.2));
+  });
+});
+
+describe('cámara del minigolf', () => {
+  const view = { w: 960, h: 560 };
+
+  it('con la bola en la salida no deja media pantalla vacía', () => {
+    // Hoyo 1: 940 × 300, salida pegada al borde izquierdo.
+    const level = getGolfLevel(1);
+    const camera = followCamera(level.start, level.size, 1, view);
+    // El hoyo cabe a lo ancho y a lo alto: se centra entero.
+    expect(camera).toEqual({ x: level.size.w / 2, y: level.size.h / 2 });
+    // Antes la cámara se centraba en la salida y enseñaba 480 unidades a su izquierda.
+    expect(camera.x - view.w / 2).toBeGreaterThanOrEqual(-10);
+  });
+
+  it('en un hoyo más alto que la pantalla sigue a la bola sin salirse por arriba ni por abajo', () => {
+    const size = { w: 940, h: 700 };
+    expect(followCamera({ x: 100, y: 20 }, size, 1, view).y).toBe(280);
+    expect(followCamera({ x: 100, y: 690 }, size, 1, view).y).toBe(420);
+    expect(followCamera({ x: 100, y: 350 }, size, 1, view).y).toBe(350);
+  });
+
+  it('en un hoyo más ancho que la pantalla se detiene en los bordes', () => {
+    const size = { w: 1000, h: 700 };
+    expect(followCamera({ x: 10, y: 350 }, size, 1, view).x).toBe(480);
+    expect(followCamera({ x: 990, y: 350 }, size, 1, view).x).toBe(520);
+  });
+
+  it('con más zoom el margen se recalcula', () => {
+    const size = { w: 940, h: 640 };
+    // A zoom 2 se ven 480 × 280 unidades: la bola en x=50 deja la cámara en 240.
+    expect(followCamera({ x: 50, y: 50 }, size, 2, view)).toEqual({ x: 240, y: 140 });
   });
 });

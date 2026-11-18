@@ -2,6 +2,16 @@
 
 Cambios visibles para quien juega o despliega, del más reciente al más antiguo.
 
+## Sin publicar
+
+### Cambiado
+
+- **Los juegos se ven en 3D por defecto.** Billar, Bolos, Minigolf, Dardos, Tanques, Blackjack, Head Soccer, Head Basketball, Air Hockey, Tenis de mesa, Karts y Battle Royale abren directamente en 3D. La 2D sigue a un clic con «Volver a la vista 2D» y se recuerda; y si el dispositivo no tiene WebGL2 o va por debajo de 25 fps, la partida pasa sola a 2D sin cortarse. Quiz y Songless siguen como estaban.
+
+### Corregido
+
+- **Minigolf en 2D:** al empezar un hoyo ya se ve el recorrido, no media pantalla vacía. La cámara sigue a la bola pero se detiene en los bordes del hoyo.
+
 ## 18 de noviembre de 2026
 
 ### Añadido
