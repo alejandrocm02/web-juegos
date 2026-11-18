@@ -11,11 +11,30 @@ import { clamp, jitter, type BotBrain, type BotThinkContext } from './types.js';
 const ZONE_SAFETY = 46;
 
 /**
+ * Penalizacion (en unidades de distancia) por cada otro luchador que ya esta
+ * encima de un rival. Evita que todos los bots se lancen a la vez a por el
+ * mismo jugador, que es lo que hacia caer en segundos a quien no se movia.
+ */
+const CROWD_PENALTY = 220;
+
+/** Radio en el que se considera que otro luchador ya esta peleando con un rival. */
+const ENGAGED_RADIUS = ARENA.attackRange * 1.6;
+
+/** Clave de memoria con el instante (matchMs) a partir del cual puede volver a atacar. */
+const NEXT_ATTACK = 'nextAttackAtMs';
+
+/**
  * Luchador automatico del battle royale.
  *
  * Prioridades, en orden: no morir por la tormenta, recoger un objeto util si
  * queda de camino y perseguir al rival mas cercano. Ataca cuando lo tiene
  * dentro del cono y respeta el enfriamiento igual que un humano.
+ *
+ * Mientras dura la gracia inicial de la zona no sale a cazar: recoge objetos y
+ * solo se defiende si alguien se le pone al alcance. Asi quien entra por
+ * primera vez tiene tiempo de aprender a moverse. Ademas, tras cada golpe
+ * duda un tiempo que depende de la dificultad, y prefiere rivales que no
+ * esten ya peleando con otro.
  */
 export class ArenaBot implements BotBrain {
   think(state: GamePublicState, ctx: BotThinkContext): GameAction[] {
@@ -24,7 +43,11 @@ export class ArenaBot implements BotBrain {
     if (!me?.alive) return [];
 
     const target = this.pickTarget(state.fighters, me);
-    const goal = this.chooseGoal(state, me, target);
+    const targetDistance = target ? Math.hypot(target.x - me.x, target.y - me.y) : Infinity;
+    // En la apertura solo pelea si el rival ya esta encima.
+    const opening = state.matchMs < ARENA.zoneGraceMs;
+    const hunting = target !== null && (!opening || targetDistance <= ARENA.attackRange * 1.2);
+    const goal = this.chooseGoal(state, me, hunting ? target : null);
 
     let dx = goal.x - me.x;
     let dy = goal.y - me.y;
@@ -47,12 +70,24 @@ export class ArenaBot implements BotBrain {
       ? Math.atan2(target.y - me.y, target.x - me.x) + jitter(ctx.random, ctx.meta.noise * 0.5)
       : Math.atan2(dy, dx);
 
-    const targetDistance = target ? Math.hypot(target.x - me.x, target.y - me.y) : Infinity;
+    const readyAt = typeof ctx.memory[NEXT_ATTACK] === 'number' ? ctx.memory[NEXT_ATTACK] : 0;
     const wantsAttack =
-      target !== null &&
+      hunting &&
       targetDistance <= ARENA.attackRange * 0.92 &&
       me.attackCooldownMs <= 0 &&
+      state.matchMs >= readyAt &&
       ctx.random() < 0.35 + ctx.meta.skill * 0.65;
+    if (wantsAttack) {
+      // Duda tras cada golpe: un bot facil deja casi 3 s entre ataques, uno
+      // dificil apenas 1 s (el enfriamiento del arma es de 0,7 s para todos).
+      const clumsiness = 1 - ctx.meta.skill;
+      ctx.memory[NEXT_ATTACK] =
+        state.matchMs +
+        ARENA.attackCooldownMs +
+        ctx.meta.reactionMs +
+        clumsiness * 2600 +
+        ctx.random() * clumsiness * 1400;
+    }
 
     // Con poca vida el bot se retira en lugar de intercambiar golpes.
     const retreating = me.health < 30 && ctx.meta.skill > 0.5 && targetDistance < 120;
@@ -75,13 +110,22 @@ export class ArenaBot implements BotBrain {
     me: ArenaFighterState,
   ): ArenaFighterState | null {
     let best: ArenaFighterState | null = null;
-    let bestDistance = Infinity;
+    let bestScore = Infinity;
     for (const fighter of fighters) {
       if (!fighter.alive || fighter.playerId === me.playerId) continue;
       if (fighter.team && me.team && fighter.team === me.team) continue;
       const distance = Math.hypot(fighter.x - me.x, fighter.y - me.y);
-      if (distance < bestDistance) {
-        bestDistance = distance;
+      // Quien ya tiene a otro encima es peor objetivo, salvo que este muy cerca.
+      const crowd = fighters.filter(
+        (other) =>
+          other.alive &&
+          other.playerId !== me.playerId &&
+          other.playerId !== fighter.playerId &&
+          Math.hypot(other.x - fighter.x, other.y - fighter.y) <= ENGAGED_RADIUS,
+      ).length;
+      const score = distance + (distance > ARENA.attackRange ? crowd * CROWD_PENALTY : 0);
+      if (score < bestScore) {
+        bestScore = score;
         best = fighter;
       }
     }
@@ -116,7 +160,20 @@ export class ArenaBot implements BotBrain {
       if (distance <= ARENA.attackRange * 0.75) return { x: me.x, y: me.y };
       return { x: target.x, y: target.y };
     }
-    return { x: zone.x, y: zone.y };
+
+    // Sin nadie a quien perseguir (o en la apertura) va a por el objeto mas cercano.
+    let nearest: { x: number; y: number } | null = null;
+    let nearestDistance = Infinity;
+    for (const pickup of state.pickups) {
+      if (!pickup.active) continue;
+      if (Math.hypot(pickup.x - zone.x, pickup.y - zone.y) >= zone.radius - ZONE_SAFETY) continue;
+      const distance = Math.hypot(pickup.x - me.x, pickup.y - me.y);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearest = pickup;
+      }
+    }
+    return nearest ?? { x: zone.x, y: zone.y };
   }
 
   /** Vector de correccion para no encallar contra los obstaculos fijos. */
