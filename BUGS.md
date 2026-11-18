@@ -11,6 +11,16 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 - Arreglo: el `Dockerfile` copia también los `node_modules` anidados de cada espacio de trabajo, y la CI tiene un trabajo `imagen` que construye y arranca la imagen de producción y comprueba `/api/health`, la portada y el log de SQLite.
 - Estado: resuelto (PR #62, `51190e5`; desplegado el 16 nov., `dep-dbtoj5sipgvc739mkc1g`).
 
+## [P1] La vista 3D volvía a 2D con la ventana tapada o minimizada
+
+- Juego/zona: los doce juegos con vista 3D (comprobado en Billar, producción, 18 nov.).
+- Pasos para reproducir: abrir un juego en 3D con la ventana del navegador tapada por otra o minimizada unos segundos.
+- Esperado / Real: la 3D sigue al volver / aviso «Vista 2D: rendimiento insuficiente (1 fps)» y la sesión se queda en 2D.
+- Causa: Chrome reduce `requestAnimationFrame` a ~1 fps en ventanas tapadas sin marcar la página como oculta (`document.hidden` sigue en `false`), así que la vigilancia de fps lo tomaba por un equipo lento.
+- Arreglo: `apps/web/src/three/fps-guard.ts` descarta los fotogramas con un hueco de más de 0,5 s cuando el anterior costó menos de 50 ms (el navegador está estrangulando, no el equipo). Un equipo lento de verdad (fotogramas caros o por debajo de 25 fps con huecos cortos) sigue bajando a calidad baja y luego a 2D. Tests en `apps/web/tests/fps-guard.test.ts`.
+- Límite conocido: un equipo cuyo cuello de botella sea solo la GPU y vaya por debajo de 2 fps ya no vuelve solo a 2D; puede usar «Volver a la vista 2D».
+- Estado: resuelto (rama `fix/3d-fps-ventana-tapada`).
+
 ## [P2] Las estadísticas se pierden en cada despliegue
 
 - Juego/zona: servidor en Render, estadísticas y clasificaciones.

@@ -2,6 +2,12 @@
 
 Cambios visibles para quien juega o despliega, del más reciente al más antiguo.
 
+## Sin publicar
+
+### Corregido
+
+- **La vista 3D ya no se pasa a 2D por tapar la ventana.** Con la ventana minimizada o detrás de otra, el navegador frena el dibujo a 1 fps y el juego lo confundía con un equipo lento.
+
 ## 18 de noviembre de 2026 (segundo despliegue)
 
 ### Cambiado
