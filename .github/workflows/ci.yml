@@ -66,6 +66,21 @@ jobs:
   imagen:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    # Postgres de pruebas, el mismo motor que Neon en produccion.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: arcade
+          POSTGRES_PASSWORD: arcade
+          POSTGRES_DB: arcade
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U arcade"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v7
@@ -91,3 +106,31 @@ jobs:
           # sin esta linea la web se veria bien y las marcas no se guardarian.
           docker logs arcade 2>&1 | grep -q 'Persistencia SQLite lista'
 
+      - name: Arrancar con Postgres y comprobar que guarda y lee
+        env:
+          PGPASSWORD: arcade
+        run: |
+          # Misma imagen, otra DATABASE_URL: es como se despliega con Neon.
+          arrancar() {
+            docker run -d --name "$1" --network host -e PORT=3002 \
+              -e DATABASE_URL=postgresql://arcade:arcade@localhost:5432/arcade \
+              parque-arcade:ci
+            for intento in $(seq 1 30); do
+              curl -fsS http://localhost:3002/api/health > /dev/null && break
+              sleep 2
+            done
+            docker logs "$1"
+            docker logs "$1" 2>&1 | grep -q 'Persistencia Postgres lista'
+          }
+          arrancar arcade-pg
+          # El arranque ha creado las tablas con `db push`.
+          psql -h localhost -U arcade -d arcade -v ON_ERROR_STOP=1 -c '
+            INSERT INTO "MatchRecord" (id, "roomCode", game, players, winners)
+              VALUES ($$m1$$, $$CI001$$, $$quiz$$, 1, $$p1$$);
+            INSERT INTO "PlayerResult" (id, "matchId", alias, score, won)
+              VALUES ($$r1$$, $$m1$$, $$Persistente CI$$, 10, true);'
+          # Un despliegue nuevo es un contenedor nuevo: los datos deben seguir ahi
+          # y el `db push` del arranque no debe borrarlos.
+          docker rm -f arcade-pg
+          arrancar arcade-pg-2
+          curl -fsS http://localhost:3002/api/leaderboard | tee /dev/stderr | grep -q 'Persistente CI'

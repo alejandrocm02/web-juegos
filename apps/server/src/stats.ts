@@ -173,39 +173,68 @@ function toSoloRecord(row: PrismaSoloRecord): SoloRecord {
 
 let repository: StatsRepository = new MemoryStats();
 
-export async function initStats(): Promise<StatsRepository> {
-  try {
-    // Prisma 7 genera el cliente en src/generated/prisma y ya no acepta la URL
-    // desde el esquema: la conexion entra por un adaptador de driver.
-    const [{ PrismaClient }, { PrismaBetterSqlite3 }, schemaHelpers] = await Promise.all([
-      import('./generated/prisma/client.js'),
-      import('@prisma/adapter-better-sqlite3'),
-      // @ts-expect-error El script de Prisma es JavaScript plano, sin tipos.
-      import('../scripts/prisma-schema.mjs') as Promise<{
-        resolveDatabaseUrl(url: string, prismaDir: string): string;
-      }>,
+interface SchemaHelpers {
+  providerFor(url: string): 'sqlite' | 'postgresql';
+  resolveDatabaseUrl(url: string, prismaDir: string): string;
+}
+
+/** Cliente de Prisma con su adaptador, segun el proveedor de `DATABASE_URL`. */
+async function createClient(url: string, provider: 'sqlite' | 'postgresql'): Promise<unknown> {
+  if (provider === 'postgresql') {
+    // Se genera aparte (src/generated/prisma-pg): el cliente de Prisma 7 queda
+    // atado al proveedor con el que se genero.
+    const [{ PrismaClient }, { PrismaPg }] = await Promise.all([
+      import('./generated/prisma-pg/client.js'),
+      import('@prisma/adapter-pg'),
     ]);
-    // La ruta se ancla en la carpeta prisma, igual que hace la CLI, para que
-    // ambos abran el mismo fichero SQLite se lance el proceso desde donde se
-    // lance.
-    const prismaDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'prisma');
-    const adapter = new PrismaBetterSqlite3({
-      url: schemaHelpers.resolveDatabaseUrl(process.env.DATABASE_URL ?? 'file:./dev.db', prismaDir),
+    const adapter = new PrismaPg({
+      connectionString: url,
+      // Un solo proceso con poco trafico: pocas conexiones bastan, y Neon
+      // limita las del plan gratuito.
+      max: 5,
+      // Neon despierta en milisegundos, pero si no responde el servidor no
+      // debe quedarse colgado al arrancar: mejor seguir en memoria.
+      connectionTimeoutMillis: 10_000,
+      idleTimeoutMillis: 30_000,
     });
-    const client = new PrismaClient({ adapter });
+    return new PrismaClient({ adapter });
+  }
+  const [{ PrismaClient }, { PrismaBetterSqlite3 }] = await Promise.all([
+    import('./generated/prisma/client.js'),
+    import('@prisma/adapter-better-sqlite3'),
+  ]);
+  return new PrismaClient({ adapter: new PrismaBetterSqlite3({ url }) });
+}
+
+export async function initStats(): Promise<StatsRepository> {
+  let label = 'SQLite';
+  try {
+    // @ts-expect-error El script de Prisma es JavaScript plano, sin tipos.
+    const helpers = (await import('../scripts/prisma-schema.mjs')) as SchemaHelpers;
+    // La ruta de SQLite se ancla en la carpeta prisma, igual que hace la CLI,
+    // para que ambos abran el mismo fichero se lance el proceso desde donde se
+    // lance. Las URLs de PostgreSQL se devuelven intactas.
+    const prismaDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'prisma');
+    const url = helpers.resolveDatabaseUrl(process.env.DATABASE_URL ?? 'file:./dev.db', prismaDir);
+    const provider = helpers.providerFor(url);
+    label = provider === 'postgresql' ? 'Postgres' : 'SQLite';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = (await createClient(url, provider)) as any;
     // Comprobacion rapida: si alguna tabla no existe caemos al almacen en
     // memoria. Se comprueban las dos, porque una base de datos creada antes de
     // añadir el modo individual tiene `MatchRecord` pero no `SoloRecord`.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (client as any).matchRecord.count();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (client as any).soloRecord.count();
+    await client.matchRecord.count();
+    await client.soloRecord.count();
     repository = new PrismaStats(client);
-    logger.info('Persistencia SQLite lista (Prisma)');
+    logger.info('Persistencia ' + label + ' lista (Prisma)');
   } catch (error) {
     repository = new MemoryStats();
     logger.warn(
-      'Prisma no disponible, se usa almacenamiento en memoria. Ejecuta "npm run db:push" para habilitar SQLite.',
+      'Prisma (' +
+        label +
+        ') no disponible, se usa almacenamiento en memoria. ' +
+        'Ejecuta "npm run db:push" para crear las tablas.',
+      // Nunca se registra la URL: en produccion lleva la contraseña.
       error instanceof Error ? error.message : String(error),
     );
   }

@@ -6,12 +6,14 @@ import path from 'node:path';
 import {
   providerFor,
   withProvider,
+  withOutput,
   prepareSchema,
   resolveDatabaseUrl,
 } from '../scripts/prisma-schema.mjs';
 
 const SCHEMA = `generator client {
   provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -60,6 +62,15 @@ describe('sustitucion del proveedor en el esquema', () => {
   });
 });
 
+describe('sustitucion de la carpeta del cliente', () => {
+  it('cambia solo el output del generador', () => {
+    const result = withOutput(SCHEMA, '../src/generated/prisma-pg');
+    expect(result).toContain('output   = "../src/generated/prisma-pg"');
+    expect(result).not.toContain('output   = "../src/generated/prisma"\n');
+    expect(result.split('\n')).toHaveLength(SCHEMA.split('\n').length);
+  });
+});
+
 describe('preparacion del esquema efectivo', () => {
   function sandbox(): string {
     const dir = mkdtempSync(path.join(tmpdir(), 'prisma-schema-'));
@@ -82,6 +93,23 @@ describe('preparacion del esquema efectivo', () => {
     expect(readFileSync(chosen, 'utf8')).toContain('provider = "postgresql"');
     // El original no se modifica: es la unica fuente de verdad.
     expect(readFileSync(path.join(dir, 'schema.prisma'), 'utf8')).toBe(SCHEMA);
+  });
+
+  it('genera el cliente de PostgreSQL en su propia carpeta', () => {
+    // El cliente de Prisma 7 queda atado al proveedor: si los dos clientes
+    // compartieran carpeta, generar uno borraria el otro.
+    const dir = sandbox();
+    const chosen = prepareSchema(dir, 'file:./dev.db', 'postgresql');
+    const schema = readFileSync(chosen, 'utf8');
+    expect(schema).toContain('provider = "postgresql"');
+    expect(schema).toContain('output   = "../src/generated/prisma-pg"');
+  });
+
+  it('el proveedor forzado manda sobre el de la URL', () => {
+    const dir = sandbox();
+    expect(prepareSchema(dir, 'postgresql://host/db', 'sqlite')).toBe(
+      path.join(dir, 'schema.prisma'),
+    );
   });
 
   it('deja el derivado en el mismo directorio para no romper rutas relativas', () => {

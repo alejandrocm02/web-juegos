@@ -17,8 +17,9 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 - Pasos para reproducir: jugar partidas en producción, desplegar de nuevo y volver a consultar las estadísticas.
 - Esperado / Real: se conservan / la base SQLite aparece vacía tras cada despliegue o reinicio.
 - Causa: el plan gratuito de Render no tiene disco persistente; el fichero SQLite vive en el sistema de ficheros del contenedor, que se recrea en cada despliegue (y cuando el servicio se duerme y vuelve a arrancar).
-- Opciones: disco persistente de Render (de pago) o Postgres en Neon. Pendiente de decisión.
-- Estado: abierto.
+- Decisión (18 nov.): Postgres en Neon, plan gratuito (proyecto `parque-arcade`, región `aws-us-west-2`, la misma zona que el servicio de Render en Oregón).
+- Arreglo: el servidor elige SQLite o Postgres según `DATABASE_URL` y carga el cliente de Prisma de ese proveedor (se generan los dos). El trabajo `imagen` de la CI arranca la imagen contra un Postgres, escribe una partida, arranca un contenedor nuevo y comprueba que la clasificación la sigue mostrando.
+- Estado: en curso (rama `feat/estadisticas-neon`). Queda poner `DATABASE_URL` en Render y desplegar.
 
 ## [P1] Temporizador desincronizado entre clientes
 

@@ -56,34 +56,35 @@ El `Dockerfile` construye todo el monorepo y arranca **un único servicio** que 
 
 1. Sube el repositorio a GitHub.
 2. En Render: **New → Blueprint**, elige el repositorio. Render lee `render.yaml` y crea el servicio con el plan gratuito.
-3. Espera al primer build (unos minutos) y comparte la URL que te da Render.
+3. En el panel del servicio, **Environment**, pon en `DATABASE_URL` la cadena de conexión de Postgres (en producción, Neon: proyecto `parque-arcade`, región Oregón como el servicio). Sin ella el servidor usa SQLite dentro del contenedor y las estadísticas se pierden en cada despliegue.
+4. Espera al primer build (unos minutos) y comparte la URL que te da Render.
 
 No hace falta configurar `CORS_ORIGINS`: el enlace de invitación se construye en el navegador a partir del dominio real, así que funciona igual en local, en red local y en producción.
 
 Dos avisos sobre el plan gratuito de Render:
 
 - El servicio se duerme tras unos 15 minutos sin visitas y la primera carga tarda cerca de un minuto en despertar. Abre la URL antes de convocar a la gente.
-- El disco es efímero: al reiniciar se pierde `dev.db` con las estadísticas históricas. Las partidas en curso no se ven afectadas porque siempre viven en memoria.
+- El disco es efímero: por eso las estadísticas van a Postgres (Neon) y no a SQLite. Las partidas en curso siempre viven en memoria y se pierden al reiniciar.
 
 ---
 
 ## 2. Comandos
 
-| Comando                                   | Qué hace                                                      |
-| ----------------------------------------- | ------------------------------------------------------------- |
-| `npm run dev`                             | Compila los paquetes compartidos y arranca servidor + cliente |
-| `npm run dev:server`                      | Solo el servidor (tsx watch)                                  |
-| `npm run dev:web`                         | Solo el cliente (Vite)                                        |
-| `npm run build`                           | Compila paquetes, servidor (tsc) y cliente (Vite)             |
-| `npm start`                               | Arranca el servidor ya compilado (`apps/server/dist`)         |
-| `npm run typecheck`                       | Comprobación de tipos de todos los workspaces                 |
-| `npm run lint` / `npm run lint:fix`       | ESLint sobre todo el repositorio                              |
-| `npm run format` / `npm run format:check` | Prettier                                                      |
-| `npm run test:coverage`                   | Los mismos tests midiendo cobertura, con umbrales mínimos     |
-| `npm test`                                | Tests unitarios y de integración (Vitest)                     |
-| `npm run test:e2e`                        | Tests de extremo a extremo con dos navegadores (Playwright)   |
-| `npm run db:push` / `npm run db:generate` | Prisma sobre SQLite (usan el `.env` de la raíz)               |
-| `npm run check`                           | lint + tipos + tests + build + E2E                            |
+| Comando                                   | Qué hace                                                                                 |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `npm run dev`                             | Compila los paquetes compartidos y arranca servidor + cliente                            |
+| `npm run dev:server`                      | Solo el servidor (tsx watch)                                                             |
+| `npm run dev:web`                         | Solo el cliente (Vite)                                                                   |
+| `npm run build`                           | Compila paquetes, servidor (tsc) y cliente (Vite)                                        |
+| `npm start`                               | Arranca el servidor ya compilado (`apps/server/dist`)                                    |
+| `npm run typecheck`                       | Comprobación de tipos de todos los workspaces                                            |
+| `npm run lint` / `npm run lint:fix`       | ESLint sobre todo el repositorio                                                         |
+| `npm run format` / `npm run format:check` | Prettier                                                                                 |
+| `npm run test:coverage`                   | Los mismos tests midiendo cobertura, con umbrales mínimos                                |
+| `npm test`                                | Tests unitarios y de integración (Vitest)                                                |
+| `npm run test:e2e`                        | Tests de extremo a extremo con dos navegadores (Playwright)                              |
+| `npm run db:push` / `npm run db:generate` | Prisma (usan el `.env` de la raíz; `db:generate` crea los clientes de SQLite y Postgres) |
+| `npm run check`                           | lint + tipos + tests + build + E2E                                                       |
 
 Para Playwright, la primera vez: `npx playwright install chromium`.
 
@@ -555,7 +556,8 @@ de CI para ver qué se ha dejado de probar.
 ## 9. Persistencia
 
 - Salas y partidas en curso: **en memoria**.
-- SQLite vía Prisma para resultados y estadísticas: partidas ganadas, golpes totales y hoyos en uno.
+- Prisma para resultados y estadísticas (partidas ganadas, golpes totales y hoyos en uno). El proveedor sale de `DATABASE_URL`: SQLite en local (`file:./dev.db`) y Postgres en producción (Neon). Se generan los dos clientes (`src/generated/prisma` y `src/generated/prisma-pg`) y el servidor carga el que corresponde al arrancar. El esquema se sincroniza con `db push` en cada arranque del contenedor.
+- Si la base no responde, el servidor arranca igual con estadísticas en memoria y lo avisa en el log; un fallo al guardar nunca corta una partida.
 - Marcas personales del modo individual en la tabla `SoloRecord`, indexadas por un identificador de perfil anónimo generado por el navegador. Si vienes de una base de datos anterior al modo individual, ejecuta `npm run db:push` para crear la tabla; mientras no exista, el servidor cae al almacén en memoria y avisa por consola.
 - Limpieza automática de salas vacías (`ROOM_EMPTY_TTL_SECONDS`) y expulsión de desconectados sin vuelta (`RECONNECT_GRACE_SECONDS`).
 - Token anónimo en `localStorage` para reconectar tras recargar. No se almacena ningún dato personal: el alias es el único texto que introduce el jugador.
@@ -572,7 +574,7 @@ de CI para ver qué se ha dejado de probar.
 - La reproducción de sonidos del hoyo en uno se limita a un efecto sintetizado por el navegador (WebAudio), sin recursos externos.
 - El rediseño profundo cubre el marco común (cabecera, modo, ayuda, avisos y momentos destacados) y el tablero del billar en bola 8 (rayadas con franja, negra en negro, panel de grupos). Los escenarios de karts, arena y bolos siguen con su arte original de la fase anterior: no se han rehecho sus fondos.
 - Los bots del modo individual son deterministas por diseño dentro de cada dificultad: no aprenden ni se adaptan al rival entre partidas.
-- Las marcas personales viven en el navegador (identificador anónimo en `localStorage`) y en el SQLite del servidor. No se sincronizan entre dispositivos ni sobreviven a borrar los datos del navegador.
+- Las marcas personales viven en el navegador (identificador anónimo en `localStorage`) y en la base de datos del servidor. No se sincronizan entre dispositivos ni sobreviven a borrar los datos del navegador.
 - Playwright necesita descargar Chromium la primera vez (`npx playwright install chromium`).
 - La auditoría de dependencias todavía registra avisos: consulta `npm audit` y `npm audit --omit=dev` antes de desplegar. La revisión local aplica actualizaciones compatibles, pero no fuerza cambios de versión mayor de Prisma ni declara el árbol libre de vulnerabilidades.
 - Prisma descarga sus motores nativos durante `npm install`; si no hay red, la aplicación cae automáticamente al almacén en memoria.
