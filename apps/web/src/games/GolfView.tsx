@@ -12,6 +12,7 @@ import { Board3D, RenderModeToggle } from '../components/RenderMode.js';
 import {
   MAX_DRAG,
   drawGolfFrame,
+  followCamera,
   type Camera,
   type PlayerLook,
   type RenderBall,
@@ -23,11 +24,16 @@ const GolfBoard3D = lazy(() => import('../three/GolfBoard3D.js'));
 const VIEW_W = 960;
 const VIEW_H = 560;
 
+/** Encuadre inicial de un hoyo: la salida, sin enseñar fuera del recorrido. */
+function startCamera(level: GolfPublicState['level']): { x: number; y: number } {
+  return followCamera(level.start, level.size, 1, { w: VIEW_W, h: VIEW_H });
+}
+
 export default function GolfView({ state }: { state: GolfPublicState }) {
   const { sendAction, session, room, snapshotRef, golfEvents } = useApp();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const renderBalls = useRef<Map<string, RenderBall>>(new Map());
-  const cameraRef = useRef({ x: state.level.start.x, y: state.level.start.y, zoom: 1 });
+  const cameraRef = useRef({ ...startCamera(state.level), zoom: 1 });
   const dragRef = useRef<{ x: number; y: number } | null>(null);
   const gestureBallRef = useRef<GolfBallState | null>(null);
   const gestureCameraRef = useRef<Camera | null>(null);
@@ -64,7 +70,7 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
 
   useEffect(() => {
     renderBalls.current = new Map();
-    cameraRef.current = { x: state.level.start.x, y: state.level.start.y, zoom: 1 };
+    cameraRef.current = { ...startCamera(state.level), zoom: 1 };
     dragRef.current = null;
     gestureBallRef.current = null;
     gestureCameraRef.current = null;
@@ -165,10 +171,18 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
           ? Math.min(VIEW_W / state.level.size.w, VIEW_H / state.level.size.h)
           : 1;
         camera.zoom += (targetZoom - camera.zoom) * Math.min(1, dt * 6);
-        const targetX = overview ? state.level.size.w / 2 : (mine?.rx ?? state.level.start.x);
-        const targetY = overview ? state.level.size.h / 2 : (mine?.ry ?? state.level.start.y);
-        camera.x += (targetX - camera.x) * Math.min(1, dt * 5);
-        camera.y += (targetY - camera.y) * Math.min(1, dt * 5);
+        // Siguiendo la bola, el encuadre se detiene en los bordes del hoyo.
+        // Se usa el zoom de destino para que no oscile durante la transición.
+        const target = overview
+          ? { x: state.level.size.w / 2, y: state.level.size.h / 2 }
+          : followCamera(
+              { x: mine?.rx ?? state.level.start.x, y: mine?.ry ?? state.level.start.y },
+              state.level.size,
+              targetZoom,
+              { w: VIEW_W, h: VIEW_H },
+            );
+        camera.x += (target.x - camera.x) * Math.min(1, dt * 5);
+        camera.y += (target.y - camera.y) * Math.min(1, dt * 5);
 
         const levelTime =
           (clockRef.current.levelClockMs + (time - clockRef.current.receivedAt)) / 1000;
