@@ -15,8 +15,13 @@ describe('vista pedida (2D o 3D)', () => {
     expect(readRequestedMode('', memoryStorage())).toBe('3d');
   });
 
+  it('la 2D guardada en la etapa beta no cuenta', () => {
+    // Clave antigua: se guardaba «2d» con solo probar la 3D y volver.
+    expect(readRequestedMode('', memoryStorage({ 'arcade:render-mode': '2d' }))).toBe('3d');
+  });
+
   it('quien eligió la 2D la conserva', () => {
-    expect(readRequestedMode('', memoryStorage({ 'arcade:render-mode': '2d' }))).toBe('2d');
+    expect(readRequestedMode('', memoryStorage({ 'arcade:vista': '2d' }))).toBe('2d');
   });
 
   it('?mode=3d la activa y la recuerda para la siguiente carga', () => {
@@ -26,13 +31,13 @@ describe('vista pedida (2D o 3D)', () => {
   });
 
   it('?mode=2d manda sobre lo recordado', () => {
-    const storage = memoryStorage({ 'arcade:render-mode': '3d' });
+    const storage = memoryStorage({ 'arcade:vista': '3d' });
     expect(readRequestedMode('?mode=2d', storage)).toBe('2d');
     expect(readRequestedMode('', storage)).toBe('2d');
   });
 
   it('un valor desconocido no cambia nada', () => {
-    expect(readRequestedMode('?mode=vr', memoryStorage({ 'arcade:render-mode': '3d' }))).toBe('3d');
+    expect(readRequestedMode('?mode=vr', memoryStorage({ 'arcade:vista': '3d' }))).toBe('3d');
   });
 
   it('sin almacenamiento o con almacenamiento que falla sigue funcionando', () => {

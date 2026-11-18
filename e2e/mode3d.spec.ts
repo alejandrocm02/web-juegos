@@ -202,7 +202,7 @@ test.describe('sin preferencia guardada', () => {
     // Elegir la 2D se recuerda: al recargar sigue en 2D.
     await page.getByRole('button', { name: 'Volver a la vista 2D' }).click();
     await expect(page.getByRole('button', { name: 'Ver en 3D' })).toBeVisible();
-    expect(await page.evaluate(() => localStorage.getItem('arcade:render-mode'))).toBe('2d');
+    expect(await page.evaluate(() => localStorage.getItem('arcade:vista'))).toBe('2d');
     expect(errors).toEqual([]);
   });
 });

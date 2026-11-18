@@ -13,7 +13,13 @@ import { useSyncExternalStore } from 'react';
 
 export type RenderMode = '2d' | '3d';
 
-const STORAGE_KEY = 'arcade:render-mode';
+/**
+ * Clave de la preferencia. Cambió al hacer la 3D la vista por defecto: mientras
+ * la 3D era una beta optativa, `arcade:render-mode` guardaba «2d» con solo
+ * probarla y volver, y esos navegadores se habrían quedado en 2D para siempre.
+ * La clave antigua se ignora; quien vuelva a elegir la 2D la conserva.
+ */
+export const STORAGE_KEY = 'arcade:vista';
 
 /** Lee la vista pedida. La URL manda sobre lo recordado y además lo actualiza. */
 export function readRequestedMode(

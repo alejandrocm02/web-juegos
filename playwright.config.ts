@@ -23,7 +23,7 @@ export default defineConfig({
       origins: [
         {
           origin: 'http://localhost:5173',
-          localStorage: [{ name: 'arcade:render-mode', value: '2d' }],
+          localStorage: [{ name: 'arcade:vista', value: '2d' }],
         },
       ],
     },

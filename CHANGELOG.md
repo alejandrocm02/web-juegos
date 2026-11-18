@@ -2,11 +2,12 @@
 
 Cambios visibles para quien juega o despliega, del más reciente al más antiguo.
 
-## Sin publicar
+## 18 de noviembre de 2026 (segundo despliegue)
 
 ### Cambiado
 
 - **Los juegos se ven en 3D por defecto.** Billar, Bolos, Minigolf, Dardos, Tanques, Blackjack, Head Soccer, Head Basketball, Air Hockey, Tenis de mesa, Karts y Battle Royale abren directamente en 3D. La 2D sigue a un clic con «Volver a la vista 2D» y se recuerda; y si el dispositivo no tiene WebGL2 o va por debajo de 25 fps, la partida pasa sola a 2D sin cortarse. Quiz y Songless siguen como estaban.
+- La preferencia de vista se guarda con otra clave: quien eligió la 2D cuando la 3D era una beta opcional también ve ahora la 3D (puede volver a la 2D y se recordará).
 
 ### Corregido
 
