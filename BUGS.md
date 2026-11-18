@@ -89,9 +89,12 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 - Juego/zona: Battle Royale (Arena) en práctica.
 - Pasos para reproducir: empezar Arena con los rivales por defecto (3, normal) o con 1 en fácil y no moverse.
 - Esperado / Real: margen razonable en fácil / el jugador cae en unos 10-25 s incluso con un rival fácil.
-- Causa: por revisar el balance de los bots (persecución y daño).
+- Causa: tres problemas que se sumaban. (1) Todos los bots salían a cazar desde el primer segundo. (2) Atacaban en cuanto el arma se enfriaba (0,7 s) en cualquier dificultad, así que un bot fácil pegaba igual de rápido que uno difícil: 5 golpes, unos 3,5 s. (3) Cada bot elegía al rival más cercano y, en empate, ganaba el primero de la lista, que es el humano: dos bots iban a por él a la vez.
 - Nota: subido de P3 a P1 el 18 nov.; quien entra por primera vez y aún no sabe moverse pierde la partida en segundos.
-- Estado: abierto.
+- Arreglo (`apps/server/src/bots/arena-bot.ts`): durante la gracia inicial de la zona (12 s) los bots recogen objetos y solo se defienden si alguien se les pone al alcance; tras cada golpe dudan según la dificultad (≈2,9 s entre golpes en fácil, ≈1,9 s en normal, ≈1 s en difícil), y penalizan al rival que ya tiene a otro encima.
+- Medido con el jugador quieto (mediana de 11 partidas): 1 bot fácil, de 7 s a 23 s; 3 bots, de 4,5 s a 23-30 s según dificultad. Siguen eliminándolo: un bot fácil no deja de ser un rival.
+- Prueba: `apps/server/tests/arena-balance.test.ts` (simula la partida con la física y los bots reales; falla con el código anterior).
+- Estado: resuelto (rama `fix/battle-royale-bots`).
 
 ## [P1] Bolos: en móvil el juego se sale de la pantalla y queda recortado
 

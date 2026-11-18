@@ -4,6 +4,10 @@ Cambios visibles para quien juega o despliega, del más reciente al más antiguo
 
 ## Sin publicar
 
+### Corregido
+
+- **Battle Royale: los bots ya no te eliminan en segundos.** Durante los primeros 12 s recogen objetos en vez de ir a por ti, dejan más margen entre golpes cuanto más fácil es la dificultad y ya no se lanzan varios a la vez contra el mismo jugador. Quieto, con un bot fácil, ahora aguantas unos 23 s en vez de 7.
+
 ### Documentación
 
 - `BUGS.md` recoge el fallo de arranque en producción (resuelto en #62), la pérdida de estadísticas en cada despliegue y sube a P1 el bug de los bots de Battle Royale.
