@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createFpsGuard } from './fps-guard.js';
 
 /**
  * Base compartida de las vistas 3D: renderer, luces, bucle y vigilancia.
@@ -28,9 +29,6 @@ export interface Stage {
   readonly reducedMotion: boolean;
   dispose: () => void;
 }
-
-const SLOW_FPS = 25;
-const WINDOW_SECONDS = 3;
 
 declare global {
   interface Window {
@@ -89,25 +87,8 @@ export function createStage(canvas: HTMLCanvasElement, hooks: StageHooks): Stage
   viewObserver.observe(canvas);
 
   // Vigilancia de rendimiento: primero se baja la calidad; si ni así, se avisa.
-  let windowTime = 0;
-  let windowFrames = 0;
-  let lowQuality = false;
-  let warmup = 2;
-  const watch = (realDt: number) => {
-    if (window.__ARCADE_NO_FPS_GUARD__) return;
-    if (warmup > 0) {
-      warmup -= realDt;
-      return;
-    }
-    windowTime += realDt;
-    windowFrames += 1;
-    if (windowTime < WINDOW_SECONDS) return;
-    const fps = windowFrames / windowTime;
-    windowTime = 0;
-    windowFrames = 0;
-    if (fps >= SLOW_FPS) return;
-    if (!lowQuality) {
-      lowQuality = true;
+  const guard = createFpsGuard({
+    onLowQuality: () => {
       renderer.setPixelRatio(1);
       renderer.shadowMap.enabled = false;
       scene.traverse((node) => {
@@ -117,11 +98,10 @@ export function createStage(canvas: HTMLCanvasElement, hooks: StageHooks): Stage
         }
       });
       resize();
-      warmup = 1;
-    } else {
-      hooks.onGiveUp(`rendimiento insuficiente (${Math.round(fps)} fps)`);
-    }
-  };
+    },
+    onGiveUp: (fps) => hooks.onGiveUp(`rendimiento insuficiente (${Math.round(fps)} fps)`),
+  });
+  let previousWorkMs = 0;
 
   const loop = (now: number) => {
     if (disposed) return;
@@ -135,9 +115,11 @@ export function createStage(canvas: HTMLCanvasElement, hooks: StageHooks): Stage
     last = now;
     const dt = Math.min(1 / 20, realDt);
     elapsed += dt;
+    const workStart = performance.now();
     hooks.onFrame(dt, elapsed);
     renderer.render(scene, camera);
-    watch(realDt);
+    if (!window.__ARCADE_NO_FPS_GUARD__) guard.sample(realDt, previousWorkMs);
+    previousWorkMs = performance.now() - workStart;
   };
 
   const onLost = (event: Event) => {
