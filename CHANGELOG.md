@@ -4,6 +4,10 @@ Cambios visibles para quien juega o despliega, del más reciente al más antiguo
 
 ## Sin publicar
 
+### Añadido
+
+- **Las estadísticas ya no se borran.** Partidas, clasificación y marcas personales se guardan en Postgres (Neon) en lugar de un fichero dentro del contenedor, que Render vaciaba en cada despliegue y cada vez que el servicio se dormía. En local se sigue usando SQLite.
+
 ### Corregido
 
 - **Battle Royale: los bots ya no te eliminan en segundos.** Durante los primeros 12 s recogen objetos en vez de ir a por ti, dejan más margen entre golpes cuanto más fácil es la dificultad y ya no se lanzan varios a la vez contra el mismo jugador. Quieto, con un bot fácil, ahora aguantas unos 23 s en vez de 7.

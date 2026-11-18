@@ -14,8 +14,11 @@ services:
         value: production
       - key: PORT
         value: 3001
+      # Postgres en Neon. Lleva contraseña, asi que no va en el repositorio:
+      # se rellena en el panel de Render. Sin ella se usaria SQLite dentro del
+      # contenedor, que se pierde en cada despliegue.
       - key: DATABASE_URL
-        value: file:./dev.db
+        sync: false
       - key: LOG_LEVEL
         value: info
       # CORS_ORIGINS y PUBLIC_WEB_URL no hacen falta: cliente y servidor

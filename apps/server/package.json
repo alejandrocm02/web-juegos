@@ -9,7 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "db:generate": "node scripts/run-prisma.mjs generate",
+    "db:generate": "node scripts/run-prisma.mjs generate --provider sqlite && node scripts/run-prisma.mjs generate --provider postgresql",
     "db:push": "node scripts/run-prisma.mjs db push",
     "db:studio": "node scripts/run-prisma.mjs studio"
   },
@@ -17,6 +17,7 @@
     "@arcade/game-engine": "1.0.0",
     "@arcade/shared": "1.0.0",
     "@prisma/adapter-better-sqlite3": "^7.10.1",
+    "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.10.1",
     "cors": "^2.8.5",
     "dotenv": "^17.4.2",

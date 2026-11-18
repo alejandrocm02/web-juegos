@@ -30,6 +30,22 @@ export function providerFor(databaseUrl) {
   return 'sqlite';
 }
 
+/**
+ * Carpeta del cliente generado para cada proveedor, relativa a `prisma/`.
+ *
+ * El cliente de Prisma 7 queda atado al proveedor con el que se genero, y se
+ * compila con el resto del servidor. Para que una misma imagen funcione con
+ * SQLite o con PostgreSQL segun `DATABASE_URL` se generan los dos clientes en
+ * carpetas distintas y stats.ts carga el que toca al arrancar.
+ */
+export const CLIENT_OUTPUT = {
+  sqlite: '../src/generated/prisma',
+  postgresql: '../src/generated/prisma-pg',
+};
+
+/** URL ficticia para generar el cliente de PostgreSQL sin servidor. */
+export const POSTGRES_PLACEHOLDER_URL = 'postgresql://generar:generar@localhost:5432/generar';
+
 /** Devuelve el esquema con la linea `provider` del datasource sustituida. */
 export function withProvider(schema, provider) {
   let insideDatasource = false;
@@ -47,6 +63,23 @@ export function withProvider(schema, provider) {
     .join('\n');
 }
 
+/** Devuelve el esquema con la linea `output` del generador sustituida. */
+export function withOutput(schema, output) {
+  let insideGenerator = false;
+  return schema
+    .split('\n')
+    .map((line) => {
+      if (/^\s*generator\s+\w+\s*\{/.test(line)) insideGenerator = true;
+      else if (insideGenerator && /^\s*\}/.test(line)) insideGenerator = false;
+      else if (insideGenerator && /^\s*output\s*=/.test(line)) {
+        const indent = line.match(/^\s*/)?.[0] ?? '  ';
+        return indent + 'output   = "' + output + '"';
+      }
+      return line;
+    })
+    .join('\n');
+}
+
 /**
  * Escribe el esquema efectivo y devuelve su ruta.
  *
@@ -54,15 +87,16 @@ export function withProvider(schema, provider) {
  * devuelve el original, para que el flujo habitual en local sea idéntico al de
  * siempre.
  */
-export function prepareSchema(prismaDir, databaseUrl) {
+export function prepareSchema(prismaDir, databaseUrl, provider = providerFor(databaseUrl)) {
   const source = path.join(prismaDir, 'schema.prisma');
   const schema = readFileSync(source, 'utf8');
-  const provider = providerFor(databaseUrl);
 
   if (new RegExp('provider\\s*=\\s*"' + provider + '"').test(schema)) return source;
 
   const target = path.join(prismaDir, RUNTIME_SCHEMA_NAME);
-  writeFileSync(target, withProvider(schema, provider), 'utf8');
+  const output = CLIENT_OUTPUT[provider];
+  const adapted = withProvider(schema, provider);
+  writeFileSync(target, output ? withOutput(adapted, output) : adapted, 'utf8');
   return target;
 }
 

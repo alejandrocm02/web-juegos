@@ -24,7 +24,7 @@ COPY . .
 # el cliente se genera dentro de src y forma parte de lo que compila tsc.
 RUN npm run build
 # La imagen final solo necesita dependencias de produccion. Prisma permanece
-# porque la sincronizacion de SQLite se realiza al arrancar.
+# porque el esquema de la base (SQLite o Postgres) se sincroniza al arrancar.
 RUN npm prune --omit=dev
 # npm solo sube a la raiz una version de cada paquete. Cuando dos espacios de
 # trabajo piden versiones distintas (zod 4 en servidor y shared, zod 3 en una
@@ -59,13 +59,15 @@ COPY --from=build /app/apps/server/prisma.config.mjs ./apps/server/prisma.config
 COPY --from=build /app/apps/web/dist ./apps/web/dist
 
 # El proceso publico no necesita privilegios: la imagen base trae el usuario
-# `node` (uid 1000). Solo el directorio de Prisma debe ser escribible, porque
-# el arranque sincroniza el esquema SQLite ahi.
+# `node` (uid 1000). Solo el directorio de Prisma debe ser escribible: ahi
+# vive el fichero SQLite y ahi escribe run-prisma.mjs el esquema de Postgres.
 RUN chown -R node:node /app/apps/server/prisma
 USER node
 
 EXPOSE 3001
-# Sincroniza el esquema SQLite si hay disco disponible y arranca el servidor.
+# Sincroniza el esquema con la base de DATABASE_URL (SQLite en el contenedor o
+# Postgres en Neon) y arranca el servidor. Si falla, el servidor sigue con
+# estadisticas en memoria.
 # `--skip-generate` desaparecio en Prisma 7: `db push` ya no genera cliente, asi
 # que la opcion sobra y ademas aborta el comando por argumento desconocido.
-CMD ["sh", "-c", "node apps/server/scripts/run-prisma.mjs db push || echo 'Sin SQLite: se usaran estadisticas en memoria'; node apps/server/dist/index.js"]
+CMD ["sh", "-c", "node apps/server/scripts/run-prisma.mjs db push || echo 'Sin base de datos: se usaran estadisticas en memoria'; node apps/server/dist/index.js"]

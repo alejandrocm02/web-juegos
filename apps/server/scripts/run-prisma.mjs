@@ -16,7 +16,13 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { config } from 'dotenv';
-import { prepareSchema, providerFor, resolveDatabaseUrl } from './prisma-schema.mjs';
+import {
+  CLIENT_OUTPUT,
+  POSTGRES_PLACEHOLDER_URL,
+  prepareSchema,
+  providerFor,
+  resolveDatabaseUrl,
+} from './prisma-schema.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const serverDir = path.resolve(here, '..');
@@ -33,8 +39,24 @@ if (!process.env.DATABASE_URL) {
 
 const args = process.argv.slice(2);
 if (args.length === 0) {
-  console.error('Uso: node scripts/run-prisma.mjs <comando de prisma>');
+  console.error(
+    'Uso: node scripts/run-prisma.mjs <comando de prisma> [--provider sqlite|postgresql]',
+  );
   process.exit(1);
+}
+
+// `--provider` es propio de este script: fuerza el proveedor en lugar de
+// deducirlo de la URL. Solo tiene sentido con `generate`, que no se conecta a
+// ninguna base: asi se generan los dos clientes en cualquier equipo.
+let forcedProvider;
+const providerIndex = args.indexOf('--provider');
+if (providerIndex >= 0) {
+  forcedProvider = args[providerIndex + 1];
+  args.splice(providerIndex, 2);
+  if (!Object.keys(CLIENT_OUTPUT).includes(forcedProvider) || args[0] !== 'generate') {
+    console.error('[prisma] --provider solo admite sqlite o postgresql, y solo con generate');
+    process.exit(1);
+  }
 }
 
 // El proveedor sale de la propia cadena de conexion: SQLite en local y
@@ -47,14 +69,26 @@ const prismaDir = path.join(serverDir, 'prisma');
 // lance cada uno.
 process.env.DATABASE_URL = resolveDatabaseUrl(process.env.DATABASE_URL, prismaDir);
 
+const provider = forcedProvider ?? providerFor(process.env.DATABASE_URL);
+// Al forzar un proveedor la URL real puede ser de otro (por ejemplo, generar
+// el cliente de SQLite en un equipo con DATABASE_URL de Neon). `generate` no
+// se conecta, pero la CLI comprueba que la URL encaje con el esquema, asi que
+// se le pasa una de relleno del proveedor elegido.
+if (provider !== providerFor(process.env.DATABASE_URL)) {
+  process.env.DATABASE_URL =
+    provider === 'postgresql'
+      ? POSTGRES_PLACEHOLDER_URL
+      : resolveDatabaseUrl('file:./dev.db', prismaDir);
+}
+
 let schemaPath;
 try {
-  schemaPath = prepareSchema(prismaDir, process.env.DATABASE_URL);
+  schemaPath = prepareSchema(prismaDir, process.env.DATABASE_URL, provider);
 } catch (error) {
   console.error('[prisma] No se pudo preparar el esquema:', error.message);
   process.exit(1);
 }
-console.log('[prisma] Proveedor: ' + providerFor(process.env.DATABASE_URL));
+console.log('[prisma] Proveedor: ' + provider);
 
 // `generate`, `db push` y `studio` aceptan --schema. Si quien invoca ya lo ha
 // indicado se respeta su eleccion.
