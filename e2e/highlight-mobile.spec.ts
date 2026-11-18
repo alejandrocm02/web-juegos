@@ -46,9 +46,20 @@ test('el aviso de gol no tapa la cabecera en móvil', async ({ browser }) => {
   const flash = page.locator('.stage-flash');
   await expect(flash).toBeVisible();
   await expect(flash).toContainText('¡Gol!');
-  const flashBox = (await flash.boundingBox())!;
-  const headBox = (await page.locator('.stage-head').boundingBox())!;
-  const bodyBox = (await page.locator('.stage-body').boundingBox())!;
+  // Las tres medidas en el mismo instante: si la página se recoloca entre
+  // una lectura y otra (por ejemplo, al acabar la cuenta atrás) se comparan
+  // posiciones de momentos distintos.
+  const { flashBox, headBox, bodyBox } = await page.evaluate(() => {
+    const rect = (selector: string) => {
+      const box = document.querySelector(selector)!.getBoundingClientRect();
+      return { x: box.x, y: box.y, width: box.width, height: box.height };
+    };
+    return {
+      flashBox: rect('.stage-flash'),
+      headBox: rect('.stage-head'),
+      bodyBox: rect('.stage-body'),
+    };
+  });
 
   // Debajo de la cabecera, dentro del tablero y sin salirse por los lados.
   expect(flashBox.y).toBeGreaterThanOrEqual(headBox.y + headBox.height);
