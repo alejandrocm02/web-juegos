@@ -258,7 +258,7 @@ Juego:
 
 - Todos juegan **a la vez**. Mantén pulsado y arrastra en dirección contraria al golpe: verás línea de dirección y medidor de potencia. Solo puedes golpear con la bola prácticamente detenida.
 - Cámara que sigue la bola con suavizado; `Z` aleja la cámara para ver el nivel entero; `R` reinicia la bola con +1 golpe.
-- Superficies con fricción distinta (césped, arena, hielo, piedra), pendientes, rampas de salto, obstáculos fijos y móviles, aspas giratorias, zonas de vacío y puntos de reaparición.
+- Superficies con fricción distinta (césped, hierba alta, arena, hielo, piedra), agua (la bola vuelve a donde se golpeó y suma un golpe; está en el hoyo 5), pendientes, rampas de salto, obstáculos fijos y móviles, aspas giratorias, zonas de vacío y puntos de reaparición.
 - La ronda termina cuando todos emboca, alcanzan el límite de golpes o se agota el tiempo (se aplica la puntuación máxima).
 - Gana quien completa los 10 hoyos con menos golpes. Empate → menos tiempo total. Si persiste → empate compartido.
 - Cada jugador tiene color **e icono** propios, para no depender solo del color.

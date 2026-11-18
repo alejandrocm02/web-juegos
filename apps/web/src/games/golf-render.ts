@@ -132,7 +132,7 @@ function drawLevel(
     surface.addColorStop(1, colorShade(pad.surface));
     ctx.fillStyle = surface;
     ctx.fillRect(x, y, pad.rect.w, pad.rect.h);
-    drawSurfaceTexture(ctx, pad.surface, x, y, pad.rect.w, pad.rect.h);
+    drawSurfaceTexture(ctx, pad.surface, x, y, pad.rect.w, pad.rect.h, time);
     ctx.strokeStyle = 'rgba(255,255,255,0.2)';
     ctx.lineWidth = 1.2;
     ctx.strokeRect(x, y, pad.rect.w, pad.rect.h);
@@ -420,9 +420,44 @@ function drawSurfaceTexture(
   y: number,
   width: number,
   height: number,
+  time = 0,
 ): void {
   ctx.save();
-  if (surface === 'green') {
+  if (surface === 'water') {
+    // Ondas que se desplazan despacio: se distingue del hielo aunque el color se parezca.
+    ctx.strokeStyle = 'rgba(255,255,255,0.32)';
+    ctx.lineWidth = 1.6;
+    const drift = (time * 14) % 36;
+    for (let row = 14; row < height; row += 22) {
+      ctx.beginPath();
+      for (let col = -36 + drift; col < width; col += 36) {
+        ctx.moveTo(x + Math.max(0, col), y + row);
+        ctx.quadraticCurveTo(
+          x + Math.min(width, Math.max(0, col + 9)),
+          y + row - 4,
+          x + Math.min(width, Math.max(0, col + 18)),
+          y + row,
+        );
+      }
+      ctx.stroke();
+    }
+  } else if (surface === 'rough') {
+    // Matas de hierba alta.
+    ctx.strokeStyle = 'rgba(160,220,140,0.35)';
+    ctx.lineWidth = 1.2;
+    for (let tuft = 0; tuft < Math.max(6, Math.floor((width * height) / 500)); tuft += 1) {
+      const tx = x + ((tuft * 37 + 11) % Math.max(1, width));
+      const ty = y + 6 + ((tuft * 53 + 7) % Math.max(1, height - 6));
+      ctx.beginPath();
+      ctx.moveTo(tx - 3, ty);
+      ctx.lineTo(tx - 1, ty - 6);
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(tx, ty - 7);
+      ctx.moveTo(tx + 3, ty);
+      ctx.lineTo(tx + 1, ty - 6);
+      ctx.stroke();
+    }
+  } else if (surface === 'green') {
     ctx.globalAlpha = 0.07;
     ctx.fillStyle = '#ffffff';
     for (let stripe = 14; stripe < width; stripe += 28) {
@@ -581,6 +616,10 @@ function colorShade(surface: keyof typeof GOLF_SURFACE_COLORS): string {
       return '#075985';
     case 'stone':
       return '#374151';
+    case 'rough':
+      return '#1f3f23';
+    case 'water':
+      return '#124a6b';
     default:
       return GOLF_SURFACE_COLORS[surface];
   }

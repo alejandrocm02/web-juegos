@@ -2,6 +2,12 @@
 
 Cambios visibles para quien juega o despliega, del más reciente al más antiguo.
 
+## Sin publicar
+
+### Añadido
+
+- **Minigolf: agua y hierba alta.** Si la bola cae al agua vuelve al punto desde el que golpeaste y suma un golpe (aunque la sala no penalice salirse). La hierba alta frena más que el césped pero deja rodar. Se estrenan en el hoyo 5, «Caminos divididos»: el camino de abajo pasa por hierba alta y termina junto a un estanque. Se ven en 2D y en 3D. Recoge las ideas del PR #36, que se cierra; el viento queda fuera.
+
 ## 18 de noviembre de 2026 (tercer despliegue)
 
 ### Corregido

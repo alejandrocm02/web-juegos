@@ -63,6 +63,8 @@ export function describeGameEvent(
       };
     case 'out':
       return { title: 'Fuera del recorrido', detail: who, tone: 'bad' };
+    case 'water':
+      return { title: '¡Al agua!', detail: who ? who + ' · +1 golpe' : '+1 golpe', tone: 'bad' };
     case 'blackjack-bust':
       return { title: 'Se pasa de 21', detail: who, tone: 'bad' };
     case 'blackjack-result':

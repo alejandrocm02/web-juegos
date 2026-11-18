@@ -16,7 +16,7 @@ export interface Rect {
   h: number;
 }
 
-export type GolfSurface = 'green' | 'sand' | 'ice' | 'turbo' | 'stone';
+export type GolfSurface = 'green' | 'sand' | 'ice' | 'turbo' | 'stone' | 'rough' | 'water';
 
 export type PadSide = 'top' | 'bottom' | 'left' | 'right';
 
@@ -150,7 +150,19 @@ export const GOLF_SURFACE_FRICTION: Record<GolfSurface, number> = {
   ice: 0.75,
   turbo: 0.5,
   stone: 0.7,
+  /** Hierba alta: frena bastante más que el green pero, a diferencia de la arena, deja rodar. */
+  rough: 2.2,
+  /** Solo actúa el instante antes de la penalización: la bola no rueda por el agua. */
+  water: 6,
 };
+
+/**
+ * Superficies que penalizan. La bola vuelve al último punto donde estuvo
+ * quieta (no a la salida) y suma un golpe siempre, aunque la sala tenga
+ * desactivada la penalización por salirse: un obstáculo de agua sin coste no
+ * sería un obstáculo.
+ */
+export const GOLF_HAZARD_SURFACES: readonly GolfSurface[] = ['water'];
 
 export const GOLF_SURFACE_COLORS: Record<GolfSurface, string> = {
   green: '#1c7a4b',
@@ -158,6 +170,8 @@ export const GOLF_SURFACE_COLORS: Record<GolfSurface, string> = {
   ice: '#7dd3fc',
   turbo: '#a855f7',
   stone: '#5b6472',
+  rough: '#2f5d33',
+  water: '#1f6f99',
 };
 
 export interface GolfBallState {
@@ -194,7 +208,8 @@ export interface GolfHoleResult {
   ace: boolean;
 }
 
-export type GolfEventKind = 'ace' | 'holed' | 'out' | 'penalty' | 'reset' | 'maxStrokes' | 'timeUp';
+export type GolfEventKind =
+  'ace' | 'holed' | 'out' | 'water' | 'penalty' | 'reset' | 'maxStrokes' | 'timeUp';
 
 export interface GolfFeedEvent {
   kind: GolfEventKind;

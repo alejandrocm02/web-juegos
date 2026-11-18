@@ -113,7 +113,7 @@ export const GOLF_LEVELS: GolfLevel[] = [
     difficulty: 'Media',
     par: 3,
     aceRoute: false,
-    hint: 'El atajo estrecho tiene parachoques. El camino inferior es largo pero seguro.',
+    hint: 'El atajo estrecho tiene parachoques. Abajo, la hierba alta frena y el estanque cuesta un golpe: sal por arriba.',
     size: { w: 940, h: 640 },
     start: { x: 120, y: 400 },
     hole: { x: 760, y: 330 },
@@ -121,9 +121,13 @@ export const GOLF_LEVELS: GolfLevel[] = [
       { id: 'p1', rect: { x: 60, y: 260, w: 220, h: 320 }, surface: 'green' },
       { id: 'p2', rect: { x: 280, y: 300, w: 320, h: 60 }, surface: 'green' },
       { id: 'p3', rect: { x: 280, y: 400, w: 140, h: 180 }, surface: 'green' },
-      { id: 'p4', rect: { x: 420, y: 400, w: 60, h: 180 }, surface: 'sand' },
+      { id: 'p4', rect: { x: 420, y: 400, w: 60, h: 180 }, surface: 'rough' },
       { id: 'p5', rect: { x: 480, y: 400, w: 120, h: 180 }, surface: 'green' },
-      { id: 'p6', rect: { x: 600, y: 260, w: 280, h: 320 }, surface: 'green' },
+      // Al salir del camino inferior, el estanque ocupa la parte baja: hay que
+      // entrar por arriba (y < 450) o pagar un golpe.
+      { id: 'p6', rect: { x: 600, y: 260, w: 280, h: 190 }, surface: 'green' },
+      { id: 'pond', rect: { x: 600, y: 450, w: 160, h: 130 }, surface: 'water' },
+      { id: 'p7', rect: { x: 760, y: 450, w: 120, h: 130 }, surface: 'green' },
     ],
     walls: [],
     circles: [
