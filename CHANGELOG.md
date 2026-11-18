@@ -4,13 +4,28 @@ Cambios visibles para quien juega o despliega, del más reciente al más antiguo
 
 ## Sin publicar
 
+### Documentación
+
+- `BUGS.md` recoge el fallo de arranque en producción (resuelto en #62), la pérdida de estadísticas en cada despliegue y sube a P1 el bug de los bots de Battle Royale.
+
+## 16 de noviembre de 2026
+
+### Corregido
+
+- **Producción vuelve a arrancar.** Tras pasar a Zod 4 la imagen de Render no encontraba la librería y el servidor no se ponía en marcha. La imagen ya incluye las dependencias de cada parte del proyecto, y la CI construye y arranca la imagen de producción en cada cambio para que no vuelva a pasar (#62).
+
 ### Rendimiento
 
 - **La web carga unos 18 kB menos (gzip).** El navegador descargaba Zod, la librería con la que el servidor valida los mensajes, aunque nunca la usaba. Los esquemas están ahora en `@arcade/shared/schemas`, que solo importa el servidor.
 
 ### Mantenimiento
 
-- Zod 4 en el servidor.
+- Zod 4 en el servidor (#61).
+- Dependencias actualizadas con Dependabot (#60).
+
+### Problemas conocidos
+
+- Las estadísticas se borran en cada despliegue: la base SQLite no sobrevive al reinicio del contenedor en el plan gratuito de Render. Ver `BUGS.md`.
 
 ## 9 de noviembre de 2026
 
