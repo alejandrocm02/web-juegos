@@ -2,6 +2,24 @@
 
 Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** molesto · **P3** cosmético.
 
+## [P0] Producción no arrancaba tras pasar a Zod 4
+
+- Juego/zona: despliegue en Render (imagen Docker), toda la web.
+- Pasos para reproducir: construir la imagen con `Dockerfile` sobre la PR #61 y arrancarla.
+- Esperado / Real: el servidor arranca y responde en `/api/health` / el proceso moría al importar con `ERR_MODULE_NOT_FOUND zod` y Render no podía poner el servicio en marcha.
+- Causa: la raíz conserva Zod 3 para las herramientas de desarrollo, así que npm instala Zod 4 anidado en `apps/server/node_modules` y `packages/shared/node_modules`. La imagen solo copiaba el `node_modules` de la raíz. La CI no lo detectaba porque no construía la imagen.
+- Arreglo: el `Dockerfile` copia también los `node_modules` anidados de cada espacio de trabajo, y la CI tiene un trabajo `imagen` que construye y arranca la imagen de producción y comprueba `/api/health`, la portada y el log de SQLite.
+- Estado: resuelto (PR #62, `51190e5`; desplegado el 16 nov., `dep-dbtoj5sipgvc739mkc1g`).
+
+## [P2] Las estadísticas se pierden en cada despliegue
+
+- Juego/zona: servidor en Render, estadísticas y clasificaciones.
+- Pasos para reproducir: jugar partidas en producción, desplegar de nuevo y volver a consultar las estadísticas.
+- Esperado / Real: se conservan / la base SQLite aparece vacía tras cada despliegue o reinicio.
+- Causa: el plan gratuito de Render no tiene disco persistente; el fichero SQLite vive en el sistema de ficheros del contenedor, que se recrea en cada despliegue (y cuando el servicio se duerme y vuelve a arrancar).
+- Opciones: disco persistente de Render (de pago) o Postgres en Neon. Pendiente de decisión.
+- Estado: abierto.
+
 ## [P1] Temporizador desincronizado entre clientes
 
 - Juego/zona: todos los juegos con cuenta atrás (Quiz, Dardos, Billar, Bolos, Songless, Blackjack, Tanques).
@@ -66,13 +84,14 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 - Arreglo: en Arena, si la partida acaba antes, la prueba vuelve desde la pantalla de resultados (mismo lobby, mismo segundo inicio) y los clics de salida tienen tiempo propio. 14 de 14 seguidas en verde.
 - Estado: resuelto (rama `fase-1/sincronizacion-reloj`).
 
-## [P3] Arena: los bots eliminan muy rápido a un jugador inactivo
+## [P1] Battle Royale (Arena): los bots eliminan muy rápido a un jugador quieto
 
-- Juego/zona: Arena en práctica.
+- Juego/zona: Battle Royale (Arena) en práctica.
 - Pasos para reproducir: empezar Arena con los rivales por defecto (3, normal) o con 1 en fácil y no moverse.
 - Esperado / Real: margen razonable en fácil / el jugador cae en unos 10-25 s incluso con un rival fácil.
-- Causa: por revisar el balance de los bots (persecución y daño). No es necesariamente un fallo: un jugador real se mueve.
-- Estado: abierto, para revisar al migrar Arena.
+- Causa: por revisar el balance de los bots (persecución y daño).
+- Nota: subido de P3 a P1 el 18 nov.; quien entra por primera vez y aún no sabe moverse pierde la partida en segundos.
+- Estado: abierto.
 
 ## [P1] Bolos: en móvil el juego se sale de la pantalla y queda recortado
 
@@ -174,3 +193,10 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 - Real: la curva del efecto que se veía al apuntar era una aproximación distinta de la que aplicaba el servidor, y además el efecto dependía de la potencia.
 - Arreglo: una sola fórmula (`bowlingHookOffset`) que usan el servidor y las dos vistas.
 - Estado: resuelto (rama `fix/bolos-triangulo`).
+
+## Pendiente de comprobar
+
+No son bugs confirmados, sino zonas sin probar todavía:
+
+- Móviles reales (hasta ahora solo emulación a 390 px), Firefox y Safari.
+- Fps y Lighthouse en producción (`https://parque-arcade.onrender.com`). `docs/BASELINE.md` tiene la línea base del 4 nov. medida en local con `vite preview`; falta repetirla sobre la URL pública.
