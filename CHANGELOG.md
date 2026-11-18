@@ -6,6 +6,12 @@ Cambios visibles para quien juega o despliega, del más reciente al más antiguo
 
 ### Añadido
 
+- **Tanques: campo de batalla grande.** El campo pasa de 1000 a 2200 de ancho, con cámara que sigue al tanque, al proyectil y a la explosión, botón «Ver todo el campo» (V) y un radar con el campo entero. Los tres mapas se rehacen como campos de guerra: trincheras de sacos terreros, búnkeres, muros, torre de vigilancia, ruinas, cráteres, alambradas y restos humeantes, en 2D y en 3D. Los disparos llegan más lejos y cada turno hay cuatro movimientos en vez de tres.
+
+## 18 de noviembre de 2026 (cuarto despliegue)
+
+### Añadido
+
 - **Minigolf: agua y hierba alta.** Si la bola cae al agua vuelve al punto desde el que golpeaste y suma un golpe (aunque la sala no penalice salirse). La hierba alta frena más que el césped pero deja rodar. Se estrenan en el hoyo 5, «Caminos divididos»: el camino de abajo pasa por hierba alta y termina junto a un estanque. Se ven en 2D y en 3D. Recoge las ideas del PR #36, que se cierra; el viento queda fuera.
 
 ## 18 de noviembre de 2026 (tercer despliegue)

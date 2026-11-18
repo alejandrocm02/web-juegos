@@ -1,5 +1,7 @@
 import {
+  TANK_BALLISTICS,
   TANK_FIELD,
+  tankShotSpeed,
   type GameAction,
   type GamePublicState,
   type TankObstacle,
@@ -7,11 +9,9 @@ import {
 } from '@arcade/shared';
 import { clamp, jitter, type BotBrain, type BotThinkContext } from './types.js';
 
-/** Constantes de la balistica del simulador. Deben coincidir con TanksWorld. */
-const PROJECTILE_BASE_SPEED = 370;
-const PROJECTILE_POWER_SPEED = 420;
-const GRAVITY = 350;
-const WIND_ACCEL = 58;
+/** La balistica sale de TANK_BALLISTICS, la misma que usa TanksWorld. */
+const GRAVITY = TANK_BALLISTICS.gravity;
+const WIND_ACCEL = TANK_BALLISTICS.windAccel;
 const SIM_DT = 1 / 60;
 const MAX_FLIGHT_STEPS = 900;
 
@@ -111,9 +111,30 @@ export class TanksBot implements BotBrain {
       }
     }
 
-    // La dificultad estropea el tiro perfecto de forma controlada.
-    const angleNoise = ctx.meta.noise * 0.22;
-    const powerNoise = ctx.meta.noise * 0.16;
+    // Afinado alrededor del mejor tiro de la rejilla. En el campo de 2200 un
+    // paso de potencia de la rejilla mueve el impacto más de 100 unidades:
+    // sin esto el bot difícil fallaba de lejos aunque hubiera solución.
+    const coarseAngle = bestAngle;
+    const coarsePower = bestPower;
+    for (let a = -8; a <= 8; a += 1) {
+      const angle = clamp(coarseAngle + a * 0.006, ANGLE_MIN, ANGLE_MAX);
+      for (let p = -8; p <= 8; p += 1) {
+        const power = clamp(coarsePower + p * 0.006, 0.2, 1);
+        const error = this.simulateError(me, target, angle, power, wind, obstacles);
+        if (error < bestError) {
+          bestError = error;
+          bestAngle = angle;
+          bestPower = power;
+        }
+      }
+    }
+
+    // La dificultad estropea el tiro perfecto de forma controlada. El error se
+    // reduce con la distancia para que, en el campo grande, un bot fácil falle
+    // más o menos como fallaba en el campo de 1000 y no a cientos de metros.
+    const distanceScale = Math.min(1, 900 / Math.max(1, Math.abs(target.x - me.x)));
+    const angleNoise = ctx.meta.noise * 0.22 * distanceScale;
+    const powerNoise = ctx.meta.noise * 0.16 * distanceScale;
     return {
       angle: clamp(bestAngle + jitter(ctx.random, angleNoise), ANGLE_MIN, ANGLE_MAX),
       power: clamp(bestPower + jitter(ctx.random, powerNoise), 0.2, 1),
@@ -135,9 +156,9 @@ export class TanksBot implements BotBrain {
     wind: number,
     obstacles: TankObstacle[],
   ): number {
-    const speed = PROJECTILE_BASE_SPEED + power * PROJECTILE_POWER_SPEED;
-    let x = me.x + Math.cos(angle) * 42;
-    let y = me.y - 9 + Math.sin(angle) * 42;
+    const speed = tankShotSpeed(power);
+    let x = me.x + Math.cos(angle) * TANK_BALLISTICS.muzzle;
+    let y = me.y - 9 + Math.sin(angle) * TANK_BALLISTICS.muzzle;
     let vx = Math.cos(angle) * speed;
     let vy = Math.sin(angle) * speed;
     let closest = Infinity;
@@ -156,7 +177,7 @@ export class TanksBot implements BotBrain {
         return Math.min(closest, Math.hypot(x - target.x, TANK_FIELD.groundY - target.y));
       }
       if (x < -60 || x > TANK_FIELD.width + 60) return closest + 400;
-      if (y > TANK_FIELD.height + 80 || y < -420) return closest + 400;
+      if (y > TANK_FIELD.height + 80 || y < TANK_BALLISTICS.ceilingY) return closest + 400;
 
       // `x` e `y` de un obstaculo son su esquina superior izquierda, igual que
       // en la comprobacion de colision del motor.

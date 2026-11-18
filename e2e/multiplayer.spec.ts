@@ -226,7 +226,8 @@ test('Tanques inicia, permite moverse y dispara con estado compartido', async ({
   await expect(guest.getByLabel('Campo de batalla de Tanques')).toBeVisible({ timeout: 20_000 });
   await expect(host.getByRole('button', { name: 'Disparar' })).toBeEnabled({ timeout: 10_000 });
   await host.getByRole('button', { name: 'Mover tanque a la derecha' }).click();
-  await expect(host.getByText(/2 combustible/)).toBeVisible();
+  // Cuatro cargas por turno: tras un movimiento quedan tres.
+  await expect(host.getByText(/3 combustible/)).toBeVisible();
   await host.getByRole('button', { name: 'Disparar' }).click();
   await expect(host.getByRole('button', { name: 'Disparar' })).toHaveCount(0);
   await expect(host.getByText(/demasiadas acciones/i)).toHaveCount(0);

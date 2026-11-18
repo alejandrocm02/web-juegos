@@ -333,10 +333,11 @@ Los cinco niveles marcados tienen una **ruta real de hoyo en uno basada en habil
 ### Tanques (2–5 jugadores)
 
 - Artillería lateral por turnos con trayectoria balística, viento variable, obstáculos y daño radial.
-- Cada tanque puede gastar hasta tres cargas de combustible antes de disparar; el servidor valida movimiento, colisiones, impacto, blindaje y bajas.
+- Campo de batalla de 2200 de ancho (más del doble de la pantalla): la cámara sigue al tanque que apunta, al proyectil y a la explosión, se aleja cuando el tiro sube mucho y **V** (o «Ver todo el campo») enseña el campo entero. Un radar arriba muestra tanques, obstáculos, proyectil y el tramo visible.
+- Cada tanque puede gastar hasta cuatro cargas de combustible antes de disparar; los obstáculos frenan el avance y sirven de cobertura. El servidor valida movimiento, colisiones, impacto, blindaje y bajas.
 - Modos **Clásico**, **Blitz** (70 PV, más daño y turnos de 18 segundos) y **Rebotes** (hasta dos rebotes en paredes u obstáculos).
-- Tres campos propios: **Cañón Carmesí**, **Fortaleza Neón** y **Cráter Lunar**.
-- Controles con botones, teclado y sliders de ángulo/potencia; la trayectoria discontinua es solo una ayuda visual y el servidor resuelve el disparo real.
+- Tres campos propios: **Cañón Carmesí** (desierto con aguja central, trincheras de sacos terreros y búnkeres), **Fortaleza Neón** (base con muros de hormigón, búnkeres altos y torre de vigilancia) y **Cráter Lunar** (llanura de cráteres y ruinas). Cráteres, alambradas, árboles secos, restos humeantes, banderas y focos son decorado: no chocan.
+- Controles con botones, teclado y sliders de ángulo/potencia; la trayectoria de puntos es solo una ayuda visual y el servidor resuelve el disparo real. Servidor, bots y las dos vistas comparten la misma balística (`TANK_BALLISTICS`).
 
 ---
 

@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { DEFAULT_SETTINGS, type GamePublicState, type MatchResult } from '@arcade/shared';
+import {
+  DEFAULT_SETTINGS,
+  TANK_BALLISTICS,
+  type GamePublicState,
+  type MatchResult,
+} from '@arcade/shared';
 import { TanksGame } from '../src/games/tanks-game.js';
 import type { GameContext, RoomPlayer } from '../src/rooms/types.js';
 
@@ -45,7 +50,9 @@ describe('partida de Tanques', () => {
     vi.advanceTimersByTime(3_200);
     expect(game.publicState().phase).toBe('aiming');
     expect(game.publicState().activePlayerId).toBe('a');
-    expect(game.publicState().tanks.find((tank) => tank.playerId === 'a')?.fuel).toBe(3);
+    expect(game.publicState().tanks.find((tank) => tank.playerId === 'a')?.fuel).toBe(
+      TANK_BALLISTICS.movesPerTurn,
+    );
     game.dispose();
   });
 
@@ -57,7 +64,9 @@ describe('partida de Tanques', () => {
     game.handleAction('b', { type: 'tanks:move', direction: -1 });
     expect(game.publicState().tanks.find((tank) => tank.playerId === 'b')?.x).toBe(before);
     game.handleAction('a', { type: 'tanks:move', direction: 1 });
-    expect(game.publicState().tanks.find((tank) => tank.playerId === 'a')?.fuel).toBe(2);
+    expect(game.publicState().tanks.find((tank) => tank.playerId === 'a')?.fuel).toBe(
+      TANK_BALLISTICS.movesPerTurn - 1,
+    );
     game.handleAction('a', { type: 'tanks:fire', angle: -Math.PI / 4, power: 0.7 });
     expect(game.publicState().phase).toBe('projectile');
     expect(game.publicState().projectile?.ownerId).toBe('a');

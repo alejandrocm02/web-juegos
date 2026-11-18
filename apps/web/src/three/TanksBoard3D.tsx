@@ -1,9 +1,17 @@
 import {
   TANK_FIELD,
+  TANK_MAPS,
   type PublicPlayer,
   type TanksPublicState,
   type TankState,
 } from '@arcade/shared';
+import {
+  TANK_OVERVIEW_ZOOM,
+  easeCamera,
+  predictShot,
+  tankCameraTarget,
+  type TankCameraTarget,
+} from '../games/tanks-camera.js';
 import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import {
@@ -32,6 +40,8 @@ interface Props {
   meId: string;
   /** Tanque propio y puntería actual cuando es el turno del jugador. */
   preview: { tank: TankState; angleDeg: number; power: number } | null;
+  /** Campo entero en lugar de seguir la acción. */
+  overview: boolean;
   onGiveUp: (reason: string) => void;
 }
 
@@ -41,9 +51,15 @@ const GROUND = TANK_FIELD.groundY;
 const toX = (x: number) => (x - TANK_FIELD.width / 2) * S;
 const toY = (y: number) => (GROUND - y) * S;
 const SKIES: Record<string, [string, string, string]> = {
-  'crater-lunar': ['#060814', '#11162a', '#2a2f4a'],
-  'fortaleza-neon': ['#090713', '#2a1440', '#7a2a5a'],
-  'canon-carmesi': ['#10070a', '#4a1418', '#c2410c'],
+  'crater-lunar': ['#04060d', '#0e1326', '#1d2442'],
+  'fortaleza-neon': ['#07060f', '#1a1030', '#3c1c4c'],
+  'canon-carmesi': ['#1c0b10', '#5a2119', '#c2622e'],
+};
+/** Suelo, capa superior, piedra y acento: los mismos tonos que la vista 2D. */
+const GROUNDS: Record<string, [number, number, number, number]> = {
+  'canon-carmesi': [0x8a4526, 0xc97a43, 0x7c4a35, 0xf97316],
+  'fortaleza-neon': [0x2f2836, 0x5b5163, 0x6b6577, 0x22d3ee],
+  'crater-lunar': [0x43475a, 0x868b9e, 0x9097a8, 0xa5b4fc],
 };
 
 interface TankVisual {
@@ -118,7 +134,7 @@ export default function TanksBoard3D(props: Props) {
       transparent: true,
       opacity: 0.6,
     });
-    const dots = Array.from({ length: 30 }, () => {
+    const dots = Array.from({ length: 60 }, () => {
       const dot = mesh(dotGeometry, dotMaterial, 0, 0, 0, 'none');
       dot.visible = false;
       scene.add(dot);
@@ -128,18 +144,35 @@ export default function TanksBoard3D(props: Props) {
     const booms: THREE.Mesh[] = [];
     scene.add(shell, trail);
 
+    // Distancia de cámara para un tramo de 1000 de ancho (zoom 1). Para otro
+    // zoom basta con alejarse en proporción: el encuadre escala igual.
     const camGoal = { position: new THREE.Vector3(), look: new THREE.Vector3() };
+    const camDir = new THREE.Vector3(0, 0.14, 1).normalize();
+    let baseDistance = 10;
+    let view: TankCameraTarget = { x: TANK_FIELD.width / 2, zoom: TANK_OVERVIEW_ZOOM };
     function fit() {
       camera.fov = 40;
       camera.updateProjectionMatrix();
-      fitCamera(camera, [0, 0.14, 1], [0, 2.3, 0], [-W / 2, 0, -0.4, W / 2, 4.9, 0.4], camGoal);
-      camera.position.copy(camGoal.position);
-      camera.lookAt(camGoal.look);
+      const half = 5;
+      fitCamera(camera, [0, 0.14, 1], [0, 2.3, 0], [-half, 0, -0.4, half, 4.9, 0.4], camGoal);
+      baseDistance = camGoal.position.distanceTo(camGoal.look);
+      placeCamera();
+    }
+    function placeCamera() {
+      const look = new THREE.Vector3(toX(view.x), 2.3 / view.zoom, 0);
+      camera.position.copy(look).addScaledVector(camDir, baseDistance / view.zoom);
+      camera.lookAt(look);
     }
     fit();
 
-    function frame(_dt: number) {
-      const { state, players, meId, preview } = latest.current;
+    function frame(dt: number) {
+      const { state, players, meId, preview, overview } = latest.current;
+      const aim =
+        preview && state.phase === 'aiming'
+          ? predictShot(preview, state.wind, state.obstacles)
+          : null;
+      view = easeCamera(view, tankCameraTarget(state, { overview, meId, aim }), dt);
+      placeCamera();
       if (mapId !== state.map + ':' + state.obstacles.map((o) => o.id).join(',')) buildScenery();
 
       const seen = new Set<string>();
@@ -220,34 +253,17 @@ export default function TanksBoard3D(props: Props) {
         (boom.material as THREE.MeshBasicMaterial).opacity = Math.max(0, 0.9 - progress * 0.9);
       });
 
-      // Trayectoria prevista: mismos pasos y constantes que la vista 2D.
+      // Trayectoria prevista: la misma que dibuja la vista 2D.
       for (const dot of dots) dot.visible = false;
-      if (preview && state.phase === 'aiming') {
-        const angle = (-preview.angleDeg * Math.PI) / 180;
-        const speed = 370 + (preview.power / 100) * 420;
-        let x = preview.tank.x + Math.cos(angle) * 42;
-        let y = preview.tank.y - 9 + Math.sin(angle) * 42;
-        let vx = Math.cos(angle) * speed;
-        let vy = Math.sin(angle) * speed;
+      if (aim) {
         let used = 0;
-        for (let step = 0; step < 115 && used < dots.length; step += 1) {
-          vx += state.wind * 58 * 0.035;
-          vy += 350 * 0.035;
-          x += vx * 0.035;
-          y += vy * 0.035;
-          if (x < 0 || x > TANK_FIELD.width || y >= GROUND) break;
-          const blocked = state.obstacles.some(
-            (o) => x >= o.x && x <= o.x + o.width && y >= o.y && y <= o.y + o.height,
-          );
-          if (blocked) break;
-          if (step % 4 === 0) {
-            const dot = dots[used++];
-            if (dot) {
-              dot.visible = true;
-              dot.position.set(toX(x), toY(y), 0);
-            }
-          }
-        }
+        aim.points.forEach((point, index) => {
+          if (index % 4 !== 0 || used >= dots.length) return;
+          const dot = dots[used++];
+          if (!dot) return;
+          dot.visible = true;
+          dot.position.set(toX(point.x), toY(point.y), 0);
+        });
       }
     }
 
@@ -402,13 +418,12 @@ function buildMap(state: TanksPublicState): THREE.Group {
   ridge(-6, lunar ? 0x1a1d33 : 0x2a1228, 1.3, 1.9);
   ridge(-3.5, lunar ? 0x12152a : 0x1b0e1e, 4.1, 1.2);
 
-  const soil = lunar ? 0x4b5563 : state.map === 'fortaleza-neon' ? 0x2a2140 : 0x6a3f2a;
-  const turf = lunar ? 0x9ca3af : state.map === 'fortaleza-neon' ? 0x7c3aed : 0xc2703a;
+  const [soil, turf, stone, accent] = GROUNDS[state.map] ?? GROUNDS['canon-carmesi']!;
   group.add(mesh(new THREE.BoxGeometry(W + 0.6, 1.2, 1.8), std(soil, 0.95), 0, -0.6, 0, 'receive'));
   group.add(mesh(new THREE.BoxGeometry(W + 0.6, 0.06, 1.84), std(turf, 0.9), 0, 0, 0, 'receive'));
   group.add(
     mesh(
-      new THREE.PlaneGeometry(60, 30).rotateX(-Math.PI / 2),
+      new THREE.PlaneGeometry(80, 30).rotateX(-Math.PI / 2),
       std(0x0c0a14, 0.9),
       0,
       -1.2,
@@ -417,24 +432,152 @@ function buildMap(state: TanksPublicState): THREE.Group {
     ),
   );
 
+  const KIND_COLORS: Record<string, number> = {
+    sandbags: 0xb59563,
+    bunker: 0x5f6068,
+    wall: 0x5d5c66,
+    tower: 0x4a4339,
+    ruin: 0x5b5e6c,
+  };
   for (const obstacle of state.obstacles) {
     const w = obstacle.width * S;
     const h = obstacle.height * S;
     const x = toX(obstacle.x + obstacle.width / 2);
     const y = toY(obstacle.y + obstacle.height) + h / 2;
+    const kind = obstacle.kind ?? 'rock';
+    const depth = kind === 'wall' || kind === 'tower' ? 0.5 : kind === 'sandbags' ? 0.8 : 1.1;
     group.add(
-      mesh(new THREE.BoxGeometry(w, h, 1.1), std(lunar ? 0x6b7280 : 0x2b2f45, 0.7, 0.2), x, y, 0),
+      mesh(
+        new THREE.BoxGeometry(w, h, depth),
+        std(KIND_COLORS[kind] ?? stone, kind === 'sandbags' ? 1 : 0.75, 0.05),
+        x,
+        y,
+        0,
+      ),
     );
-    if (!lunar) {
+    if (kind === 'bunker') {
+      // Tronera oscura en la cara que mira al jugador.
       group.add(
         mesh(
-          new THREE.BoxGeometry(w + 0.04, 0.04, 1.14),
-          glow(state.map === 'fortaleza-neon' ? 0x22d3ee : 0xf97316, 2.6),
+          new THREE.BoxGeometry(w * 0.64, 0.07, 0.02),
+          std(0x050507, 1),
           x,
-          y + h / 2,
+          y + h * 0.15,
+          depth / 2 + 0.01,
+          'none',
+        ),
+      );
+    }
+    if (kind === 'tower' || kind === 'wall') {
+      group.add(
+        mesh(
+          new THREE.BoxGeometry(w + 0.04, 0.05, depth + 0.04),
+          glow(accent, 2.4),
+          x,
+          y + h / 2 - 0.15,
           0,
           'none',
         ),
+      );
+    }
+  }
+
+  // Decorado: no choca con nada, solo ambienta.
+  const decor = TANK_MAPS.find((entry) => entry.id === state.map)?.decor ?? [];
+  const dark = std(0x1b1715, 0.9);
+  for (const item of decor) {
+    const x = toX(item.x);
+    const size = item.size * S;
+    if (item.kind === 'crater') {
+      group.add(
+        mesh(
+          new THREE.CircleGeometry(size / 2, 24).rotateX(-Math.PI / 2).scale(1, 1, 0.5),
+          new THREE.MeshStandardMaterial({ color: 0x000000, transparent: true, opacity: 0.45 }),
+          x,
+          0.035,
+          0.35,
+          'none',
+        ),
+      );
+    } else if (item.kind === 'wreck') {
+      group.add(mesh(new THREE.BoxGeometry(size, 0.2, 0.42), dark, x, 0.1, -0.35));
+      group.add(mesh(new THREE.BoxGeometry(size * 0.4, 0.12, 0.3), dark, x - 0.04, 0.26, -0.35));
+    } else if (item.kind === 'tree') {
+      group.add(
+        mesh(
+          new THREE.CylinderGeometry(0.03, 0.05, size * 1.4, 6),
+          std(0x2b1a12, 1),
+          x,
+          size * 0.7,
+          -0.6,
+        ),
+      );
+      for (const [dx, dy, rz] of [
+        [-0.08, 0.95, 0.8],
+        [0.09, 1.15, -0.7],
+      ] as const) {
+        group.add(
+          mesh(
+            new THREE.CylinderGeometry(0.015, 0.025, 0.24, 5),
+            std(0x2b1a12, 1),
+            x + dx,
+            size * dy,
+            -0.6,
+          ).rotateZ(rz),
+        );
+      }
+    } else if (item.kind === 'wire') {
+      const posts = Math.max(2, Math.round(item.size / 36));
+      for (let index = 0; index <= posts; index += 1) {
+        const px = toX(item.x - item.size / 2 + (index * item.size) / posts);
+        group.add(mesh(new THREE.BoxGeometry(0.025, 0.26, 0.025), dark, px, 0.13, 0.55, 'none'));
+      }
+      for (const height of [0.1, 0.18, 0.25]) {
+        group.add(
+          mesh(
+            new THREE.BoxGeometry(size, 0.008, 0.008),
+            std(0x9ca3af, 0.4, 0.8),
+            x,
+            height,
+            0.55,
+            'none',
+          ),
+        );
+      }
+    } else if (item.kind === 'flag') {
+      group.add(
+        mesh(
+          new THREE.CylinderGeometry(0.012, 0.012, 0.9, 6),
+          std(0xd6d3d1, 0.5),
+          x,
+          0.45,
+          -0.5,
+          'none',
+        ),
+      );
+      group.add(
+        mesh(
+          new THREE.PlaneGeometry(size, 0.16),
+          std(accent, 0.8, 0, { side: THREE.DoubleSide }),
+          x + size / 2,
+          0.82,
+          -0.5,
+          'none',
+        ),
+      );
+    } else if (item.kind === 'post') {
+      group.add(
+        mesh(
+          new THREE.CylinderGeometry(0.02, 0.02, 0.7, 6),
+          std(0x2a2a33, 0.6),
+          x,
+          0.35,
+          -0.5,
+          'none',
+        ),
+      );
+      group.add(
+        mesh(new THREE.BoxGeometry(0.16, 0.08, 0.08), glow(0xa5f3fc, 2.6), x, 0.72, -0.5, 'none'),
       );
     }
   }
