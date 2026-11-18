@@ -9,7 +9,7 @@ automático.
 
 - Con el botón de cada juego: **«Volver a la vista 2D»** / **«Ver en 3D»**.
 - Con `?mode=2d` o `?mode=3d` en la URL. La elección se recuerda en el
-  navegador (`localStorage`, clave `arcade:render-mode`). Solo quien eligió la
+  navegador (`localStorage`, clave `arcade:vista`). Solo quien eligió la
   2D expresamente la mantiene; sin elección guardada se ve la 3D.
 - Las pruebas E2E arrancan con la 2D guardada (ver `playwright.config.ts`),
   salvo las de `e2e/mode3d.spec.ts`, que piden la 3D.
