@@ -28,6 +28,28 @@ export interface Camera {
   zoom: number;
 }
 
+/**
+ * Centro de cámara que sigue a la bola sin enseñar fuera del hoyo.
+ *
+ * Antes la cámara se centraba en la bola tal cual: con la bola en la salida,
+ * pegada al borde izquierdo, media pantalla quedaba vacía y el recorrido se
+ * cortaba por la derecha. Ahora el encuadre se detiene en los bordes del hoyo
+ * y, si el hoyo cabe entero en un eje, se centra en él.
+ */
+export function followCamera(
+  target: { x: number; y: number },
+  size: { w: number; h: number },
+  zoom: number,
+  view: { w: number; h: number },
+): { x: number; y: number } {
+  const axis = (value: number, length: number, viewLength: number) => {
+    const half = viewLength / 2 / Math.max(zoom, 0.01);
+    if (length <= half * 2) return length / 2;
+    return Math.min(Math.max(value, half), length - half);
+  };
+  return { x: axis(target.x, size.w, view.w), y: axis(target.y, size.h, view.h) };
+}
+
 export interface GolfFrame {
   level: GolfLevel;
   balls: RenderBall[];
