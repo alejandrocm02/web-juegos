@@ -19,7 +19,16 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 - Causa: Chrome reduce `requestAnimationFrame` a ~1 fps en ventanas tapadas sin marcar la página como oculta (`document.hidden` sigue en `false`), así que la vigilancia de fps lo tomaba por un equipo lento.
 - Arreglo: `apps/web/src/three/fps-guard.ts` descarta los fotogramas con un hueco de más de 0,5 s cuando el anterior costó menos de 50 ms (el navegador está estrangulando, no el equipo). Un equipo lento de verdad (fotogramas caros o por debajo de 25 fps con huecos cortos) sigue bajando a calidad baja y luego a 2D. Tests en `apps/web/tests/fps-guard.test.ts`.
 - Límite conocido: un equipo cuyo cuello de botella sea solo la GPU y vaya por debajo de 2 fps ya no vuelve solo a 2D; puede usar «Volver a la vista 2D».
-- Estado: resuelto (rama `fix/3d-fps-ventana-tapada`).
+- Comprobado en producción: la misma ventana que antes caía a 2D muestra ahora la mesa de billar en 3D sin aviso.
+- Estado: resuelto (PR #71, desplegado el 18 nov.).
+
+## [P3] Práctica: se ignora el nombre escrito si el navegador ya tenía sesión
+
+- Juego/zona: lobby de práctica.
+- Pasos para reproducir: practicar con un nombre, volver a la portada, escribir otro nombre y practicar de nuevo.
+- Esperado / Real: la partida usa el nombre nuevo / sigue apareciendo el de la sesión anterior (visto en producción el 18 nov.: se escribió «Prueba 3D» y salió «AlePrueba despli»).
+- Causa: sin investigar; probablemente la reconexión por token recupera el alias guardado.
+- Estado: abierto.
 
 ## [P2] Las estadísticas se pierden en cada despliegue
 
