@@ -210,16 +210,19 @@ export function GameStage({
         </p>
       )}
 
-      {highlight && (
-        <div className="stage-flash" role="status" aria-live="polite" key={highlight.id}>
-          <p className={'stage-flash-card tone-' + highlight.tone}>
-            <span className="stage-flash-title">{highlight.title}</span>
-            {highlight.detail && <span className="stage-flash-detail">{highlight.detail}</span>}
-          </p>
-        </div>
-      )}
-
-      <div className="stage-body">{children}</div>
+      <div className="stage-body">
+        {/* Dentro del tablero: con posicion fija relativa a la ventana, en movil
+            caia sobre la cabecera, que alli ocupa casi un tercio de la pantalla. */}
+        {highlight && (
+          <div className="stage-flash" role="status" aria-live="polite" key={highlight.id}>
+            <p className={'stage-flash-card tone-' + highlight.tone}>
+              <span className="stage-flash-title">{highlight.title}</span>
+              {highlight.detail && <span className="stage-flash-detail">{highlight.detail}</span>}
+            </p>
+          </div>
+        )}
+        {children}
+      </div>
     </section>
   );
 }

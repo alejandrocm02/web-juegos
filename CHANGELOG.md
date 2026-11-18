@@ -7,6 +7,7 @@ Cambios visibles para quien juega o despliega, del más reciente al más antiguo
 ### Corregido
 
 - **Battle Royale: los bots ya no te eliminan en segundos.** Durante los primeros 12 s recogen objetos en vez de ir a por ti, dejan más margen entre golpes cuanto más fácil es la dificultad y ya no se lanzan varios a la vez contra el mismo jugador. Quieto, con un bot fácil, ahora aguantas unos 23 s en vez de 7.
+- **Avisos de gol, strike y demás en móvil:** salen sobre el campo y ya no tapan la cabecera de la partida.
 
 ### Documentación
 
