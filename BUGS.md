@@ -19,7 +19,8 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 - Causa: el plan gratuito de Render no tiene disco persistente; el fichero SQLite vive en el sistema de ficheros del contenedor, que se recrea en cada despliegue (y cuando el servicio se duerme y vuelve a arrancar).
 - Decisión (18 nov.): Postgres en Neon, plan gratuito (proyecto `parque-arcade`, región `aws-us-west-2`, la misma zona que el servicio de Render en Oregón).
 - Arreglo: el servidor elige SQLite o Postgres según `DATABASE_URL` y carga el cliente de Prisma de ese proveedor (se generan los dos). El trabajo `imagen` de la CI arranca la imagen contra un Postgres, escribe una partida, arranca un contenedor nuevo y comprueba que la clasificación la sigue mostrando.
-- Estado: en curso (rama `feat/estadisticas-neon`). Queda poner `DATABASE_URL` en Render y desplegar.
+- Comprobado en producción el 18 nov.: el log muestra «Persistencia Postgres lista»; una partida de práctica de Battle Royale quedó guardada en Neon y la clasificación (`/api/leaderboard`) la seguía mostrando después de otro despliegue.
+- Estado: resuelto (PR #66, desplegado el 18 nov., `dep-dbuok75g1s2s73cg3fcg`).
 
 ## [P1] Temporizador desincronizado entre clientes
 
@@ -95,7 +96,8 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 - Arreglo (`apps/server/src/bots/arena-bot.ts`): durante la gracia inicial de la zona (12 s) los bots recogen objetos y solo se defienden si alguien se les pone al alcance; tras cada golpe dudan según la dificultad (≈2,9 s entre golpes en fácil, ≈1,9 s en normal, ≈1 s en difícil), y penalizan al rival que ya tiene a otro encima.
 - Medido con el jugador quieto (mediana de 11 partidas): 1 bot fácil, de 7 s a 23 s; 3 bots, de 4,5 s a 23-30 s según dificultad. Siguen eliminándolo: un bot fácil no deja de ser un rival.
 - Prueba: `apps/server/tests/arena-balance.test.ts` (simula la partida con la física y los bots reales; falla con el código anterior).
-- Estado: resuelto (rama `fix/battle-royale-bots`).
+- Comprobado en producción: en una práctica con 3 bots, el jugador quieto aguantó unos 90 s y cayó por la tormenta, no por los bots.
+- Estado: resuelto (PR #64, desplegado el 18 nov.).
 
 ## [P1] Bolos: en móvil el juego se sale de la pantalla y queda recortado
 
@@ -158,7 +160,7 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 - Causa: el aviso tenía `position: fixed; top: 18vh`, medido desde la ventana. En móvil la cabecera de la partida ocupa más de ese 18 %, así que caía encima.
 - Arreglo: el aviso vive dentro del tablero (`.stage-body`) y se coloca relativo a él, así que siempre queda por debajo de la cabecera.
 - Prueba: `e2e/highlight-mobile.spec.ts` (inyecta un gol en el tráfico de Socket.IO a 390×844; falla con el código anterior).
-- Estado: resuelto (rama `fix/aviso-gol-movil`).
+- Estado: resuelto (PR #65, desplegado el 18 nov.).
 
 ## [P3] Minigolf: medio lienzo vacío al empezar el hoyo
 
