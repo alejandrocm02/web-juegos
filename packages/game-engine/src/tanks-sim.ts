@@ -1,7 +1,9 @@
 import {
   PHYSICS_DT,
+  TANK_BALLISTICS,
   TANK_FIELD,
   TANK_MAPS,
+  tankShotSpeed,
   type TankExplosion,
   type TankMapId,
   type TankObstacle,
@@ -19,24 +21,29 @@ export interface TankEvent {
   atTick: number;
 }
 
-const SPAWNS: Record<TankMapId, Record<number, number[]>> = {
+/**
+ * Posiciones de salida por mapa y número de jugadores, siempre en huecos libres
+ * entre obstáculos (lo comprueba un test). Con el campo de 2200 los extremos
+ * quedan a 1960 de distancia: al alcance de un disparo a toda potencia.
+ */
+export const TANK_SPAWNS: Record<TankMapId, Record<number, number[]>> = {
   'canon-carmesi': {
-    2: [80, 920],
-    3: [80, 380, 920],
-    4: [80, 360, 640, 920],
-    5: [70, 320, 405, 680, 930],
+    2: [120, 2080],
+    3: [120, 1210, 2080],
+    4: [120, 800, 1400, 2080],
+    5: [120, 520, 1000, 1640, 2080],
   },
   'fortaleza-neon': {
-    2: [70, 930],
-    3: [70, 500, 930],
-    4: [70, 380, 620, 930],
-    5: [70, 155, 500, 845, 930],
+    2: [120, 2080],
+    3: [120, 1200, 2080],
+    4: [120, 700, 1480, 2080],
+    5: [120, 420, 960, 1760, 2080],
   },
   'crater-lunar': {
-    2: [70, 930],
-    3: [70, 400, 930],
-    4: [70, 310, 650, 930],
-    5: [70, 300, 400, 650, 930],
+    2: [120, 2080],
+    3: [120, 1250, 2080],
+    4: [120, 600, 1600, 2080],
+    5: [120, 600, 950, 1600, 2080],
   },
 };
 
@@ -61,10 +68,10 @@ export class TanksWorld {
   ) {
     const map = TANK_MAPS.find((entry) => entry.id === mapId) ?? TANK_MAPS[0]!;
     this.obstacles = map.obstacles.map((obstacle) => ({ ...obstacle }));
-    const positions = SPAWNS[map.id][playerIds.length] ?? SPAWNS[map.id][2]!;
+    const positions = TANK_SPAWNS[map.id][playerIds.length] ?? TANK_SPAWNS[map.id][2]!;
     const maxHealth = mode === 'blitz' ? 70 : 100;
     playerIds.forEach((playerId, index) => {
-      const x = positions[index] ?? 70 + index * 180;
+      const x = positions[index] ?? 120 + index * 400;
       const facingRight = x < TANK_FIELD.width / 2;
       this.tanksById.set(playerId, {
         playerId,
@@ -119,7 +126,7 @@ export class TanksWorld {
     const tank = this.tanksById.get(playerId);
     if (!tank?.alive || this.projectile) return false;
     for (const entry of this.tanksById.values()) entry.fuel = 0;
-    tank.fuel = 3;
+    tank.fuel = TANK_BALLISTICS.movesPerTurn;
     this.randomizeWind();
     return true;
   }
@@ -128,7 +135,7 @@ export class TanksWorld {
     const tank = this.tanksById.get(playerId);
     if (!tank?.alive || tank.fuel <= 0 || this.projectile) return false;
     const nextX = clamp(
-      tank.x + direction * 34,
+      tank.x + direction * TANK_BALLISTICS.moveStep,
       TANK_FIELD.tankWidth / 2 + 10,
       TANK_FIELD.width - TANK_FIELD.tankWidth / 2 - 10,
     );
@@ -144,13 +151,13 @@ export class TanksWorld {
     tank.angle = clamp(angle, -Math.PI + 0.12, -0.12);
     tank.power = clamp(power, 0.2, 1);
     tank.fuel = 0;
-    const speed = 370 + tank.power * 420;
+    const speed = tankShotSpeed(tank.power);
     const turretX = Math.cos(tank.angle);
     const turretY = Math.sin(tank.angle);
     this.projectile = {
       ownerId: playerId,
-      x: tank.x + turretX * 42,
-      y: tank.y - 9 + turretY * 42,
+      x: tank.x + turretX * TANK_BALLISTICS.muzzle,
+      y: tank.y - 9 + turretY * TANK_BALLISTICS.muzzle,
       vx: turretX * speed,
       vy: turretY * speed,
       radius: TANK_FIELD.projectileRadius,
@@ -184,8 +191,8 @@ export class TanksWorld {
     this.projectileAgeMs += dt * 1000;
     projectile.trail.push({ x: projectile.x, y: projectile.y });
     if (projectile.trail.length > 24) projectile.trail.shift();
-    projectile.vx += this.wind * 58 * dt;
-    projectile.vy += 350 * dt;
+    projectile.vx += this.wind * TANK_BALLISTICS.windAccel * dt;
+    projectile.vy += TANK_BALLISTICS.gravity * dt;
     projectile.x += projectile.vx * dt;
     projectile.y += projectile.vy * dt;
 
@@ -214,7 +221,7 @@ export class TanksWorld {
       return;
     }
 
-    if (projectile.y > TANK_FIELD.height + 80 || projectile.y < -420) {
+    if (projectile.y > TANK_FIELD.height + 80 || projectile.y < TANK_BALLISTICS.ceilingY) {
       this.miss(projectile.ownerId);
     }
   }
