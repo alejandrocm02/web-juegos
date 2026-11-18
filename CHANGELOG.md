@@ -2,7 +2,7 @@
 
 Cambios visibles para quien juega o despliega, del más reciente al más antiguo.
 
-## Sin publicar
+## 18 de noviembre de 2026
 
 ### Añadido
 
