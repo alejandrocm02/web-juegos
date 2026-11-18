@@ -417,13 +417,25 @@ function buildCourse(
     const w = pad.rect.w * S;
     const h = pad.rect.h * S;
     const holder = new THREE.Group();
+    const water = pad.surface === 'water';
     const texture = stripes.clone();
     texture.repeat.set(Math.max(1, Math.round(w / 0.6)), 1);
-    const top = std(GOLF_SURFACE_COLORS[pad.surface], pad.surface === 'ice' ? 0.15 : 0.85, 0, {
-      map: texture,
-      ...(pad.surface === 'turbo' ? { emissive: 0x6b21a8, emissiveIntensity: 0.5 } : {}),
-    });
-    holder.add(mesh(new THREE.BoxGeometry(w, 0.06, h), top, 0, -0.03, 0, 'receive'));
+    if (water) texture.dispose();
+    const top = std(
+      GOLF_SURFACE_COLORS[pad.surface],
+      pad.surface === 'ice' || water ? 0.12 : pad.surface === 'rough' ? 1 : 0.85,
+      0,
+      {
+        // El agua no lleva franjas de césped: brillo y un poco de transparencia.
+        ...(water ? { transparent: true, opacity: 0.88 } : { map: texture }),
+        ...(pad.surface === 'turbo' ? { emissive: 0x6b21a8, emissiveIntensity: 0.5 } : {}),
+        ...(water ? { emissive: 0x0b3954, emissiveIntensity: 0.35 } : {}),
+      },
+    );
+    // El agua queda un poco por debajo del green: se lee como estanque.
+    holder.add(
+      mesh(new THREE.BoxGeometry(w, 0.06, h), top, 0, water ? -0.07 : -0.03, 0, 'receive'),
+    );
     // Zócalo algo más ancho: deja ver un borde claro alrededor de la plataforma.
     holder.add(
       mesh(new THREE.BoxGeometry(w + 0.08, DEPTH - 0.02, h + 0.08), rim, 0, -DEPTH / 2 - 0.03, 0),

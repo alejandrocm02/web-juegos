@@ -31,6 +31,7 @@ function createRecordingContext() {
     beginPath: record('beginPath'),
     moveTo: record('moveTo'),
     lineTo: record('lineTo'),
+    quadraticCurveTo: record('quadraticCurveTo'),
     arc: record('arc'),
     fill: record('fill'),
     stroke: record('stroke'),
@@ -197,6 +198,21 @@ describe('render del minigolf', () => {
       return ctx.calls.filter((c) => c.startsWith('fillRect')).join('|');
     };
     expect(snapshot(0)).not.toBe(snapshot(2.2));
+  });
+});
+
+describe('superficies nuevas', () => {
+  it('el estanque del hoyo 5 se dibuja con ondas y la hierba alta con matas', () => {
+    const ctx = createRecordingContext();
+    drawGolfFrame(ctx, canvas, {
+      level: getGolfLevel(5),
+      balls: [],
+      camera: { x: 470, y: 320, zoom: 1 },
+      time: 1,
+      colorOf: looks,
+      aim: null,
+    });
+    expect(ctx.calls.some((call) => call.startsWith('quadraticCurveTo'))).toBe(true);
   });
 });
 

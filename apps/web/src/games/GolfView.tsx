@@ -110,7 +110,7 @@ export default function GolfView({ state }: { state: GolfPublicState }) {
       return () => clearTimeout(timer);
     }
     if (latest.kind === 'holed') playHoledSound();
-    if (latest.kind === 'out') playOutSound();
+    if (latest.kind === 'out' || latest.kind === 'water') playOutSound();
     return undefined;
   }, [golfEvents, room]);
 
@@ -582,6 +582,8 @@ function describeEvent(kind: string): string {
       return 'ha embocado.';
     case 'out':
       return 'se ha salido del recorrido.';
+    case 'water':
+      return 'ha caído al agua (+1 golpe).';
     case 'penalty':
       return 'recibe una penalización.';
     case 'reset':

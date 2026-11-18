@@ -6,7 +6,7 @@ import type {
   GolfSnapshot,
   Vec2,
 } from '@arcade/shared';
-import { GOLF, GOLF_SURFACE_FRICTION, PHYSICS_DT } from '@arcade/shared';
+import { GOLF, GOLF_HAZARD_SURFACES, GOLF_SURFACE_FRICTION, PHYSICS_DT } from '@arcade/shared';
 import {
   buildLevelWalls,
   motionOffset,
@@ -274,6 +274,10 @@ export class GolfWorld {
           this.handleOutOfBounds(ball);
           return;
         }
+        if (isHazard(pad.surface)) {
+          this.handleHazard(ball);
+          return;
+        }
         ball.lastStable = { x: ball.x, y: ball.y };
       }
       return;
@@ -284,6 +288,10 @@ export class GolfWorld {
     const pad = this.padAt(ball.x, ball.y, time);
     if (!pad) {
       this.handleOutOfBounds(ball);
+      return;
+    }
+    if (isHazard(pad.surface)) {
+      this.handleHazard(ball);
       return;
     }
 
@@ -333,8 +341,15 @@ export class GolfWorld {
       this.collideBlades(ball, time);
       if (this.checkHole(ball)) return;
       if (this.checkRamps(ball)) return;
-      if (!this.padAt(ball.x, ball.y, time)) {
+      // El agua se mira en cada subpaso: una bola rápida no puede cruzar un
+      // estanque entero entre dos comprobaciones sin mojarse.
+      const here = this.padAt(ball.x, ball.y, time);
+      if (!here) {
         this.handleOutOfBounds(ball);
+        return;
+      }
+      if (isHazard(here.surface)) {
+        this.handleHazard(ball);
         return;
       }
     }
@@ -384,6 +399,26 @@ export class GolfWorld {
       ball.outOfBounds = true;
     }
 
+    if (ball.strokes >= this.settings.maxStrokes) this.finishByStrokes(ball);
+  }
+
+  /**
+   * Bola al agua: vuelve al último punto donde estuvo quieta (caer a mitad de
+   * recorrido no debería mandarte a la salida) y suma un golpe siempre.
+   */
+  private handleHazard(ball: InternalBall): void {
+    ball.vx = 0;
+    ball.vy = 0;
+    ball.z = 0;
+    ball.airborne = false;
+    ball.airTimeLeft = 0;
+    ball.aceEligible = false;
+    ball.x = ball.lastStable.x;
+    ball.y = ball.lastStable.y;
+    ball.outOfBounds = false;
+    this.pushEvent('water', ball);
+    ball.strokes = Math.min(this.settings.maxStrokes, ball.strokes + GOLF.outPenalty);
+    this.pushEvent('penalty', ball);
     if (ball.strokes >= this.settings.maxStrokes) this.finishByStrokes(ball);
   }
 
@@ -593,4 +628,8 @@ export class GolfWorld {
 
 function round(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+function isHazard(surface: GolfLevel['pads'][number]['surface']): boolean {
+  return GOLF_HAZARD_SURFACES.includes(surface);
 }
