@@ -153,8 +153,11 @@ Prioridad: **P0** rompe la web o una partida · **P1** afecta a jugar · **P2** 
 ## [P3] Aviso «¡GOL!» tapa la cabecera de la partida en móvil
 
 - Juego/zona: Head Soccer (y demás avisos destacados).
-- Real: el aviso aparece sobre la píldora «Partida simultánea» en vez de sobre el campo.
-- Estado: abierto.
+- Real: el aviso aparece sobre la píldora «Partida simultánea» en vez de sobre el campo (a 390 px, el aviso empezaba en y=152 y la cabecera acababa en y=193).
+- Causa: el aviso tenía `position: fixed; top: 18vh`, medido desde la ventana. En móvil la cabecera de la partida ocupa más de ese 18 %, así que caía encima.
+- Arreglo: el aviso vive dentro del tablero (`.stage-body`) y se coloca relativo a él, así que siempre queda por debajo de la cabecera.
+- Prueba: `e2e/highlight-mobile.spec.ts` (inyecta un gol en el tráfico de Socket.IO a 390×844; falla con el código anterior).
+- Estado: resuelto (rama `fix/aviso-gol-movil`).
 
 ## [P3] Minigolf: medio lienzo vacío al empezar el hoyo
 

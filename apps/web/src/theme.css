@@ -257,13 +257,18 @@
 }
 
 /* Momento destacado: aparece sobre el tablero y no tapa los controles. */
-.stage-flash {
-  position: fixed;
-  top: 18vh;
+/* Anclado al tablero (.stage-body), no a la ventana: asi nunca tapa la cabecera. */
+.stage-body > .stage-flash {
+  position: absolute;
+  top: clamp(0.75rem, 12%, 7rem);
   left: 50%;
   transform: translateX(-50%);
   z-index: 40;
+  width: max-content;
+  max-width: calc(100% - 1.5rem);
+  padding-top: 0;
   pointer-events: none;
+  text-align: center;
 }
 
 .stage-flash-card {
