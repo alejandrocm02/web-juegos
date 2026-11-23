@@ -12,14 +12,14 @@
   "dependencies": {
     "@arcade/game-engine": "1.0.0",
     "@arcade/shared": "1.0.0",
-    "react": "^18.3.1",
+    "react": "^19.3.1",
     "react-dom": "^18.3.1",
     "socket.io-client": "^4.8.4",
     "three": "^0.170.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/react": "^18.3.12",
+    "@types/react": "^19.3.0",
     "@types/react-dom": "^18.3.1",
     "@types/three": "^0.170.0",
     "@vitejs/plugin-react": "^5.2.0",
