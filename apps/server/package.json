@@ -32,6 +32,6 @@
     "@types/cors": "^2.8.17",
     "@types/express": "^5.0.6",
     "socket.io-client": "^4.8.4",
-    "tsx": "^4.19.2"
+    "tsx": "^4.23.15"
   }
 }
