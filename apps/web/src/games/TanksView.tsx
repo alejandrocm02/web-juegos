@@ -2,6 +2,8 @@ import {
   GAME_MODE_CATALOG,
   TANK_FIELD,
   TANK_MAPS,
+  tankGroundAt,
+  tankTiltAt,
   type PublicPlayer,
   type TankDecor,
   type TankObstacle,
@@ -119,7 +121,7 @@ export default function TanksView({ state }: { state: TanksPublicState }) {
       const ctx = canvas?.getContext('2d');
       if (canvas && ctx) {
         const preview = isMyTurn && myTank ? { tank: myTank, angleDeg, power } : null;
-        const aim = preview ? predictShot(preview, state.wind, state.obstacles) : null;
+        const aim = preview ? predictShot(preview, state.wind, state.obstacles, state.map) : null;
         cameraRef.current = easeCamera(
           cameraRef.current,
           tankCameraTarget(state, { overview, meId, aim }),
@@ -494,7 +496,7 @@ function drawBattlefield(
   drawGround(ctx, state.map, palette, left, right, bottom);
   const map = TANK_MAPS.find((entry) => entry.id === state.map);
   for (const item of map?.decor ?? []) {
-    if (item.kind !== 'crater') drawDecor(ctx, item, palette, time);
+    if (item.kind !== 'crater') drawDecor(ctx, item, palette, time, state.map);
   }
   for (const obstacle of state.obstacles) drawObstacle(ctx, obstacle, palette);
   if (aim) drawTrajectory(ctx, aim);
@@ -511,6 +513,7 @@ function drawBattlefield(
       angle,
       state.mode === 'blitz' ? 70 : 100,
       camera.zoom,
+      state.map,
     );
   }
   if (state.projectile) {
@@ -600,12 +603,27 @@ function drawRadar(
   ctx.strokeStyle = 'rgba(255,255,255,.14)';
   ctx.lineWidth = 1;
   ctx.stroke();
-  ctx.fillStyle = 'rgba(255,255,255,.18)';
-  ctx.fillRect(x0, ground, width, 1);
+  // Perfil del relieve (exagerado para que se lea en 30 px).
+  ctx.strokeStyle = 'rgba(255,255,255,.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let x = 0; x <= TANK_FIELD.width; x += 40) {
+    const y = ground - (TANK_FIELD.groundY - tankGroundAt(state.map, x)) * 0.09;
+    if (x === 0) ctx.moveTo(x0, y);
+    else ctx.lineTo(x0 + x * scale, y);
+  }
+  ctx.stroke();
+  const radarY = (y: number) => ground - (TANK_FIELD.groundY - y) * 0.09;
   ctx.fillStyle = 'rgba(255,255,255,.28)';
   for (const obstacle of state.obstacles) {
-    const h = Math.max(2, obstacle.height * 0.07);
-    ctx.fillRect(x0 + obstacle.x * scale, ground - h, Math.max(1.5, obstacle.width * scale), h);
+    const top = radarY(obstacle.y);
+    const base = radarY(tankGroundAt(state.map, obstacle.x + obstacle.width / 2));
+    ctx.fillRect(
+      x0 + obstacle.x * scale,
+      top,
+      Math.max(1.5, obstacle.width * scale),
+      Math.max(2, base - top),
+    );
   }
   // Tramo visible.
   const half = TANK_VIEW.width / 2 / camera.zoom;
@@ -621,7 +639,13 @@ function drawRadar(
     const color = players.find((player) => player.id === tank.playerId)?.color ?? '#94a3b8';
     ctx.fillStyle = color;
     ctx.beginPath();
-    ctx.arc(x0 + tank.x * scale, ground - 3, tank.playerId === state.activePlayerId ? 4 : 3, 0, 7);
+    ctx.arc(
+      x0 + tank.x * scale,
+      radarY(tank.y) - 1,
+      tank.playerId === state.activePlayerId ? 4 : 3,
+      0,
+      7,
+    );
     ctx.fill();
   }
   if (state.projectile) {
@@ -702,44 +726,77 @@ function drawGround(
   right: number,
   bottom: number,
 ) {
-  const { groundY, width } = TANK_FIELD;
-  // Fuera del campo: barranco oscuro a cada lado.
+  const { width } = TANK_FIELD;
+  const from = Math.max(0, Math.floor(left / 8) * 8 - 8);
+  const to = Math.min(width, Math.ceil(right / 8) * 8 + 8);
+  // Fuera del campo: barranco oscuro a cada lado (solo fuera, no tapa el cielo).
   ctx.fillStyle = '#05060a';
-  ctx.fillRect(left - 20, groundY, right - left + 40, bottom - groundY);
-  const soil = ctx.createLinearGradient(0, groundY, 0, bottom);
+  if (left < 0) ctx.fillRect(left - 20, 380, -left + 20, bottom - 380);
+  if (right > width) ctx.fillRect(width, 380, right - width + 20, bottom - 380);
+
+  // Relieve: el mismo perfil que usa el servidor para tanques y proyectiles.
+  const profile = (): void => {
+    ctx.moveTo(from, tankGroundAt(map, from));
+    for (let x = from + 8; x <= to; x += 8) ctx.lineTo(x, tankGroundAt(map, x));
+  };
+  const soil = ctx.createLinearGradient(0, 400, 0, bottom);
   soil.addColorStop(0, palette.soil);
   soil.addColorStop(1, '#0b0a0e');
   ctx.fillStyle = soil;
-  ctx.fillRect(0, groundY, width, bottom - groundY);
-  ctx.fillStyle = palette.topsoil;
-  ctx.fillRect(0, groundY, width, 6);
-  // Cráteres: hundimientos del terreno (no cambian la física).
+  ctx.beginPath();
+  profile();
+  ctx.lineTo(to, bottom);
+  ctx.lineTo(from, bottom);
+  ctx.closePath();
+  ctx.fill();
+
+  // Estratos: franjas que siguen el relieve hacia abajo.
+  ctx.save();
+  ctx.clip();
+  for (const [depth, alpha] of [
+    [26, 0.16],
+    [58, 0.12],
+    [96, 0.1],
+  ] as const) {
+    ctx.strokeStyle = `rgba(0,0,0,${alpha})`;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(from, tankGroundAt(map, from) + depth);
+    for (let x = from + 16; x <= to; x += 16) ctx.lineTo(x, tankGroundAt(map, x) + depth);
+    ctx.stroke();
+  }
+  // Grava.
+  for (let x = Math.max(12, from); x < to; x += 38) {
+    const g = tankGroundAt(map, x);
+    ctx.fillStyle = 'rgba(0,0,0,.2)';
+    ctx.fillRect(x, g + 14 + ((x / 38) % 3) * 9, 18, 3);
+    ctx.fillStyle = 'rgba(255,255,255,.05)';
+    ctx.fillRect(x + 9, g + 34 + ((x / 19) % 2) * 11, 6, 2);
+  }
+  ctx.restore();
+
+  // Capa superior.
+  ctx.strokeStyle = palette.topsoil;
+  ctx.lineWidth = 6;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  profile();
+  ctx.stroke();
+
+  // Cráteres de decorado: sombra en el suelo.
   const mapInfo = TANK_MAPS.find((entry) => entry.id === map);
   for (const item of mapInfo?.decor ?? []) {
     if (item.kind !== 'crater') continue;
-    ctx.fillStyle = 'rgba(0,0,0,.42)';
+    const g = tankGroundAt(map, item.x);
+    ctx.fillStyle = 'rgba(0,0,0,.4)';
     ctx.beginPath();
-    ctx.ellipse(item.x, groundY + 3, item.size / 2, 9, 0, 0, Math.PI);
+    ctx.ellipse(item.x, g + 4, item.size / 2, 8, 0, 0, Math.PI);
     ctx.fill();
-    ctx.fillStyle = palette.topsoil;
-    ctx.globalAlpha = 0.7;
-    ctx.beginPath();
-    ctx.ellipse(item.x - item.size / 2 - 4, groundY + 1, 10, 4, 0, Math.PI, 0);
-    ctx.ellipse(item.x + item.size / 2 + 4, groundY + 1, 10, 4, 0, Math.PI, 0);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-  }
-  // Grava y marcas de cadenas.
-  for (let x = 12; x < width; x += 38) {
-    ctx.fillStyle = 'rgba(0,0,0,.18)';
-    ctx.fillRect(x, groundY + 16 + ((x / 38) % 3) * 9, 18, 3);
-    ctx.fillStyle = 'rgba(255,255,255,.05)';
-    ctx.fillRect(x + 9, groundY + 34 + ((x / 19) % 2) * 11, 6, 2);
   }
   // Bordes del campo.
   ctx.fillStyle = 'rgba(255,255,255,.12)';
-  ctx.fillRect(0, groundY - 40, 3, 40);
-  ctx.fillRect(width - 3, groundY - 40, 3, 40);
+  ctx.fillRect(0, tankGroundAt(map, 0) - 40, 3, 40);
+  ctx.fillRect(width - 3, tankGroundAt(map, width) - 40, 3, 40);
 }
 
 function drawDecor(
@@ -747,8 +804,10 @@ function drawDecor(
   item: TankDecor,
   palette: BattlePalette,
   time: number,
+  map: string,
 ) {
-  const g = TANK_FIELD.groundY;
+  // Cada elemento se apoya en el relieve bajo su centro.
+  const g = tankGroundAt(map, item.x) + 2;
   ctx.save();
   if (item.kind === 'wire') {
     ctx.strokeStyle = 'rgba(30,30,34,.95)';
@@ -976,15 +1035,17 @@ function drawTank(
   angle: number,
   maxHealth: number,
   zoom: number,
+  map: string,
 ) {
   const color = player?.color ?? '#94a3b8';
+  const tilt = tankTiltAt(map, tank.x);
   ctx.save();
   ctx.globalAlpha = tank.alive ? 1 : 0.32;
   if (me || active) {
     ctx.strokeStyle = me ? '#fff' : color;
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.ellipse(tank.x, TANK_FIELD.groundY + 4, 43, 10, 0, 0, Math.PI * 2);
+    ctx.ellipse(tank.x, tankGroundAt(map, tank.x) + 4, 43, 10, tilt, 0, Math.PI * 2);
     ctx.stroke();
   }
   ctx.strokeStyle = color;
@@ -994,22 +1055,27 @@ function drawTank(
   ctx.moveTo(tank.x + Math.cos(angle) * 7, tank.y - 11 + Math.sin(angle) * 7);
   ctx.lineTo(tank.x + Math.cos(angle) * 43, tank.y - 11 + Math.sin(angle) * 43);
   ctx.stroke();
+  // El casco se inclina con la pendiente; el cañón apunta en coordenadas del campo.
+  ctx.save();
+  ctx.translate(tank.x, tank.y);
+  ctx.rotate(tilt);
   ctx.fillStyle = '#11131b';
-  roundRect(ctx, tank.x - 31, tank.y - 5, 62, 25, 8);
+  roundRect(ctx, -31, -5, 62, 25, 8);
   ctx.fill();
   ctx.strokeStyle = color;
   ctx.lineWidth = 3;
   ctx.stroke();
   ctx.fillStyle = color;
   ctx.beginPath();
-  ctx.arc(tank.x, tank.y - 9, 15, Math.PI, Math.PI * 2);
+  ctx.arc(0, -9, 15, Math.PI, Math.PI * 2);
   ctx.fill();
   ctx.fillStyle = '#07080d';
   for (let offset = -20; offset <= 20; offset += 20) {
     ctx.beginPath();
-    ctx.arc(tank.x + offset, tank.y + 16, 7, 0, Math.PI * 2);
+    ctx.arc(offset, 16, 7, 0, Math.PI * 2);
     ctx.fill();
   }
+  ctx.restore();
   // Nombre y vida se leen igual con el campo alejado.
   const ui = 1 / Math.max(0.5, zoom);
   ctx.fillStyle = 'rgba(0,0,0,.65)';

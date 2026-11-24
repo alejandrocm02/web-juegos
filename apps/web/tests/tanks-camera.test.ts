@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { TANK_FIELD, type TankState, type TanksPublicState } from '@arcade/shared';
+import { TANK_FIELD, tankGroundAt, type TankState, type TanksPublicState } from '@arcade/shared';
 import {
   TANK_AIM_MIN_ZOOM,
   TANK_FLIGHT_MIN_ZOOM,
@@ -60,7 +60,12 @@ describe('cámara de Tanques', () => {
   });
 
   it('al apuntar lejos se aleja, pero no tanto como para perder el tanque', () => {
-    const aim = predictShot({ tank: base.tanks[0]!, angleDeg: 45, power: 100 }, 0, []);
+    const aim = predictShot(
+      { tank: base.tanks[0]!, angleDeg: 45, power: 100 },
+      0,
+      [],
+      'sin-relieve',
+    );
     expect(aim.end.x).toBeGreaterThan(1500);
     const target = tankCameraTarget(base, { overview: false, aim });
     expect(target.zoom).toBeGreaterThanOrEqual(TANK_AIM_MIN_ZOOM);
@@ -112,7 +117,12 @@ describe('cámara de Tanques', () => {
 
   it('la trayectoria prevista se para en los obstáculos', () => {
     const wall = { id: 'muro', x: 300, y: 300, width: 40, height: 228 };
-    const aim = predictShot({ tank: base.tanks[0]!, angleDeg: 20, power: 80 }, 0, [wall]);
+    const aim = predictShot(
+      { tank: base.tanks[0]!, angleDeg: 20, power: 80 },
+      0,
+      [wall],
+      'sin-relieve',
+    );
     expect(aim.end.x).toBeGreaterThanOrEqual(300);
     expect(aim.end.x).toBeLessThanOrEqual(345);
   });
@@ -121,5 +131,20 @@ describe('cámara de Tanques', () => {
     const next = easeCamera({ x: 500, zoom: 1 }, { x: 1500, zoom: 1 }, 1 / 60);
     expect(next.x).toBeGreaterThan(500);
     expect(next.x).toBeLessThan(700);
+  });
+});
+
+describe('trayectoria prevista con relieve', () => {
+  it('cae en la ladera, no en el suelo de referencia', () => {
+    // En Cañón Carmesí la colina central está a y≈414: un tiro que pase por
+    // encima del valle oeste cae sobre la loma antes de llegar al nivel 528.
+    const aim = predictShot(
+      { tank: base.tanks[0]!, angleDeg: 20, power: 55 },
+      0,
+      [],
+      'canon-carmesi',
+    );
+    expect(aim.end.y).toBeLessThan(TANK_FIELD.groundY - 10);
+    expect(aim.end.y).toBeCloseTo(tankGroundAt('canon-carmesi', aim.end.x), -1);
   });
 });

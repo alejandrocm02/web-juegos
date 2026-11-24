@@ -334,9 +334,10 @@ Los cinco niveles marcados tienen una **ruta real de hoyo en uno basada en habil
 
 - Artillería lateral por turnos con trayectoria balística, viento variable, obstáculos y daño radial.
 - Campo de batalla de 2200 de ancho (más del doble de la pantalla): la cámara sigue al tanque que apunta, al proyectil y a la explosión, se aleja cuando el tiro sube mucho y **V** (o «Ver todo el campo») enseña el campo entero. Un radar arriba muestra tanques, obstáculos, proyectil y el tramo visible.
+- El suelo tiene relieve: colinas, lomas y hondonadas definidas por mapa (`terrain` en `TANK_MAPS`, interpolación coseno). Los tanques se apoyan e inclinan en la pendiente, no suben cuestas de más de 0,85 (unos 40°), los proyectiles chocan con las laderas y las hondonadas cubren. Servidor, bots y vistas usan la misma función (`tankGroundAt`).
 - Cada tanque puede gastar hasta cuatro cargas de combustible antes de disparar; los obstáculos frenan el avance y sirven de cobertura. El servidor valida movimiento, colisiones, impacto, blindaje y bajas.
 - Modos **Clásico**, **Blitz** (70 PV, más daño y turnos de 18 segundos) y **Rebotes** (hasta dos rebotes en paredes u obstáculos).
-- Tres campos propios: **Cañón Carmesí** (desierto con aguja central, trincheras de sacos terreros y búnkeres), **Fortaleza Neón** (base con muros de hormigón, búnkeres altos y torre de vigilancia) y **Cráter Lunar** (llanura de cráteres y ruinas). Cráteres, alambradas, árboles secos, restos humeantes, banderas y focos son decorado: no chocan.
+- Tres campos propios: **Cañón Carmesí** (cañón con la aguja en la colina central, búnkeres en las lomas y sacos terreros en los valles), **Fortaleza Neón** (dos terraplenes con búnker y muro y una hondonada con la torre en un montículo) y **Cráter Lunar** (terreno ondulado con cráteres de verdad, ruinas y el monolito en la cima). Cráteres, alambradas, árboles secos, restos humeantes, banderas y focos son decorado: no chocan.
 - Controles con botones, teclado y sliders de ángulo/potencia; la trayectoria de puntos es solo una ayuda visual y el servidor resuelve el disparo real. Servidor, bots y las dos vistas comparten la misma balística (`TANK_BALLISTICS`).
 
 ---
