@@ -66,34 +66,140 @@ export interface TankMap {
   id: TankMapId;
   name: string;
   description: string;
+  /**
+   * Relieve del suelo: puntos [x, y] de izquierda a derecha, de 0 al ancho del
+   * campo. Entre puntos se suaviza con una curva coseno. `y` crece hacia abajo,
+   * como en todo el campo: menos y = más alto.
+   */
+  terrain: readonly (readonly [number, number])[];
   obstacles: TankObstacle[];
   decor: TankDecor[];
 }
 
-const G = TANK_FIELD.groundY;
-/** Obstáculo apoyado en el suelo. */
-const block = (
-  id: string,
-  kind: TankObstacleKind,
-  x: number,
-  width: number,
-  height: number,
-): TankObstacle => ({ id, kind, x, y: G - height, width, height });
+/** Pendiente máxima que puede subir un tanque en un desplazamiento (subida/avance). */
+export const TANK_MAX_CLIMB = 0.85;
+
+/** Altura del suelo en `x` según un relieve (interpolación coseno entre puntos). */
+export function terrainHeight(terrain: TankMap['terrain'], x: number): number {
+  if (terrain.length === 0) return TANK_FIELD.groundY;
+  const first = terrain[0]!;
+  const last = terrain[terrain.length - 1]!;
+  if (x <= first[0]) return first[1];
+  if (x >= last[0]) return last[1];
+  for (let index = 1; index < terrain.length; index += 1) {
+    const [x1, y1] = terrain[index]!;
+    if (x > x1) continue;
+    const [x0, y0] = terrain[index - 1]!;
+    const t = (x - x0) / Math.max(1, x1 - x0);
+    const eased = (1 - Math.cos(t * Math.PI)) / 2;
+    return y0 + (y1 - y0) * eased;
+  }
+  return last[1];
+}
+
+/** Inclinación del suelo en `x`, en radianes (positiva = sube hacia la derecha en pantalla). */
+export function terrainTilt(terrain: TankMap['terrain'], x: number, span = 22): number {
+  const left = terrainHeight(terrain, x - span);
+  const right = terrainHeight(terrain, x + span);
+  return Math.atan2(right - left, span * 2);
+}
+
+/** Obstáculo apoyado en el relieve: su base llega al punto más bajo bajo él, un poco enterrada. */
+function blockOn(terrain: TankMap['terrain']) {
+  return (
+    id: string,
+    kind: TankObstacleKind,
+    x: number,
+    width: number,
+    height: number,
+  ): TankObstacle => {
+    let lowest = -Infinity;
+    let highest = Infinity;
+    for (let px = x; px <= x + width; px += 4) {
+      const ground = terrainHeight(terrain, px);
+      lowest = Math.max(lowest, ground);
+      highest = Math.min(highest, ground);
+    }
+    const bottom = Math.round(lowest + 4);
+    const top = Math.round(highest - height);
+    return { id, kind, x, y: top, width, height: bottom - top };
+  };
+}
+
+const CANON_TERRAIN = [
+  [0, 506],
+  [180, 510],
+  [420, 522],
+  [560, 476],
+  [720, 462],
+  [860, 500],
+  [990, 446],
+  [1100, 414],
+  [1210, 446],
+  [1340, 500],
+  [1480, 462],
+  [1640, 476],
+  [1780, 522],
+  [2020, 510],
+  [2200, 506],
+] as const;
+
+const FORTALEZA_TERRAIN = [
+  [0, 520],
+  [240, 520],
+  [380, 474],
+  [660, 468],
+  [790, 520],
+  [980, 548],
+  [1100, 506],
+  [1220, 548],
+  [1410, 520],
+  [1540, 468],
+  [1820, 474],
+  [1960, 520],
+  [2200, 520],
+] as const;
+
+const CRATER_TERRAIN = [
+  [0, 512],
+  [170, 506],
+  [260, 546],
+  [350, 504],
+  [520, 474],
+  [610, 524],
+  [700, 492],
+  [900, 458],
+  [1070, 436],
+  [1230, 470],
+  [1300, 540],
+  [1380, 494],
+  [1560, 522],
+  [1700, 474],
+  [1900, 500],
+  [2010, 546],
+  [2100, 508],
+  [2200, 512],
+] as const;
+
+const canon = blockOn(CANON_TERRAIN);
+const fortaleza = blockOn(FORTALEZA_TERRAIN);
+const crater = blockOn(CRATER_TERRAIN);
 
 export const TANK_MAPS: TankMap[] = [
   {
     id: 'canon-carmesi',
     name: 'Cañón Carmesí',
     description:
-      'Desierto rojo con una gran aguja en el centro, trincheras de sacos terreros y dos búnkeres.',
+      'Cañón rojo: la gran aguja corona la colina central, con búnkeres en las lomas y trincheras de sacos al fondo de cada valle.',
+    terrain: CANON_TERRAIN,
     obstacles: [
-      block('aguja', 'spire', 1055, 90, 184),
-      block('sacos-oeste', 'sandbags', 330, 76, 34),
-      block('bunker-oeste', 'bunker', 640, 110, 72),
-      block('roca-centro-oeste', 'rock', 880, 54, 46),
-      block('roca-centro-este', 'rock', 1270, 54, 46),
-      block('bunker-este', 'bunker', 1450, 110, 72),
-      block('sacos-este', 'sandbags', 1794, 76, 34),
+      canon('aguja', 'spire', 1055, 90, 160),
+      canon('sacos-oeste', 'sandbags', 330, 76, 34),
+      canon('bunker-oeste', 'bunker', 640, 110, 72),
+      canon('roca-centro-oeste', 'rock', 880, 54, 46),
+      canon('roca-centro-este', 'rock', 1270, 54, 46),
+      canon('bunker-este', 'bunker', 1450, 110, 72),
+      canon('sacos-este', 'sandbags', 1794, 76, 34),
     ],
     decor: [
       { kind: 'crater', x: 230, size: 80 },
@@ -112,15 +218,16 @@ export const TANK_MAPS: TankMap[] = [
     id: 'fortaleza-neon',
     name: 'Fortaleza Neón',
     description:
-      'Base fortificada: muros de hormigón, dos búnkeres altos y una torre de vigilancia en tierra de nadie.',
+      'Base fortificada: dos terraplenes con búnker y muro, y entre ellos una hondonada de tierra de nadie con la torre de vigilancia en un montículo.',
+    terrain: FORTALEZA_TERRAIN,
     obstacles: [
-      block('bunker-oeste', 'bunker', 520, 96, 120),
-      block('muro-oeste', 'wall', 300, 34, 96),
-      block('sacos-oeste', 'sandbags', 800, 80, 34),
-      block('torre', 'tower', 1080, 40, 220),
-      block('sacos-este', 'sandbags', 1320, 80, 34),
-      block('muro-este', 'wall', 1866, 34, 96),
-      block('bunker-este', 'bunker', 1584, 96, 120),
+      fortaleza('bunker-oeste', 'bunker', 520, 96, 110),
+      fortaleza('muro-oeste', 'wall', 300, 34, 90),
+      fortaleza('sacos-oeste', 'sandbags', 820, 80, 34),
+      fortaleza('torre', 'tower', 1080, 40, 210),
+      fortaleza('sacos-este', 'sandbags', 1300, 80, 34),
+      fortaleza('muro-este', 'wall', 1866, 34, 90),
+      fortaleza('bunker-este', 'bunker', 1584, 96, 110),
     ],
     decor: [
       { kind: 'post', x: 160, size: 20 },
@@ -138,25 +245,40 @@ export const TANK_MAPS: TankMap[] = [
     id: 'crater-lunar',
     name: 'Cráter Lunar',
     description:
-      'Llanura llena de cráteres y ruinas bajas: pocas coberturas y disparos largos y tensos.',
+      'Terreno ondulado y lleno de cráteres de verdad, con el monolito en la cima: hondonadas que cubren y pocas rocas.',
+    terrain: CRATER_TERRAIN,
     obstacles: [
-      block('monolito', 'spire', 1070, 60, 116),
-      block('roca-oeste', 'rock', 400, 62, 70),
-      block('ruina-oeste', 'ruin', 760, 44, 88),
-      block('ruina-este', 'ruin', 1396, 44, 88),
-      block('roca-este', 'rock', 1738, 62, 70),
+      crater('monolito', 'spire', 1070, 60, 110),
+      crater('roca-oeste', 'rock', 400, 62, 60),
+      crater('ruina-oeste', 'ruin', 760, 44, 80),
+      crater('ruina-este', 'ruin', 1396, 44, 80),
+      crater('roca-este', 'rock', 1738, 62, 60),
     ],
     decor: [
       { kind: 'crater', x: 260, size: 120 },
       { kind: 'crater', x: 600, size: 90 },
       { kind: 'wreck', x: 920, size: 64 },
-      { kind: 'crater', x: 1240, size: 140 },
+      { kind: 'crater', x: 1300, size: 120 },
       { kind: 'crater', x: 1560, size: 90 },
       { kind: 'wreck', x: 1880, size: 64 },
       { kind: 'crater', x: 2020, size: 100 },
     ],
   },
 ];
+
+const TERRAIN_BY_MAP = new Map(TANK_MAPS.map((map) => [map.id as string, map.terrain]));
+
+/** Altura del suelo de un mapa en `x`. Mapa desconocido: suelo plano. */
+export function tankGroundAt(mapId: string, x: number): number {
+  const terrain = TERRAIN_BY_MAP.get(mapId);
+  return terrain ? terrainHeight(terrain, x) : TANK_FIELD.groundY;
+}
+
+/** Inclinación del suelo de un mapa en `x`, en radianes. */
+export function tankTiltAt(mapId: string, x: number): number {
+  const terrain = TERRAIN_BY_MAP.get(mapId);
+  return terrain ? terrainTilt(terrain, x) : 0;
+}
 
 export interface TankState {
   playerId: string;

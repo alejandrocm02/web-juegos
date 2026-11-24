@@ -1,6 +1,7 @@
 import {
   TANK_BALLISTICS,
   TANK_FIELD,
+  tankGroundAt,
   tankShotSpeed,
   type GameAction,
   type GamePublicState,
@@ -29,6 +30,9 @@ const ANGLE_MAX = -0.12;
  * busqueda y se añade error al resultado.
  */
 export class TanksBot implements BotBrain {
+  /** Mapa de la partida en curso: su relieve decide dónde cae el proyectil. */
+  private mapId = '';
+
   think(state: GamePublicState, ctx: BotThinkContext): GameAction[] {
     if (state.game !== 'tanks') return [];
     if (state.phase !== 'aiming' || state.activePlayerId !== ctx.botId) {
@@ -54,6 +58,7 @@ export class TanksBot implements BotBrain {
     const target = this.pickTarget(state.tanks, me);
     if (!target) return [];
 
+    this.mapId = state.map;
     const solution = this.solve(me, target, state.wind, state.obstacles, ctx);
     ctx.memory.firedTurn = state.turnNumber;
 
@@ -173,8 +178,9 @@ export class TanksBot implements BotBrain {
       if (distance < closest) closest = distance;
       if (distance < TANK_FIELD.explosionRadius * 0.4) return distance;
 
-      if (y + TANK_FIELD.projectileRadius >= TANK_FIELD.groundY) {
-        return Math.min(closest, Math.hypot(x - target.x, TANK_FIELD.groundY - target.y));
+      const ground = tankGroundAt(this.mapId, x);
+      if (y + TANK_FIELD.projectileRadius >= ground) {
+        return Math.min(closest, Math.hypot(x - target.x, ground - target.y));
       }
       if (x < -60 || x > TANK_FIELD.width + 60) return closest + 400;
       if (y > TANK_FIELD.height + 80 || y < TANK_BALLISTICS.ceilingY) return closest + 400;

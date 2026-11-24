@@ -6,6 +6,12 @@ Cambios visibles para quien juega o despliega, del más reciente al más antiguo
 
 ### Añadido
 
+- **Tanques: el suelo deja de ser plano.** Cada mapa tiene colinas, lomas y hondonadas. Los tanques se inclinan con la pendiente, no pueden subir cuestas muy empinadas, los proyectiles chocan con las laderas y meterse en una hondonada sirve de cobertura. Las salidas están en zonas casi llanas. Se ve igual en 2D y en 3D.
+
+## 18 de noviembre de 2026 (quinto despliegue)
+
+### Añadido
+
 - **Tanques: campo de batalla grande.** El campo pasa de 1000 a 2200 de ancho, con cámara que sigue al tanque, al proyectil y a la explosión, botón «Ver todo el campo» (V) y un radar con el campo entero. Los tres mapas se rehacen como campos de guerra: trincheras de sacos terreros, búnkeres, muros, torre de vigilancia, ruinas, cráteres, alambradas y restos humeantes, en 2D y en 3D. Los disparos llegan más lejos y cada turno hay cuatro movimientos en vez de tres.
 
 ## 18 de noviembre de 2026 (cuarto despliegue)

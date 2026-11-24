@@ -3,6 +3,8 @@ import {
   TANK_BALLISTICS,
   TANK_FIELD,
   TANK_MAPS,
+  TANK_MAX_CLIMB,
+  tankGroundAt,
   tankShotSpeed,
   type TankExplosion,
   type TankMapId,
@@ -23,27 +25,27 @@ export interface TankEvent {
 
 /**
  * Posiciones de salida por mapa y número de jugadores, siempre en huecos libres
- * entre obstáculos (lo comprueba un test). Con el campo de 2200 los extremos
+ * entre obstáculos y en zonas casi llanas del relieve (lo comprueban los tests). Con el campo de 2200 los extremos
  * quedan a 1960 de distancia: al alcance de un disparo a toda potencia.
  */
 export const TANK_SPAWNS: Record<TankMapId, Record<number, number[]>> = {
   'canon-carmesi': {
     2: [120, 2080],
-    3: [120, 1210, 2080],
-    4: [120, 800, 1400, 2080],
-    5: [120, 520, 1000, 1640, 2080],
+    3: [120, 1220, 2080],
+    4: [120, 840, 1360, 2080],
+    5: [120, 560, 1000, 1620, 2080],
   },
   'fortaleza-neon': {
     2: [120, 2080],
-    3: [120, 1200, 2080],
-    4: [120, 700, 1480, 2080],
+    3: [120, 1240, 2080],
+    4: [120, 660, 1540, 2080],
     5: [120, 420, 960, 1760, 2080],
   },
   'crater-lunar': {
-    2: [120, 2080],
-    3: [120, 1250, 2080],
-    4: [120, 600, 1600, 2080],
-    5: [120, 600, 950, 1600, 2080],
+    2: [120, 2100],
+    3: [120, 1220, 2100],
+    4: [120, 620, 1560, 2100],
+    5: [120, 620, 960, 1560, 2100],
   },
 };
 
@@ -55,6 +57,8 @@ export class TanksWorld {
   private explosionSequence = 0;
 
   readonly obstacles: TankObstacle[];
+  /** Mapa cuyo relieve se usa (el pedido o, si no existe, el primero). */
+  private readonly groundMap: TankMapId;
   projectile: TankProjectile | null = null;
   explosions: TankExplosion[] = [];
   wind = 0;
@@ -67,6 +71,7 @@ export class TanksWorld {
     private readonly random: () => number = Math.random,
   ) {
     const map = TANK_MAPS.find((entry) => entry.id === mapId) ?? TANK_MAPS[0]!;
+    this.groundMap = map.id;
     this.obstacles = map.obstacles.map((obstacle) => ({ ...obstacle }));
     const positions = TANK_SPAWNS[map.id][playerIds.length] ?? TANK_SPAWNS[map.id][2]!;
     const maxHealth = mode === 'blitz' ? 70 : 100;
@@ -76,7 +81,7 @@ export class TanksWorld {
       this.tanksById.set(playerId, {
         playerId,
         x,
-        y: TANK_FIELD.groundY - TANK_FIELD.tankHeight / 2,
+        y: tankGroundAt(this.groundMap, x) - TANK_FIELD.tankHeight / 2,
         health: maxHealth,
         alive: true,
         angle: facingRight ? -Math.PI / 4 : (-3 * Math.PI) / 4,
@@ -140,7 +145,11 @@ export class TanksWorld {
       TANK_FIELD.width - TANK_FIELD.tankWidth / 2 - 10,
     );
     if (Math.abs(nextX - tank.x) < 1 || this.tankHitsObstacle(nextX)) return false;
+    // Las cuestas demasiado empinadas no se suben; bajar siempre se puede.
+    const climb = tankGroundAt(this.groundMap, tank.x) - tankGroundAt(this.groundMap, nextX);
+    if (climb > Math.abs(nextX - tank.x) * TANK_MAX_CLIMB) return false;
     tank.x = nextX;
+    tank.y = tankGroundAt(this.groundMap, nextX) - TANK_FIELD.tankHeight / 2;
     tank.fuel -= 1;
     return true;
   }
@@ -196,8 +205,9 @@ export class TanksWorld {
     projectile.x += projectile.vx * dt;
     projectile.y += projectile.vy * dt;
 
-    if (projectile.y + projectile.radius >= TANK_FIELD.groundY) {
-      projectile.y = TANK_FIELD.groundY - projectile.radius;
+    const ground = tankGroundAt(this.groundMap, projectile.x);
+    if (projectile.y + projectile.radius >= ground) {
+      projectile.y = ground - projectile.radius;
       this.detonate(projectile.x, projectile.y, projectile.ownerId);
       return;
     }
@@ -279,12 +289,13 @@ export class TanksWorld {
   private tankHitsObstacle(x: number): boolean {
     const left = x - TANK_FIELD.tankWidth / 2;
     const right = x + TANK_FIELD.tankWidth / 2;
-    const top = TANK_FIELD.groundY - TANK_FIELD.tankHeight;
+    const bottom = tankGroundAt(this.groundMap, x);
+    const top = bottom - TANK_FIELD.tankHeight;
     return this.obstacles.some(
       (obstacle) =>
         right > obstacle.x &&
         left < obstacle.x + obstacle.width &&
-        TANK_FIELD.groundY > obstacle.y &&
+        bottom > obstacle.y &&
         top < obstacle.y + obstacle.height,
     );
   }

@@ -1,6 +1,8 @@
 import {
   TANK_FIELD,
   TANK_MAPS,
+  tankGroundAt,
+  tankTiltAt,
   type PublicPlayer,
   type TanksPublicState,
   type TankState,
@@ -46,7 +48,6 @@ interface Props {
 }
 
 const S = 0.01;
-const W = TANK_FIELD.width * S;
 const GROUND = TANK_FIELD.groundY;
 const toX = (x: number) => (x - TANK_FIELD.width / 2) * S;
 const toY = (y: number) => (GROUND - y) * S;
@@ -68,6 +69,8 @@ interface TankVisual {
   ring: THREE.Mesh;
   bar: THREE.Mesh;
   barMaterial: THREE.MeshBasicMaterial;
+  /** Barra de vida: se mantiene horizontal aunque el tanque se incline. */
+  holder: THREE.Group;
 }
 
 export default function TanksBoard3D(props: Props) {
@@ -169,7 +172,7 @@ export default function TanksBoard3D(props: Props) {
       const { state, players, meId, preview, overview } = latest.current;
       const aim =
         preview && state.phase === 'aiming'
-          ? predictShot(preview, state.wind, state.obstacles)
+          ? predictShot(preview, state.wind, state.obstacles, state.map)
           : null;
       view = easeCamera(view, tankCameraTarget(state, { overview, meId, aim }), dt);
       placeCamera();
@@ -188,8 +191,12 @@ export default function TanksBoard3D(props: Props) {
         const aiming = preview && tank.playerId === meId;
         // En el servidor el ángulo crece hacia abajo (y de pantalla); aquí, hacia arriba.
         const angle = aiming ? (preview.angleDeg * Math.PI) / 180 : -tank.angle;
-        visual.group.position.set(toX(tank.x), toY(tank.y + 20), 0);
-        visual.pivot.rotation.z = angle;
+        // El casco se inclina con el relieve; el cañón y la barra de vida no.
+        const tilt = -tankTiltAt(state.map, tank.x);
+        visual.group.position.set(toX(tank.x), toY(tankGroundAt(state.map, tank.x) + 3), 0);
+        visual.group.rotation.z = tilt;
+        visual.pivot.rotation.z = angle - tilt;
+        visual.holder.rotation.z = -tilt;
         visual.group.traverse((node) => {
           const material = (node as THREE.Mesh).material as THREE.Material | undefined;
           if (material && 'opacity' in material && node !== visual!.bar && node !== visual!.ring) {
@@ -350,7 +357,7 @@ function makeTank(color: string, mine: boolean): TankVisual {
   const bar = mesh(new THREE.PlaneGeometry(0.64, 0.06), barMaterial, 0, 0, 0.002, 'none');
   holder.add(bar);
   group.add(holder);
-  return { group, pivot, ring, bar, barMaterial };
+  return { group, pivot, ring, bar, barMaterial, holder };
 }
 
 function buildMap(state: TanksPublicState): THREE.Group {
@@ -419,8 +426,46 @@ function buildMap(state: TanksPublicState): THREE.Group {
   ridge(-3.5, lunar ? 0x12152a : 0x1b0e1e, 4.1, 1.2);
 
   const [soil, turf, stone, accent] = GROUNDS[state.map] ?? GROUNDS['canon-carmesi']!;
-  group.add(mesh(new THREE.BoxGeometry(W + 0.6, 1.2, 1.8), std(soil, 0.95), 0, -0.6, 0, 'receive'));
-  group.add(mesh(new THREE.BoxGeometry(W + 0.6, 0.06, 1.84), std(turf, 0.9), 0, 0, 0, 'receive'));
+  // Relieve: el perfil del mapa extruido en profundidad, más una capa fina de
+  // superficie que sigue la misma línea.
+  const profile = (offset: number) => {
+    const points: [number, number][] = [];
+    for (let x = 0; x <= TANK_FIELD.width; x += 20) {
+      points.push([toX(x), toY(tankGroundAt(state.map, x)) - offset]);
+    }
+    return points;
+  };
+  const slab = (top: [number, number][], bottomY: number, depth: number) => {
+    const shape = new THREE.Shape();
+    shape.moveTo(top[0]![0] - 0.3, bottomY);
+    shape.lineTo(top[0]![0] - 0.3, top[0]![1]);
+    for (const [x, y] of top) shape.lineTo(x, y);
+    shape.lineTo(top[top.length - 1]![0] + 0.3, top[top.length - 1]![1]);
+    shape.lineTo(top[top.length - 1]![0] + 0.3, bottomY);
+    shape.closePath();
+    return new THREE.ExtrudeGeometry(shape, { depth, bevelEnabled: false }).translate(
+      0,
+      0,
+      -depth / 2,
+    );
+  };
+  const surface = profile(0);
+  group.add(mesh(slab(surface, -1.2, 1.8), std(soil, 0.95), 0, 0, 0, 'receive'));
+  const crust = new THREE.Shape();
+  crust.moveTo(surface[0]![0], surface[0]![1] - 0.07);
+  for (const [x, y] of surface) crust.lineTo(x, y + 0.005);
+  for (const [x, y] of [...surface].reverse()) crust.lineTo(x, y - 0.07);
+  crust.closePath();
+  group.add(
+    mesh(
+      new THREE.ExtrudeGeometry(crust, { depth: 1.84, bevelEnabled: false }).translate(0, 0, -0.92),
+      std(turf, 0.9),
+      0,
+      0,
+      0,
+      'receive',
+    ),
+  );
   group.add(
     mesh(
       new THREE.PlaneGeometry(80, 30).rotateX(-Math.PI / 2),
@@ -488,27 +533,31 @@ function buildMap(state: TanksPublicState): THREE.Group {
   for (const item of decor) {
     const x = toX(item.x);
     const size = item.size * S;
+    // Todo el decorado se apoya en el relieve bajo su centro.
+    const base = toY(tankGroundAt(state.map, item.x));
     if (item.kind === 'crater') {
       group.add(
         mesh(
           new THREE.CircleGeometry(size / 2, 24).rotateX(-Math.PI / 2).scale(1, 1, 0.5),
           new THREE.MeshStandardMaterial({ color: 0x000000, transparent: true, opacity: 0.45 }),
           x,
-          0.035,
+          base + 0.035,
           0.35,
           'none',
         ),
       );
     } else if (item.kind === 'wreck') {
-      group.add(mesh(new THREE.BoxGeometry(size, 0.2, 0.42), dark, x, 0.1, -0.35));
-      group.add(mesh(new THREE.BoxGeometry(size * 0.4, 0.12, 0.3), dark, x - 0.04, 0.26, -0.35));
+      group.add(mesh(new THREE.BoxGeometry(size, 0.2, 0.42), dark, x, base + 0.1, -0.35));
+      group.add(
+        mesh(new THREE.BoxGeometry(size * 0.4, 0.12, 0.3), dark, x - 0.04, base + 0.26, -0.35),
+      );
     } else if (item.kind === 'tree') {
       group.add(
         mesh(
           new THREE.CylinderGeometry(0.03, 0.05, size * 1.4, 6),
           std(0x2b1a12, 1),
           x,
-          size * 0.7,
+          base + size * 0.7,
           -0.6,
         ),
       );
@@ -521,7 +570,7 @@ function buildMap(state: TanksPublicState): THREE.Group {
             new THREE.CylinderGeometry(0.015, 0.025, 0.24, 5),
             std(0x2b1a12, 1),
             x + dx,
-            size * dy,
+            base + size * dy,
             -0.6,
           ).rotateZ(rz),
         );
@@ -529,8 +578,18 @@ function buildMap(state: TanksPublicState): THREE.Group {
     } else if (item.kind === 'wire') {
       const posts = Math.max(2, Math.round(item.size / 36));
       for (let index = 0; index <= posts; index += 1) {
-        const px = toX(item.x - item.size / 2 + (index * item.size) / posts);
-        group.add(mesh(new THREE.BoxGeometry(0.025, 0.26, 0.025), dark, px, 0.13, 0.55, 'none'));
+        const worldX = item.x - item.size / 2 + (index * item.size) / posts;
+        const postBase = toY(tankGroundAt(state.map, worldX));
+        group.add(
+          mesh(
+            new THREE.BoxGeometry(0.025, 0.26, 0.025),
+            dark,
+            toX(worldX),
+            postBase + 0.13,
+            0.55,
+            'none',
+          ),
+        );
       }
       for (const height of [0.1, 0.18, 0.25]) {
         group.add(
@@ -538,7 +597,7 @@ function buildMap(state: TanksPublicState): THREE.Group {
             new THREE.BoxGeometry(size, 0.008, 0.008),
             std(0x9ca3af, 0.4, 0.8),
             x,
-            height,
+            base + height,
             0.55,
             'none',
           ),
@@ -550,7 +609,7 @@ function buildMap(state: TanksPublicState): THREE.Group {
           new THREE.CylinderGeometry(0.012, 0.012, 0.9, 6),
           std(0xd6d3d1, 0.5),
           x,
-          0.45,
+          base + 0.45,
           -0.5,
           'none',
         ),
@@ -560,7 +619,7 @@ function buildMap(state: TanksPublicState): THREE.Group {
           new THREE.PlaneGeometry(size, 0.16),
           std(accent, 0.8, 0, { side: THREE.DoubleSide }),
           x + size / 2,
-          0.82,
+          base + 0.82,
           -0.5,
           'none',
         ),
@@ -571,13 +630,20 @@ function buildMap(state: TanksPublicState): THREE.Group {
           new THREE.CylinderGeometry(0.02, 0.02, 0.7, 6),
           std(0x2a2a33, 0.6),
           x,
-          0.35,
+          base + 0.35,
           -0.5,
           'none',
         ),
       );
       group.add(
-        mesh(new THREE.BoxGeometry(0.16, 0.08, 0.08), glow(0xa5f3fc, 2.6), x, 0.72, -0.5, 'none'),
+        mesh(
+          new THREE.BoxGeometry(0.16, 0.08, 0.08),
+          glow(0xa5f3fc, 2.6),
+          x,
+          base + 0.72,
+          -0.5,
+          'none',
+        ),
       );
     }
   }

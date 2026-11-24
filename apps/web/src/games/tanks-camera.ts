@@ -1,6 +1,7 @@
 import {
   TANK_BALLISTICS,
   TANK_FIELD,
+  tankGroundAt,
   tankShotSpeed,
   type TankObstacle,
   type TankState,
@@ -55,6 +56,7 @@ export function predictShot(
   preview: TankAimPreview,
   wind: number,
   obstacles: TankObstacle[],
+  mapId: string,
 ): PredictedShot {
   const step = 0.035;
   const angle = (-preview.angleDeg * Math.PI) / 180;
@@ -69,11 +71,9 @@ export function predictShot(
     vy += TANK_BALLISTICS.gravity * step;
     const nx = x + vx * step;
     const ny = y + vy * step;
-    if (nx < 0 || nx > TANK_FIELD.width || ny >= TANK_FIELD.groundY) {
-      return {
-        points,
-        end: { x: clamp(nx, 0, TANK_FIELD.width), y: Math.min(ny, TANK_FIELD.groundY) },
-      };
+    const ground = tankGroundAt(mapId, clamp(nx, 0, TANK_FIELD.width));
+    if (nx < 0 || nx > TANK_FIELD.width || ny >= ground) {
+      return { points, end: { x: clamp(nx, 0, TANK_FIELD.width), y: Math.min(ny, ground) } };
     }
     const blocked = obstacles.some(
       (o) => nx >= o.x && nx <= o.x + o.width && ny >= o.y && ny <= o.y + o.height,
